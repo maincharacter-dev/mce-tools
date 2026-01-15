@@ -32,7 +32,7 @@ const tools: ToolCard[] = [
       "Extract and manage assets from Autodesk Construction Cloud. Streamline your document processing and data extraction workflows with intelligent automation.",
     icon: <Zap className="h-8 w-8" />,
     color: "from-orange-500 to-orange-600",
-    url: "https://github.com/robachamilton-afk/acc-tools",
+    url: "https://accextractor-wgbdueae.manus.space/",
     status: "Active",
   },
   {
@@ -42,7 +42,7 @@ const tools: ToolCard[] = [
       "Analyze and optimize solar farm performance metrics. Track energy generation, efficiency, and system health in real-time with advanced analytics.",
     icon: <BarChart3 className="h-8 w-8" />,
     color: "from-amber-500 to-amber-600",
-    url: "https://github.com/robachamilton-afk/mce-tools",
+    url: "https://solaranalys-v5zbfm3a.manus.space/",
     status: "Active",
   },
 ];
