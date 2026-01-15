@@ -1,5 +1,4 @@
-import { Link } from "wouter";
-import { ArrowRight, Zap, BarChart3, Linkedin, Search, Menu, X } from "lucide-react";
+import { ArrowRight, Zap, BarChart3, Linkedin, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -56,23 +55,21 @@ export default function Home() {
       <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-6 flex items-center justify-between">
           {/* Logo Section */}
-          <Link href="/">
-            <a className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <img 
-                src="/mce-logo.png" 
-                alt="Main Character Energy" 
-                className="h-10 w-10 md:h-12 md:w-12" 
-              />
-              <div>
-                <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
-                  MAIN CHARACTER ENERGY
-                </div>
-                <div className="text-xs md:text-sm text-slate-400 font-medium">
-                  OE Toolkit
-                </div>
+          <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img 
+              src="/mce-logo.png" 
+              alt="Main Character Energy" 
+              className="h-10 w-10 md:h-12 md:w-12" 
+            />
+            <div>
+              <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                MAIN CHARACTER ENERGY
               </div>
-            </a>
-          </Link>
+              <div className="text-xs md:text-sm text-slate-400 font-medium">
+                OE Toolkit
+              </div>
+            </div>
+          </a>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -148,15 +145,14 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <a href="#tools">
-                <Button 
-                  size="lg" 
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                >
-                  Explore Tools
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </a>
+              <Button 
+                size="lg" 
+                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                onClick={() => document.getElementById('tools')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Explore Tools
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
@@ -191,7 +187,7 @@ export default function Home() {
                 href={tool.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group"
+                className="group block"
               >
                 <div className="h-full flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-xl p-8 transition-all duration-300 hover:border-orange-500/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer">
                   {/* Header with Icon and Status */}
