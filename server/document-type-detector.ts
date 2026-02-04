@@ -1,15 +1,38 @@
 /**
  * AI-powered document type detection
  * Analyzes filename and document content to automatically categorize documents
+ * Uses a two-stage approach:
+ * 1. Fast keyword-based classification (no API calls)
+ * 2. LLM-based classification for uncertain cases
  */
 
 import { invokeLLM } from './_core/llm';
 import { extractTextFromDocument } from './document-extractor';
+import { classifyByFilename, classifyByContent, type ClassificationResult } from './document-classifier';
 
 export type DocumentType = 'IM' | 'DD_PACK' | 'CONTRACT' | 'GRID_STUDY' | 'CONCEPT_DESIGN' | 'WEATHER_FILE' | 'OTHER';
 
 /**
- * Detect document type using AI
+ * Normalize document type from classifier to valid DocumentType
+ * Maps extended types back to the core set
+ */
+function normalizeDocType(type: string): DocumentType {
+  const typeMap: Record<string, DocumentType> = {
+    'IM': 'IM',
+    'DD_PACK': 'DD_PACK',
+    'CONTRACT': 'CONTRACT',
+    'GRID_STUDY': 'GRID_STUDY',
+    'CONCEPT_DESIGN': 'CONCEPT_DESIGN',
+    'WEATHER_FILE': 'WEATHER_FILE',
+    'WEATHER_DATA': 'WEATHER_FILE', // Map to WEATHER_FILE
+    'FINANCIAL_MODEL': 'DD_PACK', // Financial models are part of DD packs
+    'OTHER': 'OTHER',
+  };
+  return typeMap[type] || 'OTHER';
+}
+
+/**
+ * Detect document type using hybrid approach (keywords + AI)
  * @param filePath Path to the uploaded document
  * @param fileName Original filename
  * @returns Detected document type
@@ -18,12 +41,32 @@ export async function detectDocumentType(filePath: string, fileName: string): Pr
   try {
     console.log(`[Document Type Detector] Analyzing: ${fileName}`);
 
+    // Stage 1: Try fast keyword-based classification by filename
+    const filenameResult = classifyByFilename(fileName);
+    if (filenameResult && filenameResult.confidence === 'high') {
+      console.log(`[Document Type Detector] Fast classification by filename: ${filenameResult.suggestedType} (high confidence)`);
+      return normalizeDocType(filenameResult.suggestedType);
+    }
+
     // Extract first page of text for analysis
     let textSample = '';
     try {
       const extractionResult = await extractTextFromDocument(filePath);
       // Take first 2000 characters for analysis
       textSample = extractionResult.text.substring(0, 2000);
+      
+      // Stage 2: Try keyword-based classification by content
+      const contentResult = classifyByContent(extractionResult.text);
+      if (contentResult.confidence === 'high') {
+        console.log(`[Document Type Detector] Fast classification by content: ${contentResult.suggestedType} (high confidence, keywords: ${contentResult.matchedKeywords.join(', ')})`);
+        return normalizeDocType(contentResult.suggestedType);
+      }
+      
+      // If medium confidence and filename also matched, use it
+      if (contentResult.confidence === 'medium' && filenameResult) {
+        console.log(`[Document Type Detector] Combined classification: ${contentResult.suggestedType} (medium confidence)`);
+        return normalizeDocType(contentResult.suggestedType);
+      }
     } catch (error) {
       console.warn(`[Document Type Detector] Text extraction failed, using filename only:`, error);
     }

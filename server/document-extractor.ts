@@ -56,6 +56,9 @@ export async function extractTextFromDocument(
       case '.txt':
         return await extractFromText(filePath);
       
+      case '.csv':
+        return await extractFromCsv(filePath);
+      
       default:
         throw new Error(`Unsupported file type: ${ext}`);
     }
@@ -133,6 +136,73 @@ async function extractFromText(filePath: string): Promise<DocumentExtractionResu
     fileType: 'txt',
     extractionMethod: 'direct',
     wordCount,
+  };
+}
+
+/**
+ * Extract from CSV
+ * Parses CSV and converts to readable text format
+ */
+async function extractFromCsv(filePath: string): Promise<DocumentExtractionResult> {
+  const content = await fs.readFile(filePath, 'utf-8');
+  
+  // Parse CSV lines
+  const lines = content.split(/\r?\n/).filter(line => line.trim().length > 0);
+  const rows: string[][] = [];
+  
+  for (const line of lines) {
+    // Simple CSV parsing - handle quoted values
+    const row: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        row.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    row.push(current.trim());
+    rows.push(row);
+  }
+  
+  // Convert to readable text
+  // First row is typically headers
+  const headers = rows[0] || [];
+  const dataRows = rows.slice(1);
+  
+  // Create text representation
+  let text = `CSV Data (${dataRows.length} rows, ${headers.length} columns)\n\n`;
+  text += `Headers: ${headers.join(', ')}\n\n`;
+  
+  // Add sample of data rows (first 50 rows)
+  const sampleRows = dataRows.slice(0, 50);
+  for (let i = 0; i < sampleRows.length; i++) {
+    const row = sampleRows[i];
+    text += `Row ${i + 1}: ${row.join(', ')}\n`;
+  }
+  
+  if (dataRows.length > 50) {
+    text += `\n... and ${dataRows.length - 50} more rows\n`;
+  }
+  
+  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+  
+  return {
+    text,
+    fileType: 'csv',
+    extractionMethod: 'csv-parser',
+    wordCount,
+    metadata: {
+      rowCount: dataRows.length,
+      columnCount: headers.length,
+      headers,
+    },
   };
 }
 

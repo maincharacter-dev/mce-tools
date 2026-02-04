@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, LEFT(access_token, 50) as token_start, expires_at, created_at FROM acc_credentials;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, LEFT(access_token, 50) as token_start, expires_at, created_at FROM acc_credentials;",
+  "rows": [
+    {
+      "id": "2",
+      "token_start": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlZiakZvUzhQU3lYODQyMV",
+      "expires_at": "2026-02-03 09:27:13",
+      "created_at": "2026-02-03 13:27:15"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttoken_start\texpires_at\tcreated_at\n2\teyJhbGciOiJSUzI1NiIsImtpZCI6IlZiakZvUzhQU3lYODQyMV\t2026-02-03 09:27:13\t2026-02-03 13:27:15\n",
+  "stderr": "",
+  "execution_time_ms": 1515
+}

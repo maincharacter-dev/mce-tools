@@ -11,6 +11,7 @@ import { Plus, Loader2, AlertCircle, FolderOpen, Upload, ArrowLeft, Linkedin, Me
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ProjectCard } from "@/components/ProjectCard";
 
 export default function ProjectDashboard() {
   const { user, isAuthenticated } = useAuth();
@@ -109,7 +110,7 @@ export default function ProjectDashboard() {
                 MAIN CHARACTER ENERGY
               </div>
               <div className="text-xs md:text-sm text-slate-400 font-medium">
-                Project Intake & Ingestion Engine
+                Technical Advisory Engine
               </div>
             </div>
           </a>
@@ -282,193 +283,18 @@ export default function ProjectDashboard() {
             </div>
 
             {/* Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {projects.map((project: any) => (
-                <div
+                <ProjectCard
                   key={project.id}
-                  className="group cursor-pointer"
+                  project={project}
                   onClick={() => setLocation(`/project-dashboard?projectId=${project.id}`)}
-                >
-                  <div className="h-full flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 transition-all duration-300 hover:border-orange-500/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-orange-500/10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
-                        <FolderOpen className="h-6 w-6" />
-                      </div>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
-                        {project.status}
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors mb-2">
-                      {project.name}
-                    </h3>
-                    
-                    {project.description && (
-                      <p className="text-slate-300 text-sm line-clamp-2 mb-4 flex-grow">
-                        {project.description}
-                      </p>
-                    )}
-                    
-                    <div className="space-y-3 pt-4 border-t border-slate-700/50">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Created</span>
-                        <span className="text-slate-300">{new Date(project.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            className="flex-1 text-xs bg-orange-500 hover:bg-orange-600 text-white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/project/${project.id}/upload`);
-                            }}
-                          >
-                            <Upload className="mr-1 h-3 w-3" />
-                            Upload
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/insights?projectId=${project.id}`);
-                            }}
-                          >
-                            <FileText className="mr-1 h-3 w-3" />
-                            Insights
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/red-flags?projectId=${project.id}`);
-                            }}
-                          >
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            Red Flags
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-red-700 text-red-400 hover:bg-red-950"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/conflicts?projectId=${project.id}`);
-                            }}
-                          >
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            Conflicts
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/project/${project.id}/documents?projectId=${project.id}`);
-                            }}
-                          >
-                            <FolderOpen className="mr-1 h-3 w-3" />
-                            Documents
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/processing-status?projectId=${project.id}`);
-                            }}
-                          >
-                            <Loader2 className="mr-1 h-3 w-3" />
-                            Processing Status
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-blue-700 text-blue-400 hover:bg-blue-950"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/project/${project.id}/performance`);
-                            }}
-                          >
-                            <Zap className="mr-1 h-3 w-3" />
-                            Performance
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/project/${project.id}/performance-params`);
-                            }}
-                          >
-                            <Settings className="mr-1 h-3 w-3" />
-                            Perf Params
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocation(`/project/${project.id}/financial`);
-                            }}
-                          >
-                            <DollarSign className="mr-1 h-3 w-3" />
-                            Financial
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            className="flex-1 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLoadDemoData(project.id);
-                            }}
-                            disabled={demoMutation.isPending}
-                          >
-                            {demoMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                Loading...
-                              </>
-                            ) : (
-                              "🎯 Load Demo Data"
-                            )}
-                          </Button>
-                        </div>
-                        <div className="flex gap-2 pt-2 border-t border-slate-800">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs border-red-900/50 text-red-400 hover:bg-red-950/50 hover:text-red-300"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProjectToDelete(project.id);
-                              setDeleteConfirmOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            Delete Project
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  onDelete={() => {
+                    setProjectToDelete(project.id);
+                    setDeleteConfirmOpen(true);
+                  }}
+                  isDeleting={deleteMutation.isPending && projectToDelete === project.id}
+                />
               ))}
             </div>
           </div>

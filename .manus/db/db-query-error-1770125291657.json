@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, LEFT(access_token, 30) as token_preview, LENGTH(access_token) as token_length, expires_at, NOW() as current_time, TIMESTAMPDIFF(MINUTE, NOW(), expires_at) as minutes_until_expiry FROM acc_credentials;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, LEFT(access_token, 30) as token_preview, LENGTH(access_token) as token_length, expires_at, NOW() as current_time, TIMESTAMPDIFF(MINUTE, NOW(), expires_at) as minutes_until_expiry FROM acc_credentials;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 123 near \"current_time, TIMESTAMPDIFF(MINUTE, NOW(), expires_at) as minutes_until_expiry FROM acc_credentials\""
+  ]
+}

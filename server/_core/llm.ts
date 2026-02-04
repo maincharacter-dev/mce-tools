@@ -271,6 +271,11 @@ const normalizeResponseFormat = ({
   };
 };
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
@@ -330,21 +335,66 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   // Choose API key based on provider
   const apiKey = useOpenAI ? process.env.OPENAI_API_KEY! : ENV.forgeApiKey;
   
-  const response = await fetch(resolveApiUrl(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(resolveApiUrl(), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
-    );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
+        );
+      }
+
+      // Get response text first to check for HTML errors
+      const responseText = await response.text();
+      
+      // Check if response looks like HTML (common gateway error)
+      if (responseText.trim().startsWith('<')) {
+        throw new Error(
+          `LLM returned HTML instead of JSON (possible gateway error). Response starts with: ${responseText.substring(0, 100)}`
+        );
+      }
+      
+      // Try to parse as JSON
+      try {
+        return JSON.parse(responseText) as InvokeResult;
+      } catch (parseError) {
+        throw new Error(
+          `Failed to parse LLM response as JSON: ${responseText.substring(0, 200)}`
+        );
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Check if this is a retryable error
+      const isRetryable = 
+        lastError.message.includes('HTML instead of JSON') ||
+        lastError.message.includes('Failed to parse') ||
+        lastError.message.includes('502') ||
+        lastError.message.includes('503') ||
+        lastError.message.includes('504') ||
+        lastError.message.includes('ECONNRESET') ||
+        lastError.message.includes('ETIMEDOUT');
+      
+      if (isRetryable && attempt < MAX_RETRIES) {
+        console.log(`[LLM] Attempt ${attempt} failed, retrying in ${RETRY_DELAY_MS * attempt}ms: ${lastError.message}`);
+        await sleep(RETRY_DELAY_MS * attempt); // Exponential backoff
+        continue;
+      }
+      
+      throw lastError;
+    }
   }
-
-  return (await response.json()) as InvokeResult;
+  
+  throw lastError || new Error('LLM invocation failed after all retries');
 }

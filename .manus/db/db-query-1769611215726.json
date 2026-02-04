@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, file_name, status FROM documents ORDER BY created_at DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, file_name, status FROM documents ORDER BY created_at DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "doc-002-grid-study",
+      "file_name": "Grid_Connection_Study_Final.pdf",
+      "status": "processed"
+    },
+    {
+      "id": "doc-004-planning",
+      "file_name": "Planning_Approval_Application.pdf",
+      "status": "processed"
+    },
+    {
+      "id": "doc-003-geotech",
+      "file_name": "Geotechnical_Investigation_Report.pdf",
+      "status": "processed"
+    },
+    {
+      "id": "doc-001-clare-im",
+      "file_name": "Clare_Solar_Farm_IM_v2.1.pdf",
+      "status": "processed"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tfile_name\tstatus\ndoc-002-grid-study\tGrid_Connection_Study_Final.pdf\tprocessed\ndoc-004-planning\tPlanning_Approval_Application.pdf\tprocessed\ndoc-003-geotech\tGeotechnical_Investigation_Report.pdf\tprocessed\ndoc-001-clare-im\tClare_Solar_Farm_IM_v2.1.pdf\tprocessed\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

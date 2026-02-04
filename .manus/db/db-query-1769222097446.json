@@ -1,0 +1,40 @@
+{
+  "query": "SELECT DISTINCT `key` FROM extracted_facts LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT DISTINCT `key` FROM extracted_facts LIMIT 20;",
+  "rows": [
+    {
+      "key": "Connection Point"
+    },
+    {
+      "key": "Project Name"
+    },
+    {
+      "key": "Expected COD"
+    },
+    {
+      "key": "Total Capacity (MW)"
+    },
+    {
+      "key": "Grid Curtailment Risk"
+    },
+    {
+      "key": "Estimated CAPEX"
+    },
+    {
+      "key": "Planning Approval Status"
+    },
+    {
+      "key": "Soil Type"
+    },
+    {
+      "key": "Technology Type"
+    },
+    {
+      "key": "Grid Capacity Constraint"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\nConnection Point\nProject Name\nExpected COD\nTotal Capacity (MW)\nGrid Curtailment Risk\nEstimated CAPEX\nPlanning Approval Status\nSoil Type\nTechnology Type\nGrid Capacity Constraint\n",
+  "stderr": "",
+  "execution_time_ms": 2127
+}

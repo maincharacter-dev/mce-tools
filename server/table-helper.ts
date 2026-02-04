@@ -39,6 +39,11 @@ export const Tables = {
   FINANCIAL_DATA: 'financial_data',
   PROJECT_LOCATION: 'project_location',
   PROCESSING_JOBS: 'processing_jobs',
+  CONSOLIDATION_JOBS: 'consolidation_jobs',
+  // ACC integration tables
+  ACC_CREDENTIALS: 'acc_credentials',
+  ACC_PROJECT_MAPPING: 'acc_project_mapping',
+  ACC_UPLOADS: 'acc_uploads',
 } as const;
 
 /**

@@ -13,6 +13,10 @@ export type DocumentType =
   | "CONTRACT" 
   | "GRID_STUDY" 
   | "CONCEPT_DESIGN" 
+  | "WEATHER_FILE"
+  | "FEASIBILITY_STUDY"
+  | "FINANCIAL_MODEL"
+  | "PLANNING"
   | "OTHER";
 
 export type DeliverableType =
@@ -41,6 +45,10 @@ export const DATA_INCOMING_CATEGORIES = {
   CONTRACT: "Contracts",
   GRID_STUDY: "Grid_Studies",
   CONCEPT_DESIGN: "Concept_Design",
+  WEATHER_FILE: "Weather_Data",
+  FEASIBILITY_STUDY: "Feasibility_Studies",
+  FINANCIAL_MODEL: "Financial_Models",
+  PLANNING: "Planning_Documents",
   OTHER: "Other_Documents",
 } as const;
 
@@ -98,20 +106,50 @@ export function getSupersededFolderPath(folderPath: string[]): string[] {
  */
 export function classifyDocumentType(fileName: string, content?: string): DocumentType {
   const lowerFileName = fileName.toLowerCase();
+  const ext = lowerFileName.split('.').pop() || '';
+  
+  // Weather/TMY files - check first as they have specific patterns
+  // EPW files are always weather files (EnergyPlus Weather format)
+  if (ext === 'epw') {
+    return "WEATHER_FILE";
+  }
+  
+  // CSV files with weather-related names or coordinate patterns
+  if (ext === 'csv') {
+    if (lowerFileName.includes('tmy') || 
+        lowerFileName.includes('weather') ||
+        lowerFileName.includes('meteo') ||
+        lowerFileName.includes('irradiance') ||
+        /\d+[._]\d+[._]\d+/.test(lowerFileName)) { // Coordinate pattern like 19.638_56.884
+      return "WEATHER_FILE";
+    }
+  }
   
   // IM (Information Memorandum)
   if (lowerFileName.includes("information memorandum") || 
       lowerFileName.includes("im_") || 
       lowerFileName.includes("_im.") ||
-      lowerFileName.includes("info memo")) {
+      lowerFileName.includes("_im ") ||
+      lowerFileName.includes("info memo") ||
+      lowerFileName.includes("teaser")) {
     return "IM";
+  }
+  
+  // Feasibility Study - check before grid study since "feasibility" is more specific
+  if (lowerFileName.includes("feasibility") ||
+      lowerFileName.includes("feas_") ||
+      lowerFileName.includes("_feas")) {
+    return "FEASIBILITY_STUDY";
   }
   
   // DD Pack (Due Diligence Pack)
   if (lowerFileName.includes("due diligence") || 
       lowerFileName.includes("dd pack") || 
       lowerFileName.includes("dd_pack") ||
-      lowerFileName.includes("data room")) {
+      lowerFileName.includes("dd_") ||
+      lowerFileName.includes("_dd.") ||
+      lowerFileName.includes("data room") ||
+      lowerFileName.includes("technical report")) {
     return "DD_PACK";
   }
   
@@ -119,25 +157,58 @@ export function classifyDocumentType(fileName: string, content?: string): Docume
   if (lowerFileName.includes("contract") || 
       lowerFileName.includes("agreement") || 
       lowerFileName.includes("ppa") ||
-      lowerFileName.includes("offtake")) {
+      lowerFileName.includes("epc") ||
+      lowerFileName.includes("o&m") ||
+      lowerFileName.includes("offtake") ||
+      lowerFileName.includes("lease")) {
     return "CONTRACT";
   }
   
   // Grid Study
   if (lowerFileName.includes("grid") || 
-      lowerFileName.includes("connection") || 
-      lowerFileName.includes("network") ||
+      lowerFileName.includes("connection study") || 
+      lowerFileName.includes("network study") ||
       lowerFileName.includes("dnsp") ||
-      lowerFileName.includes("tnsp")) {
+      lowerFileName.includes("tnsp") ||
+      lowerFileName.includes("gca") ||
+      lowerFileName.includes("substation")) {
     return "GRID_STUDY";
+  }
+  
+  // Financial Model
+  if (lowerFileName.includes("financial model") ||
+      lowerFileName.includes("fin_model") ||
+      lowerFileName.includes("cashflow") ||
+      lowerFileName.includes("cash flow") ||
+      lowerFileName.includes("proforma")) {
+    return "FINANCIAL_MODEL";
+  }
+  
+  // Planning Documents
+  if (lowerFileName.includes("planning") ||
+      lowerFileName.includes("permit") ||
+      lowerFileName.includes("approval") ||
+      lowerFileName.includes("environmental") ||
+      lowerFileName.includes("eia") ||
+      lowerFileName.includes("krooki") ||
+      lowerFileName.includes("land")) {
+    return "PLANNING";
   }
   
   // Concept Design
   if (lowerFileName.includes("concept") || 
       lowerFileName.includes("design") || 
       lowerFileName.includes("layout") ||
-      lowerFileName.includes("preliminary")) {
+      lowerFileName.includes("preliminary") ||
+      lowerFileName.includes("sld") ||
+      lowerFileName.includes("single line")) {
     return "CONCEPT_DESIGN";
+  }
+  
+  // Schedule files (xlsx with schedule in name)
+  if ((ext === 'xlsx' || ext === 'xls') && 
+      (lowerFileName.includes('schedule') || lowerFileName.includes('timeline'))) {
+    return "PLANNING";
   }
   
   // Default to OTHER

@@ -29,8 +29,8 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png" alt="MCE" className="h-10 w-10" />
               <div>
-                <h1 className="text-xl font-bold text-white">Project Intake</h1>
-                <p className="text-sm text-slate-400">TA/TDD Workflow · Stage 1</p>
+                <h1 className="text-xl font-bold text-white">Technical Advisory Engine</h1>
+                <p className="text-sm text-slate-400">TA/TDD Workflow Platform</p>
               </div>
             </div>
             <div className="hidden md:flex items-center gap-4">
@@ -98,16 +98,16 @@ export default function Home() {
             </Badge>
           </div>
           <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
-            Project Intake
+            Technical Advisory
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
-              Document Intelligence
+              Intelligence Platform
             </span>
           </h2>
           <p className="text-xl text-slate-300 leading-relaxed mb-8">
-            First stage of the Technical Advisory workflow. Ingest project documents, extract structured insights, and build the foundational Project Intelligence Base for downstream analysis.
+            End-to-end Technical Advisory & Due Diligence workflow platform. Ingest project documents, extract structured insights, validate technical parameters, and generate comprehensive analysis reports.
           </p>
           <p className="text-lg text-slate-400 leading-relaxed mb-8">
-            Process IMs, DD packs, concept designs, and grid studies using hybrid extraction (deterministic parsing + Ollama LLM). Maintain data sovereignty with per-project databases while contributing de-identified insights to the knowledge base.
+            Process IMs, DD packs, concept designs, grid studies, and weather files using hybrid extraction (deterministic parsing + LLM). Maintain data sovereignty with per-project databases while building a knowledge base for cross-project insights.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
@@ -182,8 +182,8 @@ export default function Home() {
         <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-500/30 rounded-lg p-8">
           <h3 className="text-2xl font-bold text-white mb-4">Part of the TA/TDD Workflow</h3>
           <p className="text-slate-300 mb-6">
-            Project Intake is the first stage in the Technical Advisory & Due Diligence workflow. 
-            Once your Project Fact Base is established, it feeds into:
+            The Technical Advisory Engine supports the full TA/TDD workflow. 
+            Start with document ingestion and progress through the stages:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">

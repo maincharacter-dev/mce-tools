@@ -1,0 +1,9 @@
+{
+  "query": "-- Create consolidation_jobs table for tracking async consolidation jobs\n-- This needs to be added to each project's database\n\n-- First, let's add it to project 300001 as a test\nCREATE TABLE IF NOT EXISTS proj_300001_consolidation_jobs (\n  id VARCHAR(100) PRIMARY KEY,\n  project_id INT NOT NULL,\n  status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',\n  stage VARCHAR(100) DEFAULT 'starting',\n  progress_percent INT DEFAULT 0,\n  error_message TEXT,\n  started_at TIMESTAMP NULL,\n  completed_at TIMESTAMP NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX idx_project (project_id),\n  INDEX idx_status (status)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute -- Create consolidation_jobs table for tracking async consolidation jobs\n-- This needs to be added to each project's database\n\n-- First, let's add it to project 300001 as a test\nCREATE TABLE IF NOT EXISTS proj_300001_consolidation_jobs (\n  id VARCHAR(100) PRIMARY KEY,\n  project_id INT NOT NULL,\n  status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',\n  stage VARCHAR(100) DEFAULT 'starting',\n  progress_percent INT DEFAULT 0,\n  error_message TEXT,\n  started_at TIMESTAMP NULL,\n  completed_at TIMESTAMP NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX idx_project (project_id),\n  INDEX idx_status (status)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1856
+}

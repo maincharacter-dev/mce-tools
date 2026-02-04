@@ -1112,27 +1112,73 @@ export const appRouter = router({
         
         return { success: true, message: "Project deleted successfully" };
       }),
+    // Start or continue consolidation - processes one step at a time
+    // Frontend should call this repeatedly until done=true
     consolidate: protectedProcedure
       .input(z.object({ projectId: z.string() }))
       .mutation(async ({ input, ctx }) => {
+        console.log('[Consolidate] Processing step for project', input.projectId);
+        
+        try {
+          const projectIdNum = parseInt(input.projectId);
+          const project = await getProjectById(projectIdNum);
+          
+          if (!project || project.createdByUserId !== ctx.user.id) {
+            throw new Error("Project not found or access denied");
+          }
+
+          const { createOrGetJob, processNextStep } = await import('./consolidation-job-service');
+          
+          // Create job if it doesn't exist
+          await createOrGetJob(projectIdNum);
+          
+          // Process next step
+          const result = await processNextStep(projectIdNum);
+          
+          console.log(`[Consolidate] Step result: done=${result.done}, step=${result.job.currentStep}, progress=${result.job.progress}`);
+          
+          return {
+            success: true,
+            done: result.done,
+            job: {
+              id: result.job.id,
+              status: result.job.status,
+              currentStep: result.job.currentStep,
+              progress: result.job.progress,
+              error: result.job.error
+            }
+          };
+        } catch (error) {
+          console.error('[Consolidate] ERROR:', error);
+          throw error;
+        }
+      }),
+
+    // Get consolidation job status
+    getConsolidationStatus: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ input, ctx }) => {
         const projectIdNum = parseInt(input.projectId);
         const project = await getProjectById(projectIdNum);
         if (!project || project.createdByUserId !== ctx.user.id) {
           throw new Error("Project not found or access denied");
         }
 
-        // Run Phase 2 consolidation
-        const { ProjectConsolidator } = await import('./project-consolidator');
-        const consolidator = new ProjectConsolidator(
-          projectIdNum,
-          (progress) => {
-            console.log(`[Consolidation Progress] ${progress.stage}: ${progress.message}`);
-          }
-        );
-
-        await consolidator.consolidate();
-
-        return { success: true, message: "Project consolidated successfully" };
+        const { getJobStatus } = await import('./consolidation-job-service');
+        const job = await getJobStatus(projectIdNum);
+        
+        if (!job) {
+          return { status: 'none', currentStep: null, progress: 0, error: null };
+        }
+        
+        return {
+          status: job.status,
+          currentStep: job.currentStep,
+          progress: job.progress,
+          error: job.error,
+          startedAt: job.startedAt,
+          completedAt: job.completedAt
+        };
       }),
   }),
 

@@ -17,10 +17,44 @@ interface UploadedFile {
   name: string;
   size: number;
   type: string;
+  suggestedType?: string; // AI-suggested type based on filename
+  confidence?: 'high' | 'medium' | 'low';
   progress: number;
   status: "pending" | "uploading" | "completed" | "error" | "extracting";
   error?: string;
   documentId?: string;
+}
+
+// Quick filename-based classification for immediate feedback
+function quickClassifyFilename(filename: string): { type: string; confidence: 'high' | 'medium' | 'low' } {
+  const lowerName = filename.toLowerCase();
+  
+  // High confidence patterns
+  if (/\bim\b|investment[_\s-]*memo|information[_\s-]*memo|teaser/i.test(lowerName)) {
+    return { type: 'IM', confidence: 'high' };
+  }
+  if (/\bdd\b|due[_\s-]*diligence|diligence[_\s-]*pack|data[_\s-]*room/i.test(lowerName)) {
+    return { type: 'DD_PACK', confidence: 'high' };
+  }
+  if (/contract|agreement|\bppa\b|\bepc\b|\bo&m\b|lease/i.test(lowerName)) {
+    return { type: 'CONTRACT', confidence: 'high' };
+  }
+  if (/grid[_\s-]*study|grid[_\s-]*connection|connection[_\s-]*study|\bgca\b/i.test(lowerName)) {
+    return { type: 'GRID_STUDY', confidence: 'high' };
+  }
+  if (/concept[_\s-]*design|preliminary[_\s-]*design|layout|site[_\s-]*plan/i.test(lowerName)) {
+    return { type: 'CONCEPT_DESIGN', confidence: 'high' };
+  }
+  if (/weather|\btmy\b|\bepw\b|solar[_\s-]*resource|irradiance|meteo/i.test(lowerName)) {
+    return { type: 'WEATHER_FILE', confidence: 'high' };
+  }
+  
+  // Medium confidence - less specific patterns
+  if (/report|study|analysis/i.test(lowerName)) {
+    return { type: 'OTHER', confidence: 'medium' };
+  }
+  
+  return { type: 'OTHER', confidence: 'low' };
 }
 
 const DOCUMENT_TYPES = [
@@ -139,11 +173,21 @@ export default function DocumentUpload() {
           error: `File type not supported. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
         });
       } else {
+        // Quick classify by filename for immediate suggestion
+        const classification = quickClassifyFilename(file.name);
+        const suggestedType = classification.type;
+        const confidence = classification.confidence;
+        
+        // Use suggested type if global is AUTO, otherwise use global selection
+        const fileType = selectedType === 'AUTO' ? suggestedType : selectedType;
+        
         newFiles.push({
           id: fileId,
           name: file.name,
           size: file.size,
-          type: selectedType,
+          type: fileType,
+          suggestedType,
+          confidence,
           progress: 0,
           status: "pending",
         });
@@ -153,6 +197,13 @@ export default function DocumentUpload() {
     }
 
     setUploadedFiles([...uploadedFiles, ...newFiles]);
+  };
+
+  // Update individual file type
+  const updateFileType = (fileId: string, newType: string) => {
+    setUploadedFiles(prev => prev.map(f => 
+      f.id === fileId ? { ...f, type: newType } : f
+    ));
   };
 
   const removeFile = (id: string) => {
@@ -345,7 +396,7 @@ export default function DocumentUpload() {
                 MAIN CHARACTER ENERGY
               </div>
               <div className="text-xs md:text-sm text-slate-400 font-medium">
-                Project Intake & Ingestion Engine
+                Technical Advisory Engine
               </div>
             </div>
           </a>
@@ -544,6 +595,36 @@ export default function DocumentUpload() {
                             </button>
                           )}
                         </div>
+
+                        {/* Per-file document type selector */}
+                        {file.status === "pending" && (
+                          <div className="mt-2 mb-2">
+                            <Select 
+                              value={file.type} 
+                              onValueChange={(value) => updateFileType(file.id, value)}
+                            >
+                              <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-700 text-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-900 border-slate-700">
+                                {DOCUMENT_TYPES.filter(t => t.value !== 'AUTO').map((type) => (
+                                  <SelectItem 
+                                    key={type.value} 
+                                    value={type.value} 
+                                    className="text-white text-xs focus:bg-slate-800"
+                                  >
+                                    {type.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {file.confidence && file.confidence !== 'low' && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                {file.confidence === 'high' ? '✓ Auto-detected' : '? Suggested'} from filename
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                         {/* Status Indicator */}
                         <div className="flex items-center gap-2">

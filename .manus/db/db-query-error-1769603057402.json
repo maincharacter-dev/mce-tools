@@ -1,0 +1,8 @@
+{
+  "query": "SELECT pj.id, pj.document_id, pj.status, pj.current_step, pj.progress, pj.started_at, pj.updated_at, d.file_name, d.file_size \nFROM processing_jobs pj \nJOIN documents d ON pj.document_id = d.id \nORDER BY pj.updated_at DESC \nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT pj.id, pj.document_id, pj.status, pj.current_step, pj.progress, pj.started_at, pj.updated_at, d.file_name, d.file_size \nFROM processing_jobs pj \nJOIN documents d ON pj.document_id = d.id \nORDER BY pj.updated_at DESC \nLIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'pj.updated_at' in 'order clause'"
+  ]
+}

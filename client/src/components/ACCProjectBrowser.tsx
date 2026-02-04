@@ -80,8 +80,8 @@ export function ACCProjectBrowser({ projectId: propProjectId }: ACCProjectBrowse
 
   // Get OAuth URL with client-side callback
   const { data: authData } = trpc.acc.getAuthUrl.useQuery(
-    { redirectUri: window.location.origin + "/api/acc/oauth/callback" },
-    { enabled: !accessToken }
+    { redirectUri: window.location.origin + "/api/acc/oauth/callback", projectId: projectId! },
+    { enabled: !accessToken && !!projectId }
   );
 
   // Exchange code mutation

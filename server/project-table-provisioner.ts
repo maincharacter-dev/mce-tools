@@ -178,6 +178,7 @@ function transformSchemaWithPrefix(schemaSql: string, prefix: string): string {
   // List of table names from the schema (extracted from CREATE TABLE statements)
   const tableNames = [
     'processing_jobs',
+    'consolidation_jobs',
     'documents',
     'extracted_facts',
     'insight_conflicts',
@@ -188,7 +189,14 @@ function transformSchemaWithPrefix(schemaSql: string, prefix: string): string {
     'weather_files',
     'weather_monthly_data',
     'financial_data',
-    'project_location'
+    'project_location',
+    // ACC integration tables
+    'acc_credentials',
+    'acc_project_mapping',
+    'acc_uploads',
+    'factVerificationQueue',
+    'processingLogs',
+    'projectMetadata'
   ];
 
   let transformed = schemaSql;

@@ -1,0 +1,25 @@
+{
+  "query": "SELECT * FROM proj_300001_documents LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT * FROM proj_300001_documents LIMIT 1;",
+  "rows": [
+    {
+      "id": "31d22d47-de64-4479-a16a-d1ce66004a3f",
+      "fileName": "Marsa Duqm Land Krooki.pdf",
+      "filePath": "/home/ubuntu/project-ingestion-engine/data/projects/proj_300001/documents/31d22d47-de64-4479-a16a-d1ce66004a3f.pdf",
+      "fileSizeBytes": "7065130",
+      "fileHash": "4c1e7d1593b7365c06f04d87d60d5bdea2e3c0f75021ab5675e483f8783716d7",
+      "documentType": "OTHER",
+      "uploadDate": "2026-02-03 15:25:49",
+      "status": "Uploaded",
+      "processingError": "NULL",
+      "extractedText": "NULL",
+      "pageCount": "NULL",
+      "createdAt": "2026-02-03 15:25:49",
+      "updatedAt": "2026-02-03 15:25:49"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tfileName\tfilePath\tfileSizeBytes\tfileHash\tdocumentType\tuploadDate\tstatus\tprocessingError\textractedText\tpageCount\tcreatedAt\tupdatedAt\n31d22d47-de64-4479-a16a-d1ce66004a3f\tMarsa Duqm Land Krooki.pdf\t/home/ubuntu/project-ingestion-engine/data/projects/proj_300001/documents/31d22d47-de64-4479-a16a-d1ce66004a3f.pdf\t7065130\t4c1e7d1593b7365c06f04d87d60d5bdea2e3c0f75021ab5675e483f8783716d7\tOTHER\t2026-02-03 15:25:49\tUploaded\tNULL\tNULL\tNULL\t2026-02-03 15:25:49\t2026-02-03 15:25:49\n",
+  "stderr": "",
+  "execution_time_ms": 1520
+}

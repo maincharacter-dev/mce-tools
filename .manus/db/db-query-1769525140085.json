@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, filename, filePath, status FROM proj_180003_documents WHERE id = '86a5b6a5-6439-4e42-9f5c-2da21129400e';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, filename, filePath, status FROM proj_180003_documents WHERE id = '86a5b6a5-6439-4e42-9f5c-2da21129400e';",
+  "rows": [
+    {
+      "id": "86a5b6a5-6439-4e42-9f5c-2da21129400e",
+      "filename": "Marsa Solar Duqm Geotech Report.pdf",
+      "filePath": "/usr/src/app/data/projects/proj_180003/documents/86a5b6a5-6439-4e42-9f5c-2da21129400e.pdf",
+      "status": "Uploaded"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tfilename\tfilePath\tstatus\n86a5b6a5-6439-4e42-9f5c-2da21129400e\tMarsa Solar Duqm Geotech Report.pdf\t/usr/src/app/data/projects/proj_180003/documents/86a5b6a5-6439-4e42-9f5c-2da21129400e.pdf\tUploaded\n",
+  "stderr": "",
+  "execution_time_ms": 1583
+}

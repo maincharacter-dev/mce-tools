@@ -1,0 +1,66 @@
+{
+  "query": "SELECT * FROM documents LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT * FROM documents LIMIT 10;",
+  "rows": [
+    {
+      "id": "doc-001-clare-im",
+      "project_id": "1",
+      "file_name": "Clare_Solar_Farm_IM_v2.1.pdf",
+      "file_path": "/uploads/project_1/doc-001-clare-im.pdf",
+      "file_size_bytes": "2458624",
+      "file_hash": "a1b2c3d4e5f6",
+      "document_type": "Information Memorandum",
+      "upload_date": "2026-01-22 04:45:39",
+      "status": "processed",
+      "extracted_text": "Extracted text from IM document...",
+      "page_count": "45",
+      "created_at": "2026-01-22 04:45:39"
+    },
+    {
+      "id": "doc-002-grid-study",
+      "project_id": "1",
+      "file_name": "Grid_Connection_Study_Final.pdf",
+      "file_path": "/uploads/project_1/doc-002-grid-study.pdf",
+      "file_size_bytes": "1856432",
+      "file_hash": "f6e5d4c3b2a1",
+      "document_type": "Grid Study",
+      "upload_date": "2026-01-22 04:45:39",
+      "status": "processed",
+      "extracted_text": "Extracted text from grid study...",
+      "page_count": "32",
+      "created_at": "2026-01-22 04:45:40"
+    },
+    {
+      "id": "doc-003-geotech",
+      "project_id": "1",
+      "file_name": "Geotechnical_Investigation_Report.pdf",
+      "file_path": "/uploads/project_1/doc-003-geotech.pdf",
+      "file_size_bytes": "3245678",
+      "file_hash": "b2c3d4e5f6a1",
+      "document_type": "Geotech Report",
+      "upload_date": "2026-01-22 04:45:39",
+      "status": "processed",
+      "extracted_text": "Extracted text from geotech report...",
+      "page_count": "28",
+      "created_at": "2026-01-22 04:45:40"
+    },
+    {
+      "id": "doc-004-planning",
+      "project_id": "1",
+      "file_name": "Planning_Approval_Application.pdf",
+      "file_path": "/uploads/project_1/doc-004-planning.pdf",
+      "file_size_bytes": "1234567",
+      "file_hash": "c3d4e5f6a1b2",
+      "document_type": "Planning Document",
+      "upload_date": "2026-01-22 04:45:39",
+      "status": "processed",
+      "extracted_text": "Extracted text from planning document...",
+      "page_count": "18",
+      "created_at": "2026-01-22 04:45:40"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproject_id\tfile_name\tfile_path\tfile_size_bytes\tfile_hash\tdocument_type\tupload_date\tstatus\textracted_text\tpage_count\tcreated_at\ndoc-001-clare-im\t1\tClare_Solar_Farm_IM_v2.1.pdf\t/uploads/project_1/doc-001-clare-im.pdf\t2458624\ta1b2c3d4e5f6\tInformation Memorandum\t2026-01-22 04:45:39\tprocessed\tExtracted text from IM document...\t45\t2026-01-22 04:45:39\ndoc-002-grid-study\t1\tGrid_Connection_Study_Final.pdf\t/uploads/project_1/doc-002-grid-study.pdf\t1856432\tf6e5d4c3b2a1\tGrid Study\t2026-01-22 04:45:39\tprocessed\tExtracted text from grid study...\t32\t2026-01-22 04:45:40\ndoc-003-geotech\t1\tGeotechnical_Investigation_Report.pdf\t/uploads/project_1/doc-003-geotech.pdf\t3245678\tb2c3d4e5f6a1\tGeotech Report\t2026-01-22 04:45:39\tprocessed\tExtracted text from geotech report...\t28\t2026-01-22 04:45:40\ndoc-004-planning\t1\tPlanning_Approval_Application.pdf\t/uploads/project_1/doc-004-planning.pdf\t1234567\tc3d4e5f6a1b2\tPlanning Document\t2026-01-22 04:45:39\tprocessed\tExtracted text from planning document...\t18\t2026-01-22 04:45:40\n",
+  "stderr": "",
+  "execution_time_ms": 1520
+}

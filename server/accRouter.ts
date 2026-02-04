@@ -23,6 +23,7 @@ import { documents, projects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { createProjectDbPool } from "./db-connection";
+import { classifyDocumentType } from "./accFolderMapping";
 
 export const accRouter = router({
   /**
@@ -32,11 +33,12 @@ export const accRouter = router({
     .input(
       z.object({
         redirectUri: z.string(),
-        state: z.string().optional(),
+        projectId: z.number(), // Required: project ID to associate credentials with
       })
     )
     .query(({ input }) => {
-      const authUrl = getAPSAuthUrl(input.redirectUri, input.state);
+      // Pass projectId as state parameter so OAuth callback knows which project to store tokens for
+      const authUrl = getAPSAuthUrl(input.redirectUri, input.projectId.toString());
       return { authUrl };
     }),
 
@@ -112,8 +114,9 @@ export const accRouter = router({
             
             // Update credentials in database
             const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+            // Update all credentials (there should only be one row per project)
             await projectDb.execute(
-              `UPDATE acc_credentials SET access_token = ?, refresh_token = ?, expires_at = ? WHERE id = (SELECT id FROM acc_credentials LIMIT 1)`,
+              `UPDATE acc_credentials SET access_token = ?, refresh_token = ?, expires_at = ?`,
               [tokens.access_token, tokens.refresh_token, expiresAt]
             );
             
@@ -430,10 +433,14 @@ export const accRouter = router({
           
           console.log('[ACC Sync] File saved locally:', localFilePath);
 
+          // Classify document type based on filename
+          const detectedType = classifyDocumentType(file.name);
+          console.log(`[ACC Sync] Classified document type: ${detectedType} for file: ${file.name}`);
+
           await projectPool.query(
             `INSERT INTO documents (id, fileName, filePath, fileSizeBytes, fileHash, uploadDate, status, documentType) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [documentId, file.name, localFilePath, fileBuffer.length, "", new Date(), "Uploaded", "OTHER"]
+            [documentId, file.name, localFilePath, fileBuffer.length, "", new Date(), "Uploaded", detectedType]
           );
           
           // Create processing job so document appears on Processing Status page

@@ -8,6 +8,7 @@ import { Folder, File, ChevronRight, ChevronDown, Loader2, AlertCircle } from "l
 import { toast } from "sonner";
 
 interface ACCFolderBrowserProps {
+  projectId: number;
   onFilesSelected: (files: Array<{ id: string; name: string; size: number }>) => void;
 }
 
@@ -20,18 +21,18 @@ interface FolderNode {
   files?: Array<{ id: string; name: string; size: number; checked: boolean }>;
 }
 
-export function ACCFolderBrowser({ onFilesSelected }: ACCFolderBrowserProps) {
+export function ACCFolderBrowser({ projectId, onFilesSelected }: ACCFolderBrowserProps) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [selectedHub, setSelectedHub] = useState<string>("");
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  // Removed expandedFolders Set - using folderTree.isExpanded instead to avoid state sync issues
 
   // Get OAuth URL
   const { data: authData } = trpc.acc.getAuthUrl.useQuery(
-    { redirectUri: `${window.location.origin}/api/acc/oauth/callback` },
-    { enabled: !accessToken }
+    { redirectUri: `${window.location.origin}/api/acc/oauth/callback`, projectId },
+    { enabled: !accessToken && !!projectId }
   );
 
   // Exchange code mutation
@@ -119,35 +120,46 @@ export function ACCFolderBrowser({ onFilesSelected }: ACCFolderBrowserProps) {
     }, 500);
   };
 
-  // Expand/collapse folder
+  // Helper to find a folder's current state in the tree
+  const findFolder = (nodes: FolderNode[], folderId: string): FolderNode | null => {
+    for (const node of nodes) {
+      if (node.id === folderId) return node;
+      if (node.children) {
+        const found = findFolder(node.children, folderId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Expand/collapse folder - single click operation
   const handleFolderClick = async (folderId: string) => {
-    const isExpanded = expandedFolders.has(folderId);
+    // Find current folder state
+    const folder = findFolder(folderTree, folderId);
+    const isExpanded = folder?.isExpanded || false;
     
     if (isExpanded) {
-      // Collapse
-      const newExpanded = new Set(expandedFolders);
-      newExpanded.delete(folderId);
-      setExpandedFolders(newExpanded);
-      
-      const updateFolder = (nodes: FolderNode[]): FolderNode[] => {
-        return nodes.map((node) => {
-          if (node.id === folderId) {
-            return { ...node, isExpanded: false };
-          }
-          if (node.children) {
-            return { ...node, children: updateFolder(node.children) };
-          }
-          return node;
-        });
-      };
-      setFolderTree((prev) => updateFolder(prev));
-    } else {
-      // Expand and load contents
-      const newExpanded = new Set(expandedFolders);
-      newExpanded.add(folderId);
-      setExpandedFolders(newExpanded);
-      
-      // Mark as loading
+      // Collapse - just toggle isExpanded
+      setFolderTree((prev) => {
+        const updateFolder = (nodes: FolderNode[]): FolderNode[] => {
+          return nodes.map((node) => {
+            if (node.id === folderId) {
+              return { ...node, isExpanded: false };
+            }
+            if (node.children) {
+              return { ...node, children: updateFolder(node.children) };
+            }
+            return node;
+          });
+        };
+        return updateFolder(prev);
+      });
+      return; // Early return - no async work needed
+    }
+    
+    // Expand and load contents
+    // First, immediately mark as expanded and loading
+    setFolderTree((prev) => {
       const updateFolder = (nodes: FolderNode[]): FolderNode[] => {
         return nodes.map((node) => {
           if (node.id === folderId) {
@@ -159,7 +171,8 @@ export function ACCFolderBrowser({ onFilesSelected }: ACCFolderBrowserProps) {
           return node;
         });
       };
-      setFolderTree((prev) => updateFolder(prev));
+      return updateFolder(prev);
+    });
       
       // Load contents
       try {
@@ -219,7 +232,6 @@ export function ACCFolderBrowser({ onFilesSelected }: ACCFolderBrowserProps) {
         };
         setFolderTree((prev) => updateFolder(prev));
       }
-    }
   };
 
   // Toggle file checkbox

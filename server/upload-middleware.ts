@@ -43,13 +43,19 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
     'application/msword', // .doc
     'application/vnd.ms-excel', // .xls
-    'text/plain'
+    'text/plain',
+    'text/csv', // .csv
+    'application/csv', // .csv (alternative)
   ];
 
-  if (allowedTypes.includes(file.mimetype)) {
+  // Also check by extension for CSV files (some browsers report different mime types)
+  const ext = file.originalname.toLowerCase().split('.').pop();
+  const allowedExtensions = ['pdf', 'docx', 'xlsx', 'doc', 'xls', 'txt', 'csv'];
+
+  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext || '')) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type: ${file.mimetype}. Allowed types: PDF, DOCX, XLSX, DOC, XLS, TXT`));
+    cb(new Error(`Invalid file type: ${file.mimetype}. Allowed types: PDF, DOCX, XLSX, DOC, XLS, TXT, CSV`));
   }
 };
 

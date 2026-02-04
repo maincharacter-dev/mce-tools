@@ -1,0 +1,61 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'proj_330004%' ORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'proj_330004%' ORDER BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "proj_330004_acc_credentials"
+    },
+    {
+      "TABLE_NAME": "proj_330004_acc_project_mapping"
+    },
+    {
+      "TABLE_NAME": "proj_330004_acc_uploads"
+    },
+    {
+      "TABLE_NAME": "proj_330004_consolidation_jobs"
+    },
+    {
+      "TABLE_NAME": "proj_330004_documents"
+    },
+    {
+      "TABLE_NAME": "proj_330004_extracted_facts"
+    },
+    {
+      "TABLE_NAME": "proj_330004_factVerificationQueue"
+    },
+    {
+      "TABLE_NAME": "proj_330004_financial_data"
+    },
+    {
+      "TABLE_NAME": "proj_330004_insight_conflicts"
+    },
+    {
+      "TABLE_NAME": "proj_330004_performance_parameters"
+    },
+    {
+      "TABLE_NAME": "proj_330004_performance_validations"
+    },
+    {
+      "TABLE_NAME": "proj_330004_processingLogs"
+    },
+    {
+      "TABLE_NAME": "proj_330004_processing_jobs"
+    },
+    {
+      "TABLE_NAME": "proj_330004_projectMetadata"
+    },
+    {
+      "TABLE_NAME": "proj_330004_redFlags"
+    },
+    {
+      "TABLE_NAME": "proj_330004_section_narratives"
+    },
+    {
+      "TABLE_NAME": "proj_330004_weather_files"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\nproj_330004_acc_credentials\nproj_330004_acc_project_mapping\nproj_330004_acc_uploads\nproj_330004_consolidation_jobs\nproj_330004_documents\nproj_330004_extracted_facts\nproj_330004_factVerificationQueue\nproj_330004_financial_data\nproj_330004_insight_conflicts\nproj_330004_performance_parameters\nproj_330004_performance_validations\nproj_330004_processingLogs\nproj_330004_processing_jobs\nproj_330004_projectMetadata\nproj_330004_redFlags\nproj_330004_section_narratives\nproj_330004_weather_files\n",
+  "stderr": "",
+  "execution_time_ms": 1535
+}

@@ -1,0 +1,114 @@
+{
+  "query": "DESCRIBE proj_300001_documents;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute DESCRIBE proj_300001_documents;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "char(36)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "fileName",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "filePath",
+      "Type": "varchar(512)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "fileSizeBytes",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "fileHash",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "documentType",
+      "Type": "enum('IM','DD_PACK','CONTRACT','GRID_STUDY','CONCEPT_DESIGN','WEATHER_FILE','OTHER')",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "uploadDate",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('Uploaded','Processing','Processed','Error')",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "Uploaded",
+      "Extra": ""
+    },
+    {
+      "Field": "processingError",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "extractedText",
+      "Type": "longtext",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "pageCount",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tchar(36)\tNO\tPRI\tNULL\t\nfileName\tvarchar(255)\tNO\t\tNULL\t\nfilePath\tvarchar(512)\tNO\t\tNULL\t\nfileSizeBytes\tint(11)\tYES\t\tNULL\t\nfileHash\tvarchar(255)\tYES\t\tNULL\t\ndocumentType\tenum('IM','DD_PACK','CONTRACT','GRID_STUDY','CONCEPT_DESIGN','WEATHER_FILE','OTHER')\tNO\tMUL\tNULL\t\nuploadDate\ttimestamp\tYES\tMUL\tCURRENT_TIMESTAMP\t\nstatus\tenum('Uploaded','Processing','Processed','Error')\tYES\tMUL\tUploaded\t\nprocessingError\ttext\tYES\t\tNULL\t\nextractedText\tlongtext\tYES\t\tNULL\t\npageCount\tint(11)\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tYES\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tYES\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 2001
+}

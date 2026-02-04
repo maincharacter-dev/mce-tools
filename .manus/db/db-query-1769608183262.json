@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, document_id, status FROM processing_jobs;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, document_id, status FROM processing_jobs;",
+  "rows": [
+    {
+      "id": "job-001",
+      "document_id": "doc-001-clare-im",
+      "status": "completed"
+    },
+    {
+      "id": "job-002",
+      "document_id": "doc-001-clare-im",
+      "status": "completed"
+    },
+    {
+      "id": "job-003",
+      "document_id": "doc-002-grid-study",
+      "status": "completed"
+    },
+    {
+      "id": "job-004",
+      "document_id": "doc-002-grid-study",
+      "status": "queued"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tdocument_id\tstatus\njob-001\tdoc-001-clare-im\tcompleted\njob-002\tdoc-001-clare-im\tcompleted\njob-003\tdoc-002-grid-study\tcompleted\njob-004\tdoc-002-grid-study\tqueued\n",
+  "stderr": "",
+  "execution_time_ms": 1524
+}

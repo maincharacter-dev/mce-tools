@@ -160,6 +160,9 @@ export class ProjectConsolidator {
 
   private async generateNarratives(): Promise<void> {
     const projectDb = createProjectDbPool(this.projectId);
+    // Use raw mysql pool for main database (getDb returns Drizzle which doesn't have execute)
+    const { createMainDbPool } = await import('./db-connection');
+    const mainDb = createMainDbPool();
 
     try {
       // Get all facts grouped by section
@@ -183,8 +186,6 @@ export class ProjectConsolidator {
       console.log(`[Consolidator] factsBySection keys:`, allSections);
 
       // Generate narratives for ALL sections with facts (not just hardcoded ones)
-      const { getDb } = await import('./db');
-      const mainDb = await getDb();
       const totalSections = allSections.length;
       let processedSections = 0;
 
@@ -249,6 +250,7 @@ export class ProjectConsolidator {
       console.log(`[Consolidator] Completed narrative generation for ${processedSections} sections`);
     } finally {
       await projectDb.end();
+      await mainDb.end();
     }
   }
 

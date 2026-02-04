@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, name FROM projects ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, name FROM projects ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "330004",
+      "name": "Testy McTestface"
+    },
+    {
+      "id": "300001",
+      "name": "Marsa LNG Solar IPP - Test"
+    },
+    {
+      "id": "270001",
+      "name": "Marsa LNG Solar IPP "
+    },
+    {
+      "id": "180003",
+      "name": "Marsa"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n330004\tTesty McTestface\n300001\tMarsa LNG Solar IPP - Test\n270001\tMarsa LNG Solar IPP \n180003\tMarsa\n",
+  "stderr": "",
+  "execution_time_ms": 1553
+}

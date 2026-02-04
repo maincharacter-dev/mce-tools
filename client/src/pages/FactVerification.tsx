@@ -103,56 +103,100 @@ export default function FactVerification() {
 
   const isLoading = isLoadingProject || isLoadingFacts;
 
-  const consolidateMutation = trpc.projects.consolidate.useMutation({
-    onMutate: () => {
-      // Open progress modal when consolidation starts
-      setConsolidationProgress({
-        isOpen: true,
-        stage: 'starting',
-        message: 'Initializing consolidation...',
-        progress: 0
-      });
-      
-      // Simulate progress updates (since we can't stream from tRPC mutation)
-      const stages = [
-        { stage: 'reconciling', message: 'Reconciling insights from multiple documents...', progress: 15 },
-        { stage: 'narratives', message: 'Generating section narratives...', progress: 40 },
-        { stage: 'performance', message: 'Extracting performance parameters...', progress: 60 },
-        { stage: 'financial', message: 'Extracting financial data...', progress: 75 },
-        { stage: 'weather', message: 'Processing weather files...', progress: 90 },
-      ];
-      
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i < stages.length) {
-          setConsolidationProgress(prev => ({
-            ...prev,
-            ...stages[i]
-          }));
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 3000);
-      
-      return { interval };
-    },
-    onSuccess: (_, __, context) => {
-      if (context?.interval) clearInterval(context.interval);
-      setConsolidationProgress({
-        isOpen: true,
-        stage: 'complete',
-        message: 'Consolidation complete!',
-        progress: 100
-      });
+  // Poll for consolidation status
+  const [isPolling, setIsPolling] = useState(false);
+  const consolidationStatusQuery = trpc.projects.getConsolidationStatus.useQuery(
+    { projectId: String(projectId) },
+    { 
+      enabled: isPolling && !!projectId,
+      refetchInterval: isPolling ? 2000 : false, // Poll every 2 seconds when active
+    }
+  );
+
+  // Handle consolidation status updates (for polling mode - not currently used)
+  useEffect(() => {
+    if (!consolidationStatusQuery.data || !isPolling) return;
+    
+    const { status, currentStep, progress, error } = consolidationStatusQuery.data;
+    
+    // Map step to user-friendly message
+    const stepMessages: Record<string, string> = {
+      'init': 'Initializing consolidation...',
+      'reconcile': 'Reconciling insights from multiple documents...',
+      'narratives': 'Generating section narratives...',
+      'performance': 'Extracting performance parameters...',
+      'financial': 'Extracting financial data...',
+      'weather': 'Processing weather files...',
+      'location': 'Consolidating project location...',
+      'validation': 'Checking validation readiness...',
+      'complete': 'Consolidation complete!',
+    };
+    
+    setConsolidationProgress({
+      isOpen: true,
+      stage: currentStep || 'init',
+      message: stepMessages[currentStep || 'init'] || `Processing: ${currentStep}`,
+      progress: progress || 0
+    });
+    
+    if (status === 'completed') {
+      setIsPolling(false);
       setTimeout(() => {
         setConsolidationProgress(prev => ({ ...prev, isOpen: false }));
         toast.success("Consolidation complete! Narratives and analysis updated.");
         refetch();
       }, 1500);
+    } else if (status === 'failed') {
+      setIsPolling(false);
+      setConsolidationProgress(prev => ({ ...prev, isOpen: false }));
+      toast.error(`Consolidation failed: ${error || 'Unknown error'}`);
+    }
+  }, [consolidationStatusQuery.data, isPolling]);
+
+  // Track if we're in a consolidation loop
+  const [isConsolidating, setIsConsolidating] = useState(false);
+  
+  const consolidateMutation = trpc.projects.consolidate.useMutation({
+    onSuccess: (data) => {
+      const stepMessages: Record<string, string> = {
+        'init': 'Initializing consolidation...',
+        'reconcile': 'Reconciling insights from multiple documents...',
+        'narratives': 'Generating section narratives...',
+        'performance': 'Extracting performance parameters...',
+        'financial': 'Extracting financial data...',
+        'weather': 'Processing weather files...',
+        'location': 'Consolidating project location...',
+        'validation': 'Checking validation readiness...',
+        'complete': 'Consolidation complete!',
+      };
+      
+      // Update progress
+      setConsolidationProgress({
+        isOpen: true,
+        stage: data.job.currentStep,
+        message: stepMessages[data.job.currentStep] || `Processing: ${data.job.currentStep}`,
+        progress: data.job.progress
+      });
+      
+      if (data.done) {
+        // Consolidation complete!
+        setIsConsolidating(false);
+        setTimeout(() => {
+          setConsolidationProgress(prev => ({ ...prev, isOpen: false }));
+          toast.success("Consolidation complete! Narratives and analysis updated.");
+          refetch();
+        }, 1500);
+      } else {
+        // Continue to next step - small delay to prevent overwhelming the server
+        setTimeout(() => {
+          if (projectId) {
+            consolidateMutation.mutate({ projectId: String(projectId) });
+          }
+        }, 500);
+      }
     },
-    onError: (error, _, context) => {
-      if (context?.interval) clearInterval(context.interval);
+    onError: (error) => {
+      setIsConsolidating(false);
       setConsolidationProgress(prev => ({
         ...prev,
         isOpen: false
@@ -160,6 +204,19 @@ export default function FactVerification() {
       toast.error(`Consolidation failed: ${error.message}`);
     },
   });
+  
+  // Function to start consolidation
+  const startConsolidation = () => {
+    if (!projectId || isConsolidating) return;
+    setIsConsolidating(true);
+    setConsolidationProgress({
+      isOpen: true,
+      stage: 'init',
+      message: 'Starting consolidation...',
+      progress: 0
+    });
+    consolidateMutation.mutate({ projectId: String(projectId) });
+  };
 
   const updateFactMutation = trpc.facts.update.useMutation({
     onSuccess: () => {
@@ -341,16 +398,30 @@ export default function FactVerification() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-500 ease-out"
-                style={{ width: `${consolidationProgress.progress}%` }}
-              />
-            </div>
-            <p className="text-sm text-slate-500 mt-2 text-center">
-              {consolidationProgress.progress}% complete
-            </p>
+            {consolidationProgress.progress === -1 ? (
+              /* Indeterminate spinner state */
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                <p className="text-sm text-slate-400 text-center">
+                  Processing... This may take 2-5 minutes depending on project size.
+                </p>
+              </div>
+            ) : (
+              /* Determinate progress bar */
+              <>
+                <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-500 ease-out"
+                    style={{ width: `${consolidationProgress.progress}%` }}
+                  />
+                </div>
+                <p className="text-sm text-slate-500 mt-2 text-center">
+                  {consolidationProgress.progress}% complete
+                </p>
+              </>
+            )}
           </div>
+          {consolidationProgress.progress !== -1 && (
           <div className="space-y-2 text-sm">
             <div className={`flex items-center gap-2 ${consolidationProgress.progress >= 15 ? 'text-green-400' : 'text-slate-500'}`}>
               {consolidationProgress.progress >= 15 ? <CheckCircle2 className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border border-slate-600" />}
@@ -373,6 +444,7 @@ export default function FactVerification() {
               Processing weather files
             </div>
           </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -393,15 +465,11 @@ export default function FactVerification() {
                 Back to Dashboard
               </Button>
               <Button
-                onClick={() => {
-                  if (!projectId) return;
-                  toast.info("Starting consolidation...");
-                  consolidateMutation.mutate({ projectId: String(projectId) });
-                }}
-                disabled={consolidateMutation.isPending}
+                onClick={startConsolidation}
+                disabled={isConsolidating || consolidateMutation.isPending}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50"
               >
-                {consolidateMutation.isPending ? (
+                {isConsolidating ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Loader2 className="h-4 w-4 mr-2" />

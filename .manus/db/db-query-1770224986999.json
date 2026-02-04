@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS consolidation_jobs (\n  id VARCHAR(64) PRIMARY KEY,\n  project_id INT NOT NULL,\n  status ENUM('pending', 'running', 'completed', 'failed') NOT NULL DEFAULT 'pending',\n  current_step VARCHAR(32) NOT NULL DEFAULT 'init',\n  progress INT NOT NULL DEFAULT 0,\n  step_data JSON,\n  error_message TEXT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  completed_at TIMESTAMP NULL,\n  INDEX idx_project_status (project_id, status),\n  INDEX idx_created_at (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute CREATE TABLE IF NOT EXISTS consolidation_jobs (\n  id VARCHAR(64) PRIMARY KEY,\n  project_id INT NOT NULL,\n  status ENUM('pending', 'running', 'completed', 'failed') NOT NULL DEFAULT 'pending',\n  current_step VARCHAR(32) NOT NULL DEFAULT 'init',\n  progress INT NOT NULL DEFAULT 0,\n  step_data JSON,\n  error_message TEXT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  completed_at TIMESTAMP NULL,\n  INDEX idx_project_status (project_id, status),\n  INDEX idx_created_at (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1747
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `acc_oauth_tokens` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`user_id` int NOT NULL,\n\t`access_token` text NOT NULL,\n\t`refresh_token` text,\n\t`expires_at` timestamp NOT NULL,\n\t`created_at` timestamp NOT NULL DEFAULT (now()),\n\t`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `acc_oauth_tokens_id` PRIMARY KEY(`id`)\n);\n\nALTER TABLE `documents` ADD `acc_project_id` varchar(100);\nALTER TABLE `documents` ADD `acc_folder_id` varchar(100);\nALTER TABLE `documents` ADD `acc_file_urn` varchar(500);\nALTER TABLE `documents` ADD `acc_version_urn` varchar(500);\nALTER TABLE `documents` ADD `last_synced_at` timestamp;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute CREATE TABLE `acc_oauth_tokens` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`user_id` int NOT NULL,\n\t`access_token` text NOT NULL,\n\t`refresh_token` text,\n\t`expires_at` timestamp NOT NULL,\n\t`created_at` timestamp NOT NULL DEFAULT (now()),\n\t`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `acc_oauth_tokens_id` PRIMARY KEY(`id`)\n);\n\nALTER TABLE `documents` ADD `acc_project_id` varchar(100);\nALTER TABLE `documents` ADD `acc_folder_id` varchar(100);\nALTER TABLE `documents` ADD `acc_file_urn` varchar(500);\nALTER TABLE `documents` ADD `acc_version_urn` varchar(500);\nALTER TABLE `documents` ADD `last_synced_at` timestamp;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4749
+}

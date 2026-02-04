@@ -1526,4 +1526,134 @@
 - [x] Update main README with project overview and architecture
 - [x] Document all API endpoints and data flows
 - [x] Save final checkpoint
-- [ ] Push to GitHub repository
+- [x] Push to GitHub repository
+
+## Code Cleanup & UI Improvements
+- [ ] Audit codebase for unused files, dead code, and redundant imports
+- [ ] Audit database tables for unused or orphaned data
+- [ ] Simplify Project Dashboard ACC section - remove File Browser, show only "Connected to ACC" status
+- [ ] Update Projects page - cleaner card design with name, capacity, and map thumbnail
+- [ ] Investigate and fix JSON parsing error in consolidation ("Unexpected token '<'")
+- [ ] Test all changes thoroughly before saving checkpoint
+
+
+## Code Cleanup & UI Improvements (Feb 4, 2026)
+- [x] Audit codebase for unused files
+- [x] Remove unused server files (document-processor.ts v1, intelligent-fact-extractor.ts v1, dummy-data-generator.ts, demo-router-multitenant.ts, demo-router-simple.ts)
+- [x] Simplify Project Dashboard ACC section to show only connection status (ACCConnectionStatus component)
+- [x] Create cleaner ProjectCard component with name, capacity, and map thumbnail
+- [x] Fix JSON parsing error in consolidation (added retry logic with exponential backoff to LLM module)
+- [x] Handle HTML gateway errors gracefully with automatic retry
+
+
+## ACC Per-Project Connection Fix
+- [x] Investigate how ACC connection is currently stored (global vs per-project)
+  - Found: apsOAuthHandler.ts uses in-memory tokenStore with hardcoded "default-user" key
+  - All projects were sharing the same OAuth token
+- [x] Update OAuth flow to include projectId in state parameter
+  - getAuthUrl now requires projectId and passes it as state
+  - OAuth callback extracts projectId from state and stores tokens per-project
+- [x] Update apsOAuthHandler.ts to store tokens per-project
+  - Token storage now keyed by projectId instead of "default-user"
+  - Tokens saved to project-specific database after OAuth callback
+- [x] Update frontend components to pass projectId when authenticating
+  - ACCConnectionStatus, ACCFolderBrowser, ACCProjectBrowser all updated
+- [ ] Test creating new project and verify ACC connection is independent
+
+
+## ACC Connection Persistence Bug (CRITICAL)
+- [ ] Trace where ACC connection status is being retrieved for new projects
+- [ ] Check if getConnectionStatus endpoint is querying correct project database
+- [ ] Check if tokens are being retrieved from global storage instead of per-project
+- [ ] Verify acc_credentials table is project-specific
+- [ ] Fix root cause of connection persistence
+- [ ] Test with brand new project to confirm fix
+
+## ACC Per-Project Isolation Fix (Feb 2026)
+- [x] Identified root cause: ACC tables (acc_credentials, acc_project_mapping, acc_uploads) were not being prefixed with project IDs
+- [x] Verified ACC tables were already in Tables constant in table-helper.ts
+- [x] Added ACC tables to transformSchemaWithPrefix function in project-table-provisioner.ts
+- [x] Added ACC table definitions to db-project-schema.sql for new project provisioning
+- [x] Fixed UPDATE query in accRouter.ts that used a subquery (could cause issues with table transformation)
+- [x] Dropped global ACC tables (acc_credentials, acc_project_mapping, acc_uploads, acc_oauth_tokens) to prevent fallback
+- [x] Created missing ACC tables for project 330002 (Test project 2)
+- [x] Verified fix: New projects now show "ACC Not Connected" instead of inheriting connections from other projects
+- [x] Verified fix: Existing projects with ACC connections still show "ACC Authenticated"
+
+## Document Classification Improvement (Feb 2026)
+- [x] Add first-page keyword scan for document type detection
+- [x] Add user confirmation dropdown for document type during upload
+- [ ] Test document classification with various file types
+
+## ACC Folder Browser Fix (Feb 2026)
+- [x] Investigate double-click bug when opening folders in ACC file browser
+- [x] Fix folder navigation to work with single click
+
+## CSV File Support (Feb 2026)
+- [x] Add CSV to supported file types in document upload validation
+- [x] Implement CSV text extraction for document processing
+- [ ] Test CSV file upload and processing
+
+
+## Production Bug Fix - Process and Consolidate (Feb 2026)
+- [ ] Investigate JSON parsing error in Process and consolidate feature
+- [ ] Fix the unexpected JSON error
+- [ ] Test the fix in production
+
+## Rebrand to Technical Advisory Engine (Feb 2026)
+- [ ] Update app title from "Project Intake & Ingestion Engine" to "Technical Advisory Engine"
+- [ ] Update homepage content to reflect full TA/Advisory workflow
+- [ ] Update any other references to the old name
+
+
+## Rebrand to Technical Advisory Engine (Feb 2026)
+- [x] Update app title and branding across all pages
+- [x] Update header and hero section text
+- [x] Update DocumentUpload.tsx branding
+- [x] Update ProjectDashboard.tsx branding
+- [ ] Test new branding in production
+
+## Consolidation Timeout Fix (Feb 2026)
+- [x] Identified 504 Gateway Timeout after 5 minutes during consolidation
+- [x] Implemented async consolidation with background job processing
+- [x] Created consolidation_jobs table for tracking progress
+- [x] Added getConsolidationStatus query endpoint for polling
+- [x] Updated FactVerification page to poll for real progress
+- [ ] Test consolidation with production data
+
+
+## Async Consolidation Job System (Feb 2026)
+- [ ] Create consolidation_jobs table for job tracking
+- [ ] Implement chunked consolidation (process in small batches within timeout)
+- [ ] Create status polling endpoint
+- [ ] Create continuation endpoint to resume processing
+- [ ] Update frontend to poll and trigger continuation
+- [ ] Test full async workflow in production
+
+
+## Consolidation Serverless Fix (Feb 2026)
+- [x] Identify root cause: consolidation takes >5 minutes but serverless has 5-minute timeout
+- [x] Create consolidation_jobs table in main database for tracking job state
+- [x] Implement chunked consolidation service (consolidation-job-service.ts)
+- [x] Break consolidation into steps: init, reconcile, narratives, performance, financial, weather, location, validation, complete
+- [x] Implement narratives step to process only 2 sections per call (LLM calls are slow)
+- [x] Update router consolidate mutation to process one step at a time and return immediately
+- [x] Update frontend to call consolidate repeatedly until done=true
+- [x] Show real-time progress in UI based on step and progress percentage
+
+
+## Document Classification Fix (Feb 4, 2026)
+- [x] Fixed ACC sync to use classifyDocumentType instead of hardcoded "OTHER"
+- [x] Added WEATHER_FILE, FEASIBILITY_STUDY, FINANCIAL_MODEL, PLANNING document types
+- [x] Improved classification patterns for TMY files, EPW files, planning docs, schedules
+- [x] Added unit tests for classification logic
+- [ ] Add re-classification endpoint to fix existing documents
+
+
+## Weather File Processing Fix (Feb 4, 2026)
+- [x] Fixed weather step to detect files by documentType='WEATHER_FILE' in documents table
+- [x] Fixed column name mismatch in query (fileName vs file_name, filePath vs file_path)
+- [x] Fixed INSERT statement missing required NOT NULL columns (file_key, source_type)
+- [x] Fixed JSON parsing issue - MySQL returns parsed objects, code was trying to JSON.parse again
+- [x] Weather files from ACC sync now properly detected and parsed during consolidation
+- [x] Created comprehensive documentation (docs/CONSOLIDATION_FIXES_2026-02-04.md)

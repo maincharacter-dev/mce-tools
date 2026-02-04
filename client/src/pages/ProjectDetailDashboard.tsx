@@ -19,7 +19,7 @@ import {
   ArrowLeft,
   MapPin,
 } from "lucide-react";
-import { ACCProjectBrowser } from "@/components/ACCProjectBrowser";
+import { ACCConnectionStatus } from "@/components/ACCConnectionStatus";
 
 export default function ProjectDetailDashboard() {
   const [, navigate] = useLocation();
@@ -250,7 +250,7 @@ export default function ProjectDetailDashboard() {
           {/* Right Column - Metrics & Quick Actions */}
           <div className="space-y-6">
             {/* ACC Connection */}
-            <ACCProjectBrowser />
+            <ACCConnectionStatus projectId={projectId ?? undefined} />
             {/* Key Metrics */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">Key Metrics</h2>

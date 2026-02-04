@@ -1,0 +1,8 @@
+{
+  "query": "CREATE TABLE `acc_uploads` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`document_id` varchar(36) NOT NULL,\n\t`acc_item_id` varchar(500),\n\t`acc_folder_path` varchar(500),\n\t`acc_file_name` varchar(255),\n\t`acc_web_view_url` text,\n\t`upload_status` varchar(20) NOT NULL,\n\t`error_message` text,\n\t`uploaded_at` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `acc_uploads_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute CREATE TABLE `acc_uploads` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`document_id` varchar(36) NOT NULL,\n\t`acc_item_id` varchar(500),\n\t`acc_folder_path` varchar(500),\n\t`acc_file_name` varchar(255),\n\t`acc_web_view_url` text,\n\t`upload_status` varchar(20) NOT NULL,\n\t`error_message` text,\n\t`uploaded_at` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `acc_uploads_id` PRIMARY KEY(`id`)\n);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1050 (42S01) at line 1: Table 'GZgYwiZhXgGduuvTzWkwoM.acc_uploads' already exists"
+  ]
+}

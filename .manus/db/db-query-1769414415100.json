@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, name, dbName FROM projects;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, name, dbName FROM projects;",
+  "rows": [
+    {
+      "id": "180003",
+      "name": "Marsa",
+      "dbName": "proj_1_1769393626189"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdbName\n180003\tMarsa\tproj_1_1769393626189\n",
+  "stderr": "",
+  "execution_time_ms": 1525
+}

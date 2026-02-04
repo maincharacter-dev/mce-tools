@@ -1,0 +1,46 @@
+{
+  "query": "SELECT * FROM consolidation_jobs ORDER BY created_at DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT * FROM consolidation_jobs ORDER BY created_at DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "cj_1770225792950_8roke",
+      "project_id": "330004",
+      "status": "failed",
+      "current_step": "reconcile",
+      "progress": "15",
+      "step_data": "{\"factCount\": 248, \"processedSections\": [], \"sections\": [\"Project_Overview\", \"Risks_And_Issues\", \"Engineering_Assumptions\", \"Financial_Structure\", \"Dependencies\", \"Technical_Design\"]}",
+      "error_message": "\"[object Object]\" is not valid JSON",
+      "created_at": "2026-02-04 17:23:12",
+      "updated_at": "2026-02-04 17:23:13",
+      "completed_at": "NULL"
+    },
+    {
+      "id": "cj_1770225414628_9niit9",
+      "project_id": "330004",
+      "status": "failed",
+      "current_step": "reconcile",
+      "progress": "15",
+      "step_data": "{\"factCount\": 248, \"processedSections\": [], \"sections\": [\"Risks_And_Issues\", \"Engineering_Assumptions\", \"Project_Overview\", \"Dependencies\", \"Technical_Design\", \"Financial_Structure\"]}",
+      "error_message": "\"[object Object]\" is not valid JSON",
+      "created_at": "2026-02-04 17:16:54",
+      "updated_at": "2026-02-04 17:16:55",
+      "completed_at": "NULL"
+    },
+    {
+      "id": "cj_1770225408510_shalua",
+      "project_id": "330004",
+      "status": "failed",
+      "current_step": "reconcile",
+      "progress": "15",
+      "step_data": "{\"factCount\": 248, \"processedSections\": [], \"sections\": [\"Project_Overview\", \"Risks_And_Issues\", \"Engineering_Assumptions\", \"Financial_Structure\", \"Dependencies\", \"Technical_Design\"]}",
+      "error_message": "\"[object Object]\" is not valid JSON",
+      "created_at": "2026-02-04 17:16:48",
+      "updated_at": "2026-02-04 17:16:48",
+      "completed_at": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproject_id\tstatus\tcurrent_step\tprogress\tstep_data\terror_message\tcreated_at\tupdated_at\tcompleted_at\ncj_1770225792950_8roke\t330004\tfailed\treconcile\t15\t{\"factCount\": 248, \"processedSections\": [], \"sections\": [\"Project_Overview\", \"Risks_And_Issues\", \"Engineering_Assumptions\", \"Financial_Structure\", \"Dependencies\", \"Technical_Design\"]}\t\"[object Object]\" is not valid JSON\t2026-02-04 17:23:12\t2026-02-04 17:23:13\tNULL\ncj_1770225414628_9niit9\t330004\tfailed\treconcile\t15\t{\"factCount\": 248, \"processedSections\": [], \"sections\": [\"Risks_And_Issues\", \"Engineering_Assumptions\", \"Project_Overview\", \"Dependencies\", \"Technical_Design\", \"Financial_Structure\"]}\t\"[object Object]\" is not valid JSON\t2026-02-04 17:16:54\t2026-02-04 17:16:55\tNULL\ncj_1770225408510_shalua\t330004\tfailed\treconcile\t15\t{\"factCount\": 248, \"processedSections\": [], \"sections\": [\"Project_Overview\", \"Risks_And_Issues\", \"Engineering_Assumptions\", \"Financial_Structure\", \"Dependencies\", \"Technical_Design\"]}\t\"[object Object]\" is not valid JSON\t2026-02-04 17:16:48\t2026-02-04 17:16:48\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1522
+}

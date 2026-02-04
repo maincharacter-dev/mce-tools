@@ -18,6 +18,22 @@ CREATE TABLE processing_jobs (
   INDEX idx_document_id (document_id)
 );
 
+-- Consolidation jobs table: tracks async project consolidation jobs
+CREATE TABLE consolidation_jobs (
+  id VARCHAR(100) PRIMARY KEY,
+  project_id INT NOT NULL,
+  status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+  stage VARCHAR(100) DEFAULT 'starting',
+  progress_percent INT DEFAULT 0,
+  error_message TEXT,
+  started_at TIMESTAMP NULL,
+  completed_at TIMESTAMP NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_project (project_id),
+  INDEX idx_status (status)
+);
+
 -- Documents table: stores uploaded project documents
 CREATE TABLE documents (
   id CHAR(36) PRIMARY KEY,
@@ -301,4 +317,43 @@ CREATE TABLE IF NOT EXISTS section_narratives (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_project_id (project_id),
   INDEX idx_section_key (section_key)
+);
+
+-- ACC Integration: OAuth credentials per project
+CREATE TABLE IF NOT EXISTS acc_credentials (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  user_email VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ACC Integration: Project mapping to ACC hub/project
+CREATE TABLE IF NOT EXISTS acc_project_mapping (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  acc_hub_id VARCHAR(255) NOT NULL,
+  acc_hub_name VARCHAR(255),
+  acc_project_id VARCHAR(255) NOT NULL,
+  acc_project_name VARCHAR(255),
+  root_folder_id VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ACC Integration: Upload tracking
+CREATE TABLE IF NOT EXISTS acc_uploads (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  document_id VARCHAR(36) NOT NULL,
+  acc_item_id VARCHAR(255) NOT NULL,
+  acc_version_id VARCHAR(255),
+  folder_path VARCHAR(500),
+  upload_status ENUM('pending', 'uploading', 'completed', 'failed') DEFAULT 'pending',
+  upload_error TEXT,
+  web_view_url VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_document_id (document_id),
+  INDEX idx_acc_item_id (acc_item_id)
 );

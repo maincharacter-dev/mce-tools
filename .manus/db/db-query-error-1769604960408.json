@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, document_id, status, stage, progress_percent, started_at, updated_at, NOW() as current_time, TIMESTAMPDIFF(MINUTE, updated_at, NOW()) as minutes_since_update FROM processing_jobs WHERE status = 'processing' ORDER BY started_at DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id, document_id, status, stage, progress_percent, started_at, updated_at, NOW() as current_time, TIMESTAMPDIFF(MINUTE, updated_at, NOW()) as minutes_since_update FROM processing_jobs WHERE status = 'processing' ORDER BY started_at DESC LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 102 near \"current_time, TIMESTAMPDIFF(MINUTE, updated_at, NOW()) as minutes_since_update FROM processing_jobs WHERE status = 'processing' ORDER BY started_at DESC LIMIT 5\""
+  ]
+}
