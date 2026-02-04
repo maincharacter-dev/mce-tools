@@ -27,7 +27,7 @@ export default function Home() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/mce-logo.png" alt="MCE" className="h-10 w-10" />
+              <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png" alt="MCE" className="h-10 w-10" />
               <div>
                 <h1 className="text-xl font-bold text-white">Project Intake</h1>
                 <p className="text-sm text-slate-400">TA/TDD Workflow · Stage 1</p>

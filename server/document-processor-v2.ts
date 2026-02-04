@@ -9,6 +9,11 @@ import { extractTextFromDocument } from './document-extractor';
 import { extractFactsWithOllama } from './ollama';
 import { IntelligentFactExtractorV2 } from './intelligent-fact-extractor-v2';
 import mysql from 'mysql2/promise';
+import { promises as fs } from 'fs';
+import path from 'path';
+import os from 'os';
+import { storageGet } from './storage';
+import { createDocumentLogger } from './processing-logger';
 
 export interface ProcessedDocument {
   documentId: string;
@@ -50,25 +55,134 @@ export async function processDocument(
   
   console.log(`[Document Processor] Processing document ${documentId} for project ${projectId}`);
   
+  // Create logger for this document
+  const logger = createDocumentLogger(projectId, documentId);
+  
+  let tempFile: string | null = null;
+  let localFilePath = filePath;
+  
   try {
-    // Step 1: Extract text from document
-    console.log(`[Document Processor] Step 1: Extracting text from ${filePath}`);
-    if (onProgress) await onProgress('text_extraction', 10);
-    const textResult = await extractTextFromDocument(filePath);
+    // Check if filePath contains chunked metadata (JSON string)
+    // Handle both with and without spaces in JSON: "type":"chunked" or "type": "chunked"
+    if (filePath.startsWith('{') && (filePath.includes('"type":"chunked"') || filePath.includes('"type": "chunked"'))) {
+      console.log(`[Document Processor] Detected chunked file metadata, downloading from S3...`);
+      
+      const metadata = JSON.parse(filePath);
+      const { uploadId, totalChunks, filename, fileSize } = metadata;
+      const fileSizeMB = fileSize ? (fileSize / 1024 / 1024).toFixed(2) : 'unknown';
+      
+      await logger.start('Upload', `Downloading ${totalChunks} chunks (${fileSizeMB} MB) from storage`);
+      
+      // Create temp file for reassembled content
+      tempFile = path.join(os.tmpdir(), `${documentId}-${filename}`);
+      console.log(`[Document Processor] Downloading ${totalChunks} chunks to ${tempFile}`);
+      
+      // Download and reassemble chunks
+      const chunks: Buffer[] = [];
+      console.log(`[Document Processor] Starting chunk download at ${new Date().toISOString()}`);
+      
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkKey = `temp-uploads/${uploadId}/chunk-${i}`;
+        const chunkStartTime = Date.now();
+        console.log(`[Document Processor] Downloading chunk ${i + 1}/${totalChunks} at ${new Date().toISOString()}`);
+        
+        // Log progress every 5 chunks or on last chunk
+        if (i % 5 === 0 || i === totalChunks - 1) {
+          await logger.progress('Upload', `Downloading chunk ${i + 1}/${totalChunks}`);
+        }
+        
+        // Update heartbeat on every chunk to prevent stale detection
+        if (onProgress) {
+          const progressPercent = Math.floor((i / totalChunks) * 10); // 0-10% during chunk download
+          await onProgress('downloading_chunks', progressPercent);
+        }
+        
+        try {
+          const { url } = await storageGet(chunkKey);
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to download chunk ${i}: ${response.statusText}`);
+          }
+          
+          const chunkBuffer = Buffer.from(await response.arrayBuffer());
+          chunks.push(chunkBuffer);
+          
+          const chunkTime = Date.now() - chunkStartTime;
+          console.log(`[Document Processor] Chunk ${i + 1}/${totalChunks} downloaded in ${chunkTime}ms (${(chunkBuffer.length / 1024).toFixed(0)} KB)`);
+        } catch (chunkError) {
+          console.error(`[Document Processor] ERROR downloading chunk ${i + 1}/${totalChunks}:`, chunkError);
+          throw chunkError;
+        }
+      }
+      
+      console.log(`[Document Processor] All chunks downloaded at ${new Date().toISOString()}`);
+      console.log(`[Document Processor] Total chunks in memory: ${chunks.length}, total size: ${chunks.reduce((sum, c) => sum + c.length, 0)} bytes`);
+      
+      // Write reassembled file
+      const fullBuffer = Buffer.concat(chunks);
+      await fs.writeFile(tempFile, fullBuffer);
+      const reassembledSizeMB = (fullBuffer.length / 1024 / 1024).toFixed(2);
+      console.log(`[Document Processor] Reassembled ${totalChunks} chunks into ${reassembledSizeMB} MB file`);
+      await logger.complete('Upload', `Reassembled ${totalChunks} chunks into ${reassembledSizeMB} MB file`);
+      
+      localFilePath = tempFile;
+    }
     
-    console.log(`[Document Processor] Text extraction completed: ${textResult.wordCount} words via ${textResult.extractionMethod}`);
+    // Step 1: Extract text from document
+    console.log(`[Document Processor] ========================================`);
+    console.log(`[Document Processor] Step 1: Extracting text from ${localFilePath}`);
+    console.log(`[Document Processor] Document type: ${documentType}`);
+    console.log(`[Document Processor] ========================================`);
+    
+    // Get file size to estimate extraction time
+    const fileStats = await fs.stat(localFilePath);
+    const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
+    
+    await logger.start('Text_Extraction', `Starting text extraction (${documentType}) - ${fileSizeMB} MB file`);
+    if (onProgress) await onProgress('text_extraction', 10);
+    
+    // For large files, add a progress update since extraction can take a while
+    let progressInterval: NodeJS.Timeout | null = null;
+    if (fileStats.size > 20 * 1024 * 1024) { // > 20MB
+      let elapsed = 0;
+      progressInterval = setInterval(async () => {
+        elapsed += 10;
+        await logger.progress('Text_Extraction', `Extracting text... ${elapsed}s elapsed (large file, please wait)`);
+      }, 10000); // Update every 10 seconds
+    }
+    
+    const extractionStart = Date.now();
+    let textResult;
+    try {
+      textResult = await extractTextFromDocument(localFilePath);
+    } finally {
+      if (progressInterval) clearInterval(progressInterval);
+    }
+    const extractionTime = Date.now() - extractionStart;
+    
+    console.log(`[Document Processor] ========================================`);
+    console.log(`[Document Processor] Text extraction completed in ${(extractionTime / 1000).toFixed(2)}s`);
+    console.log(`[Document Processor] - Words: ${textResult.wordCount}`);
+    console.log(`[Document Processor] - Method: ${textResult.extractionMethod}`);
+    console.log(`[Document Processor] - Text size: ${(textResult.text.length / 1024).toFixed(2)} KB`);
+    console.log(`[Document Processor] ========================================`);
+    
+    await logger.complete('Text_Extraction', `Extracted ${textResult.wordCount} words (${(textResult.text.length / 1024).toFixed(2)} KB) using ${textResult.extractionMethod} in ${(extractionTime / 1000).toFixed(2)}s`);
     if (onProgress) await onProgress('text_extraction', 30);
     
     // Step 2: Extract facts using deterministic patterns
     console.log(`[Document Processor] Step 2: Extracting facts with deterministic patterns`);
+    await logger.start('Deterministic_Extraction', 'Running pattern-based extraction');
     if (onProgress) await onProgress('deterministic_extraction', 40);
     const deterministicFacts = extractDeterministicFacts(textResult.text, documentType);
     
     console.log(`[Document Processor] Deterministic extraction found ${deterministicFacts.length} facts`);
+    await logger.complete('Deterministic_Extraction', `Found ${deterministicFacts.length} facts using regex patterns`);
     if (onProgress) await onProgress('deterministic_extraction', 50);
     
     // Step 3: Extract facts using Intelligent LLM Extractor V2 (contextual statements)
     console.log(`[Document Processor] Step 3: Extracting facts with Intelligent LLM Extractor V2`);
+    await logger.start('LLM_Extraction', 'Starting AI-powered fact extraction (4 passes)');
     if (onProgress) await onProgress('llm_extraction', 60);
     let llmFacts: ExtractedFact[] = [];
     
@@ -89,9 +203,11 @@ export async function processDocument(
       }));
       
       console.log(`[Document Processor] Intelligent LLM extraction V2 found ${llmFacts.length} facts in ${intelligentResult.extraction_time_ms}ms`);
+      await logger.complete('LLM_Extraction', `Extracted ${llmFacts.length} facts using AI in ${(intelligentResult.extraction_time_ms / 1000).toFixed(2)}s`);
       if (onProgress) await onProgress('llm_extraction', 80);
     } catch (llmError) {
       console.error(`[Document Processor] Intelligent LLM extraction V2 failed:`, llmError);
+      await logger.fail('LLM_Extraction', `AI extraction failed: ${llmError instanceof Error ? llmError.message : String(llmError)}`);
       // Continue with deterministic facts only
     }
     
@@ -110,6 +226,7 @@ export async function processDocument(
     const processingTime = Date.now() - startTime;
     
     console.log(`[Document Processor] Processing completed in ${(processingTime / 1000).toFixed(2)}s`);
+    await logger.complete('Complete', `Processing completed: ${deduplicatedFacts.length} facts extracted in ${(processingTime / 1000).toFixed(2)}s`);
     // Note: Do NOT mark as 100% here - additional processing happens in router callback
     
     return {
@@ -123,6 +240,7 @@ export async function processDocument(
     };
   } catch (error) {
     console.error(`[Document Processor] Processing failed:`, error);
+    await logger.fail('Complete', `Processing failed: ${error instanceof Error ? error.message : String(error)}`);
     
     const processingTime = Date.now() - startTime;
     
@@ -136,6 +254,16 @@ export async function processDocument(
       status: 'failed',
       error: error instanceof Error ? error.message : String(error),
     };
+  } finally {
+    // Clean up temp file if it was created
+    if (tempFile) {
+      try {
+        await fs.unlink(tempFile);
+        console.log(`[Document Processor] Cleaned up temp file: ${tempFile}`);
+      } catch (error) {
+        console.error(`[Document Processor] Failed to clean up temp file:`, error);
+      }
+    }
   }
 }
 

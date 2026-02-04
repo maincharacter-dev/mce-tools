@@ -75,7 +75,7 @@ async function extractFromPdf(filePath: string): Promise<DocumentExtractionResul
     text: result.text,
     fileType: 'pdf',
     extractionMethod: result.method,
-    wordCount: result.text.split(/\s+/).filter(w => w.length > 0).length,
+    wordCount: result.text.split(/\s+/).filter((w: string) => w.length > 0).length,
     metadata: result.metadata,
     pages: result.pages,
   };

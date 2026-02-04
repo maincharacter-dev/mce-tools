@@ -40,6 +40,12 @@ export const documents = mysqlTable("documents", {
   status: varchar("status", { length: 20 }).default("uploaded"),
   extractedText: text("extracted_text"),
   pageCount: int("page_count"),
+  // ACC integration fields
+  accProjectId: varchar("acc_project_id", { length: 100 }),
+  accFolderId: varchar("acc_folder_id", { length: 100 }),
+  accFileUrn: varchar("acc_file_urn", { length: 500 }),
+  accVersionUrn: varchar("acc_version_urn", { length: 500 }),
+  lastSyncedAt: timestamp("last_synced_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -377,3 +383,38 @@ export const sectionNarratives = mysqlTable("section_narratives", {
 
 export type SectionNarrative = typeof sectionNarratives.$inferSelect;
 export type InsertSectionNarrative = typeof sectionNarratives.$inferInsert;
+/**
+ * ACC OAuth tokens for Autodesk Platform Services integration
+ * Stores encrypted access and refresh tokens per user
+ */
+export const accOAuthTokens = mysqlTable("acc_oauth_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ACCOAuthToken = typeof accOAuthTokens.$inferSelect;
+export type InsertACCOAuthToken = typeof accOAuthTokens.$inferInsert;
+
+/**
+ * ACC upload tracking table
+ * Tracks document uploads to Autodesk Construction Cloud
+ */
+export const accUploads = mysqlTable("acc_uploads", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: varchar("document_id", { length: 36 }).notNull(),
+  accItemId: varchar("acc_item_id", { length: 500 }),
+  accFolderPath: varchar("acc_folder_path", { length: 500 }),
+  accFileName: varchar("acc_file_name", { length: 255 }),
+  accWebViewUrl: text("acc_web_view_url"),
+  uploadStatus: varchar("upload_status", { length: 20 }).notNull(),
+  errorMessage: text("error_message"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+});
+
+export type ACCUpload = typeof accUploads.$inferSelect;
+export type InsertACCUpload = typeof accUploads.$inferInsert;

@@ -8,13 +8,16 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { createProjectDbPool, createProjectDbConnection } from "./db-connection";
 import { uploadDocument } from "./document-service";
-import { processDocument } from "./document-processor-v2";
+import { processDocument } from './document-processor-v2';
+import { resumeDocumentProcessing } from './processing-resume';
 import { demoRouter } from "./demo-router";
+import { accRouter } from "./accRouter";
 import mysql from 'mysql2/promise';
 import { sql } from 'drizzle-orm';
 
 export const appRouter = router({
   system: systemRouter,
+  acc: accRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -195,18 +198,13 @@ export const appRouter = router({
           const fileStats = await fs.stat(reassembledPath);
           console.log(`[Chunked Upload] Reassembled file size: ${fileStats.size} bytes`);
           
-          // Generate document ID immediately and return to avoid timeout
+          // Generate document ID
           const { v4: uuidv4 } = await import('uuid');
           const documentId = uuidv4();
           console.log(`[Chunked Upload] Generated document ID: ${documentId}`);
           
-          // Return immediately to prevent timeout
-          const response = { documentId };
-          
-          // Process asynchronously in background
-          (async () => {
-            try {
-              console.log(`[Chunked Upload] === BACKGROUND PROCESSING STARTED ===`);
+          // Process synchronously to ensure document is saved before returning
+          console.log(`[Chunked Upload] === PROCESSING STARTED ===`);
               // Determine document type (without loading file into memory)
               let finalDocumentType = metadata.documentType;
               if (metadata.documentType === "AUTO") {
@@ -220,70 +218,69 @@ export const appRouter = router({
                 }
               }
               
-              // Move file directly to storage without loading into memory
-              console.log(`[Chunked Upload] Moving file to storage...`);
+              // Store chunked metadata instead of local file path
+              console.log(`[Chunked Upload] Preparing chunked metadata for database...`);
               const crypto = await import('crypto');
               const projectIdNum = parseInt(metadata.projectId);
               
-              // Ensure project storage directory exists
-              const DATA_DIR = process.cwd() + "/data/projects";
-              const projectDir = path.join(DATA_DIR, `proj_${projectIdNum}`);
-              const documentsDir = path.join(projectDir, "documents");
-              await fs.mkdir(documentsDir, { recursive: true });
-              
-              // Use the same document ID that was returned to frontend
-              const fileExtension = path.extname(metadata.fileName);
-              const storedFileName = `${documentId}${fileExtension}`;
-              const finalPath = path.join(documentsDir, storedFileName);
-              await fs.rename(reassembledPath, finalPath);
-              console.log(`[Chunked Upload] File moved to: ${finalPath}`);
-              
-              // Calculate hash using streaming (memory efficient)
+              // Calculate hash from reassembled file
               const hashStream = crypto.createHash('sha256');
-              const readStream = (await import('fs')).createReadStream(finalPath);
+              const readStream = (await import('fs')).createReadStream(reassembledPath);
               for await (const chunk of readStream) {
                 hashStream.update(chunk);
               }
               const fileHash = hashStream.digest('hex');
               console.log(`[Chunked Upload] File hash: ${fileHash}`);
               
-              // Save to database
-              const mysql = await import('mysql2/promise');
-              const { getDbConfig } = await import('./db-connection');
-              const mainConfig = getDbConfig();
-              const mainConn = await mysql.createConnection(mainConfig as any);
-              const [rows] = await mainConn.execute('SELECT dbName FROM projects WHERE id = ?', [metadata.projectId]) as any;
-              await mainConn.end();
+              // Create chunked metadata JSON to store in filePath field
+              const chunkedMetadata = JSON.stringify({
+                type: "chunked",
+                uploadId: input.uploadId,
+                totalChunks: metadata.totalChunks,
+                filename: metadata.fileName,
+                fileSize: metadata.fileSize,
+                fileHash: fileHash
+              });
               
-              if (!rows || rows.length === 0) {
-                throw new Error(`Project ${metadata.projectId} not found`);
-              }
+              console.log(`[Chunked Upload] Chunked metadata:`, chunkedMetadata);
               
-              const dbName = rows[0].dbName;
-              const projectConfig = { ...(mainConfig as object), database: dbName };
-              const projectConn = await mysql.createConnection(projectConfig as any);
+              // Save to database using table-prefix architecture
+              console.log(`[Chunked Upload] Connecting to database with table prefix for project ${projectIdNum}...`);
+              const projectConn = await createProjectDbConnection(projectIdNum);
               
               console.log(`[Chunked Upload] Inserting document into database...`, {
                 documentId,
                 projectIdNum,
                 fileName: metadata.fileName,
-                finalPath,
+                filePath: chunkedMetadata,
                 fileSize: metadata.fileSize,
                 fileHash,
                 documentType: finalDocumentType,
                 userId: metadata.userId
               });
               
-              await projectConn.execute(
-                `INSERT INTO documents (id, fileName, filePath, fileSizeBytes, fileHash, documentType, uploadDate, status) 
-                 VALUES (?, ?, ?, ?, ?, ?, NOW(), 'uploaded')`,
-                [documentId, metadata.fileName, finalPath, metadata.fileSize, fileHash, finalDocumentType]
-              );
-              await projectConn.end();
+              try {
+                await projectConn.execute(
+                  `INSERT INTO documents (id, fileName, filePath, fileSizeBytes, fileHash, documentType, uploadDate, status) 
+                   VALUES (?, ?, ?, ?, ?, ?, NOW(), 'uploaded')`,
+                  [documentId, metadata.fileName, chunkedMetadata, metadata.fileSize, fileHash, finalDocumentType]
+                );
+              } finally {
+                await projectConn.end();
+              }
+              
+              // Clean up temporary reassembled file
+              try {
+                await fs.unlink(reassembledPath);
+                await fs.rmdir(tempDir);
+                console.log(`[Chunked Upload] Cleaned up temp files`);
+              } catch (cleanupError) {
+                console.error(`[Chunked Upload] Cleanup failed:`, cleanupError);
+              }
               
               console.log(`[Chunked Upload] ✓ Document saved to database: ${documentId}`);
               
-              const document = { id: documentId, fileName: metadata.fileName, filePath: finalPath };
+              const document = { id: documentId, fileName: metadata.fileName, filePath: chunkedMetadata };
 
               // Start processing
               const projectDb = createProjectDbPool(projectIdNum);
@@ -291,7 +288,7 @@ export const appRouter = router({
               try {
                 await projectDb.execute(
                   `INSERT INTO processing_jobs (document_id, status, stage, progress_percent, started_at) 
-                   VALUES (?, 'processing', 'queued', 0, NOW())`,
+                   VALUES (?, 'queued', 'pending', 0, NOW())`,
                   [document.id]
                 );
               } finally {
@@ -311,64 +308,16 @@ export const appRouter = router({
                 }
               };
               
-              // Process document
-              processDocument(projectIdNum, document.id, document.filePath, finalDocumentType as any, 'llama3.2:latest', undefined, updateProgress).then(async (result) => {
-                if (result.facts.length > 0) {
-                  const projectDb = createProjectDbPool(projectIdNum);
-                  try {
-                    const { insertRawFacts } = await import('./simple-fact-inserter');
-                    await insertRawFacts(projectDb, projectIdNum, document.id, result.facts);
-                  } finally {
-                    await projectDb.end();
-                  }
-                }
-                
-                const projectDb = createProjectDbPool(projectIdNum);
-                try {
-                  await projectDb.execute(
-                    `UPDATE processing_jobs SET status = 'completed', stage = 'done', progress_percent = 100, completed_at = NOW() WHERE document_id = ?`,
-                    [document.id]
-                  );
-                } finally {
-                  await projectDb.end();
-                }
-              }).catch(async (error) => {
-                console.error("Document processing failed:", error);
-                const projectDb = createProjectDbPool(projectIdNum);
-                try {
-                  await projectDb.execute(
-                    `UPDATE processing_jobs SET status = 'failed', stage = 'error', error_message = ?, completed_at = NOW() WHERE document_id = ?`,
-                    [error.message, document.id]
-                  );
-                } finally {
-                  await projectDb.end();
-                }
-              });
+              // Don't start processing here - let the Processing Status page trigger it via processNext
+              // This avoids the background processing stalling issue
+              console.log(`[Chunked Upload] Document queued for processing: ${document.id}`);
+              console.log(`[Chunked Upload] Processing will start when user views Processing Status page`);
               
-              console.log(`[Chunked Upload] Background processing initiated: ${document.id}`);
-              
-              // Clean up local temp directory
-              console.log(`[Chunked Upload] Cleaning up local temp directory: ${tempDir}`);
-              await fs.rm(tempDir, { recursive: true, force: true }).catch(err => {
-                console.error(`[Chunked Upload] Local cleanup failed (non-fatal):`, err);
-              });
-              
-              // Clean up S3 temp files
-              console.log(`[Chunked Upload] Cleaning up S3 temp files for: ${input.uploadId}`);
-              // Note: S3 cleanup is best-effort, files will be cleaned up by lifecycle policy if this fails
-            } catch (error) {
-              console.error(`[Chunked Upload] === BACKGROUND PROCESSING FAILED ===`);
-              console.error(`[Chunked Upload] Error:`, error);
-              console.error(`[Chunked Upload] Error message:`, error instanceof Error ? error.message : String(error));
-              console.error(`[Chunked Upload] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
-              console.error(`[Chunked Upload] Error name:`, error instanceof Error ? error.name : 'Unknown');
-              // Clean up local temp on error
-              await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-              // S3 cleanup will happen via lifecycle policy
-            }
-          })();
+          // Clean up S3 temp files
+          console.log(`[Chunked Upload] Cleaning up S3 temp files for: ${input.uploadId}`);
+          // Note: S3 cleanup is best-effort, files will be cleaned up by lifecycle policy if this fails
           
-          return response;
+          return { documentId };
         } catch (error: any) {
           console.error(`[Chunked Upload] Finalization failed:`, error);
           throw new Error(`Failed to finalize upload: ${error.message}`);
@@ -429,7 +378,7 @@ export const appRouter = router({
           // Insert initial processing job
           await projectDb.execute(
             `INSERT INTO processing_jobs (document_id, status, stage, progress_percent, started_at) 
-             VALUES (?, 'processing', 'queued', 0, NOW())`,
+             VALUES (?, 'queued', 'pending', 0, NOW())`,
             [document.id]
           );
         } finally {
@@ -567,102 +516,66 @@ export const appRouter = router({
           return { ...document, documentId: document.id };
         }
         
-        processDocument(projectIdNum, document.id, document.filePath, finalDocumentType as any, 'llama3.2:latest', undefined, updateProgress)
-          .then(async (result) => {
-            // Save extracted facts to database
-            if (result.facts.length > 0) {
-              const projectDb = createProjectDbPool(projectIdNum);
-              try {
-                
-                // Phase 1: Simple insert - no reconciliation during upload
-                // Use simple fact inserter for fast processing
-                const { insertRawFacts } = await import('./simple-fact-inserter');
-                
-                // Insert facts directly without reconciliation
-                const insertedCount = await insertRawFacts(
-                  projectDb,
-                  projectIdNum,
-                  document.id,
-                  result.facts
-                );
-                
-                console.log(`[Document Processor] Inserted ${insertedCount} raw facts (reconciliation deferred to manual consolidation)`);
-                
-                // Phase 1: Extract location from document text
-                try {
-                  const { LocationExtractor } = await import('./location-extractor');
-                  const locationExtractor = new LocationExtractor();
-                  const locationData = await locationExtractor.extractLocation(result.extractedText);
-                  
-                  if (locationData && locationData.confidence > 0.3) {
-                    // Save location to performance_parameters table
-                    const { v4: uuidv4 } = await import('uuid');
-                    const paramId = uuidv4();
-                    
-                    const fields = ['id', 'project_id', 'source_document_id', 'confidence', 'extraction_method'];
-                    const values = [`'${paramId}'`, projectIdNum.toString(), `'${document.id}'`, locationData.confidence.toString(), `'${locationData.extraction_method}'`];
-                    
-                    if (locationData.latitude) {
-                      fields.push('latitude');
-                      values.push(locationData.latitude.toString());
-                    }
-                    if (locationData.longitude) {
-                      fields.push('longitude');
-                      values.push(locationData.longitude.toString());
-                    }
-                    if (locationData.site_name) {
-                      fields.push('site_name');
-                      values.push(`'${locationData.site_name.replace(/'/g, "''")}'`);
-                    }
-                    
-                    await projectDb.execute(
-                      `INSERT INTO performance_parameters (${fields.join(', ')}) VALUES (${values.join(', ')})`
-                    );
-                    
-                    console.log(`[Document Processor] Saved Phase 1 location (confidence: ${(locationData.confidence * 100).toFixed(1)}%):`, {
-                      coords: locationData.latitude && locationData.longitude ? `${locationData.latitude}, ${locationData.longitude}` : 'N/A',
-                      site: locationData.site_name || 'N/A'
-                    });
-                  } else {
-                    console.log(`[Document Processor] No location found in document (or confidence too low)`);
-                  }
-                } catch (locErr) {
-                  console.error(`[Document Processor] Location extraction failed:`, locErr);
-                  // Don't fail the whole process if location extraction fails
-                }
-                
-                console.log(`[Document Processor] Phase 1 complete: ${result.facts.length} facts extracted and stored`);
-                
-                // Mark as 100% complete - Phase 2 (consolidation) will be triggered manually
-                await updateProgress('completed', 100);
-                console.log(`[Document Processor] All processing completed for document ${document.id}`);
-                
-                // Skip narrative generation, performance extraction, financial extraction, weather extraction
-                // These will happen in Phase 2 when user clicks "Process & Consolidate"
-              } finally {
-                await projectDb.end();
-              }
-            }
-          })
-          .catch(async (err) => {
-            console.error(`Failed to process document ${document.id}:`, err);
-            
-            // Update job status to failed
-            const projectDb = createProjectDbPool(projectIdNum);
-            try {
-              
-              await projectDb.execute(
-                `UPDATE processing_jobs SET status = 'failed', error_message = ?, completed_at = NOW() WHERE document_id = ?`,
-                [err.message || 'Unknown error', document.id]
-              );
-            } finally {
-              await projectDb.end();
-            }
-          });
-        
-        console.log(`Document uploaded: ${document.id}, processing started`);
+        // NOTE: Processing is now handled by processNext endpoint (called from ProcessingStatus page)
+        // This prevents duplicate processing - upload just creates the job, processNext executes it
+        console.log(`Document uploaded: ${document.id}, queued for processing (will be picked up by processNext)`);
+        console.log(`[Upload] Job status: queued, waiting for processNext to start processing`);
 
         return { ...document, documentId: document.id };
+      }),
+    debugCheckDocument: protectedProcedure
+      .input(z.object({ projectId: z.string(), documentId: z.string() }))
+      .query(async ({ input }) => {
+        const mysql = await import('mysql2/promise');
+        const db = await getDb();
+        if (!db) return { error: "Database not available", document: null };
+        
+        const [projects] = await db.execute(`SELECT id, dbName FROM projects WHERE id = ${parseInt(input.projectId)}`) as any;
+        if (!projects || projects.length === 0) {
+          return { error: `Project ${input.projectId} not found`, document: null };
+        }
+        
+        const connection = await createProjectDbConnection(parseInt(input.projectId));
+        
+        try {
+          const [rows] = await connection.execute(
+            "SELECT * FROM documents WHERE id = ?",
+            [input.documentId]
+          );
+          const docs = rows as any[];
+          return { 
+            error: null, 
+            document: docs.length > 0 ? docs[0] : null,
+            message: docs.length > 0 ? 'Document found!' : 'Document NOT found in database',
+            totalDocsInProject: null
+          };
+        } finally {
+          await connection.end();
+        }
+      }),
+    debugListAllDocs: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ input }) => {
+        const connection = await createProjectDbConnection(parseInt(input.projectId));
+        try {
+          const [rows] = await connection.execute("SELECT id, fileName, status FROM documents");
+          return { documents: rows as any[], count: (rows as any[]).length };
+        } finally {
+          await connection.end();
+        }
+      }),
+    debugGetUploadErrors: protectedProcedure
+      .query(async () => {
+        const mysql = await import('mysql2/promise');
+        const { getDbConfig } = await import('./db-connection');
+        const mainConfig = getDbConfig();
+        const conn = await mysql.createConnection(mainConfig as any);
+        try {
+          const [rows] = await conn.execute("SELECT * FROM upload_errors ORDER BY createdAt DESC LIMIT 20");
+          return { errors: rows as any[], count: (rows as any[]).length };
+        } finally {
+          await conn.end();
+        }
       }),
     list: protectedProcedure
       .input(z.object({ projectId: z.string() }))
@@ -681,8 +594,16 @@ export const appRouter = router({
         const connection = await createProjectDbConnection(parseInt(input.projectId));
         
         try {
+          // Join with processing_jobs to get actual processing status
           const [rows] = await connection.execute(
-            "SELECT id, fileName, filePath, fileSizeBytes, fileHash, documentType, uploadDate, status, processingError, pageCount, createdAt, updatedAt FROM documents ORDER BY uploadDate DESC"
+            `SELECT d.id, d.fileName, d.filePath, d.fileSizeBytes, d.fileHash, d.documentType, d.uploadDate, 
+             COALESCE(pj.status, d.status) as status, 
+             pj.stage, pj.progress_percent as progressPercent,
+             COALESCE(pj.error_message, d.processingError) as processingError, 
+             d.pageCount, d.createdAt, d.updatedAt 
+             FROM documents d 
+             LEFT JOIN processing_jobs pj ON d.id = pj.document_id 
+             ORDER BY d.uploadDate DESC`
           );
           return rows as unknown as any[];
         } finally {
@@ -752,11 +673,18 @@ export const appRouter = router({
           ) as any;
           
           if (docs && docs.length > 0 && docs[0].filePath) {
-            try {
-              await fs.unlink(docs[0].filePath);
-            } catch (error) {
-              console.error(`Failed to delete file: ${error}`);
-              // Continue even if file deletion fails
+            const filePath = docs[0].filePath;
+            // Only delete local files, not S3 URLs
+            if (!filePath.startsWith('http://') && !filePath.startsWith('https://')) {
+              try {
+                await fs.unlink(filePath);
+                console.log(`Deleted local file: ${filePath}`);
+              } catch (error) {
+                console.error(`Failed to delete file: ${error}`);
+                // Continue even if file deletion fails
+              }
+            } else {
+              console.log(`Skipping S3 URL deletion: ${filePath}`);
             }
           }
           
@@ -783,6 +711,53 @@ export const appRouter = router({
           await connection.end();
         }
       }),
+    
+    // Sync document to ACC
+    syncToACC: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        documentId: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { uploadDocumentToACC } = await import('./accUploadService');
+        const projectIdNum = parseInt(input.projectId);
+        
+        try {
+          // Get document details from project database
+          const connection = await createProjectDbConnection(projectIdNum);
+          try {
+            const [docs] = await connection.execute(
+              "SELECT id, fileName, filePath, documentType FROM documents WHERE id = ?",
+              [input.documentId]
+            ) as any;
+            
+            if (!docs || docs.length === 0) {
+              return { success: false, error: 'Document not found' };
+            }
+            
+            const doc = docs[0];
+            
+            const result = await uploadDocumentToACC({
+              projectId: projectIdNum,
+              documentId: input.documentId,
+              fileName: doc.fileName,
+              filePath: doc.filePath,
+              documentType: doc.documentType || 'AUTO',
+            });
+            
+            return result;
+          } finally {
+            await connection.end();
+          }
+        } catch (error: any) {
+          console.error('[syncToACC] Error:', error);
+          return {
+            success: false,
+            error: error.message || 'Failed to sync to ACC',
+          };
+        }
+      }),
+
     getProgress: protectedProcedure
       .input(z.object({ projectId: z.string(), documentId: z.string() }))
       .query(async ({ input }) => {
@@ -804,6 +779,261 @@ export const appRouter = router({
         }
         
         return rows[0];
+      }),
+    processNext: protectedProcedure
+      .input(z.object({ projectId: z.string(), documentId: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const projectIdNum = parseInt(input.projectId);
+        const projectDb = createProjectDbPool(projectIdNum);
+        
+        try {
+          let doc: any;
+          
+          if (input.documentId) {
+            // Get specific document
+            const [docs] = await projectDb.execute(
+              `SELECT d.id, d.filePath, d.documentType, d.status, pj.status as jobStatus, pj.stage, pj.progress_percent
+               FROM documents d
+               LEFT JOIN processing_jobs pj ON d.id = pj.document_id
+               WHERE d.id = ?`,
+              [input.documentId]
+            ) as any;
+            
+            if (!docs || docs.length === 0) {
+              return { processed: false, error: 'Document not found' };
+            }
+            doc = docs[0];
+          } else {
+            // Find next queued document
+            const [docs] = await projectDb.execute(
+              `SELECT d.id, d.filePath, d.documentType, d.status, pj.status as jobStatus, pj.stage, pj.progress_percent
+               FROM documents d
+               LEFT JOIN processing_jobs pj ON d.id = pj.document_id
+               WHERE pj.status = 'queued'
+               ORDER BY pj.created_at ASC
+               LIMIT 1`
+            ) as any;
+            
+            if (!docs || docs.length === 0) {
+              return { processed: false, message: 'No queued documents found' };
+            }
+            doc = docs[0];
+            console.log(`[ProcessNext] Found queued document ${doc.id}: ${doc.filePath?.substring(0, 50)}...`);
+          }
+          
+          // Check if already completed or failed
+          if (doc.jobStatus === 'completed' || doc.jobStatus === 'failed') {
+            return { processed: false, status: doc.jobStatus, message: 'Processing already finished' };
+          }
+          
+          // Check if processing is already in progress (status = 'processing')
+          // Restart if it's been stuck for more than 5 minutes
+          if (doc.jobStatus === 'processing') {
+            // Check how long it's been stuck
+            const [stuckCheck] = await projectDb.execute(
+              `SELECT TIMESTAMPDIFF(MINUTE, updated_at, NOW()) as minutes_stuck FROM processing_jobs WHERE document_id = ?`,
+              [doc.id]
+            ) as any;
+            
+            const minutesStuck = stuckCheck?.[0]?.minutes_stuck || 0;
+            console.log(`[ProcessNext] Job in processing status for ${minutesStuck} minutes`);
+            
+            if (minutesStuck < 5) {
+              // Still recent, don't restart
+              return { processed: false, status: 'processing', message: `Processing in progress (${minutesStuck} min)` };
+            }
+            
+            // Job is stuck, reset to queued and restart
+            console.log(`[ProcessNext] Job stuck for ${minutesStuck} minutes, resetting to queued`);
+            await projectDb.execute(
+              `UPDATE processing_jobs SET status = 'queued', updated_at = NOW() WHERE document_id = ?`,
+              [doc.id]
+            );
+            // Fall through to start processing
+          }
+          
+          // Start processing if status is queued, null, or was just reset from stuck
+          if (!doc.jobStatus || doc.jobStatus === 'queued' || doc.jobStatus === 'processing') {
+            console.log(`[ProcessNext] Starting processing for document ${doc.id}`);
+            console.log(`[ProcessNext] File path: ${doc.filePath}`);
+            
+            // ATOMIC LOCK: Use UPDATE with WHERE clause to prevent race conditions
+            // Only one request can successfully update from 'queued' to 'processing'
+            const [updateResult] = await projectDb.execute(
+              `UPDATE processing_jobs SET status = 'processing', stage = 'starting', progress_percent = 5, updated_at = NOW() 
+               WHERE document_id = ? AND status = 'queued'`,
+              [doc.id]
+            ) as any;
+            
+            // Check if we actually acquired the lock (affectedRows > 0)
+            if (!updateResult || updateResult.affectedRows === 0) {
+              console.log(`[ProcessNext] Lock not acquired for ${doc.id} - another process is handling it`);
+              return { processed: false, status: 'processing', message: 'Another process is already handling this document' };
+            }
+            
+            console.log(`[ProcessNext] Lock acquired for ${doc.id} (affectedRows: ${updateResult.affectedRows})`);
+            
+            // Get the document's fileName for the job object
+            const [docDetails] = await projectDb.execute(
+              `SELECT fileName FROM documents WHERE id = ?`,
+              [doc.id]
+            ) as any;
+            const fileName = docDetails?.[0]?.fileName || 'unknown';
+            
+            // Create a job object that matches what processing-resume expects
+            const job = {
+              document_id: doc.id,
+              fileName: fileName,
+              filePath: doc.filePath,
+              documentType: doc.documentType
+            };
+            
+            // Process all files directly - PDF extractor now uses chunked page-by-page
+            // processing for large files to stay within serverless memory limits
+            // Call the EXACT same function that processing-resume uses
+            // Use setTimeout to add a delay - mimicking the 2-second delay in server startup
+            // This lets the database transaction fully commit and S3 upload fully settle
+            console.log(`[ProcessNext] Processing file directly`);
+            console.log(`[ProcessNext] Scheduling resumeDocumentProcessing with 5-second delay to let things settle`);
+            setTimeout(() => {
+              console.log(`[ProcessNext] 5-second delay complete, now calling resumeDocumentProcessing`);
+              resumeDocumentProcessing(projectIdNum, job);
+            }, 5000);
+            
+            console.log(`[ProcessNext] Scheduled background processing for ${doc.id}`);
+            
+            // Return immediately - processing continues in background
+            return { processed: true, status: 'processing', message: 'Processing started in background' };
+          }
+          
+          // Processing is in progress, just return current status
+          return { 
+            processed: false, 
+            status: doc.jobStatus, 
+            stage: doc.stage, 
+            progress: doc.progress_percent,
+            message: 'Processing in progress'
+          };
+        } finally {
+          await projectDb.end();
+        }
+      }),
+
+    // Retry processing for failed or stuck documents
+    retryProcessing: protectedProcedure
+      .input(z.object({ projectId: z.string(), documentId: z.string() }))
+      .mutation(async ({ input }) => {
+        const projectIdNum = parseInt(input.projectId);
+        const projectDb = createProjectDbPool(projectIdNum);
+        
+        try {
+          // Get the document
+          const [docs] = await projectDb.execute(
+            `SELECT d.id, d.filePath, d.documentType, d.status, pj.status as jobStatus, pj.stage
+             FROM documents d
+             LEFT JOIN processing_jobs pj ON d.id = pj.document_id
+             WHERE d.id = ?`,
+            [input.documentId]
+          ) as any;
+          
+          if (!docs || docs.length === 0) {
+            return { success: false, error: 'Document not found' };
+          }
+          
+          const doc = docs[0];
+          console.log(`[RetryProcessing] Retrying document ${doc.id}, current status: ${doc.jobStatus}`);
+          
+          // Reset the processing job to queued status
+          const [existingJob] = await projectDb.execute(
+            `SELECT id FROM processing_jobs WHERE document_id = ?`,
+            [doc.id]
+          ) as any;
+          
+          if (existingJob && existingJob.length > 0) {
+            // Update existing job to queued
+            await projectDb.execute(
+              `UPDATE processing_jobs 
+               SET status = 'queued', stage = 'pending', progress_percent = 0, 
+                   error_message = NULL, started_at = NOW(), completed_at = NULL, updated_at = NOW()
+               WHERE document_id = ?`,
+              [doc.id]
+            );
+            console.log(`[RetryProcessing] Reset existing processing job to queued`);
+          } else {
+            // Create new processing job
+            await projectDb.execute(
+              `INSERT INTO processing_jobs (document_id, status, stage, progress_percent, started_at) 
+               VALUES (?, 'queued', 'pending', 0, NOW())`,
+              [doc.id]
+            );
+            console.log(`[RetryProcessing] Created new processing job`);
+          }
+          
+          // Start processing immediately in background (don't wait for polling)
+          console.log(`[RetryProcessing] Starting background processing immediately`);
+          
+          // Update status to processing
+          await projectDb.execute(
+            `UPDATE processing_jobs SET status = 'processing', stage = 'starting', progress_percent = 5, updated_at = NOW() WHERE document_id = ?`,
+            [doc.id]
+          );
+          
+          // Start processing in background (fire and forget)
+          (async () => {
+            const bgProjectDb = createProjectDbPool(projectIdNum);
+            try {
+              // Progress callback
+              const updateProgress = async (stage: string, progress: number) => {
+                const db = createProjectDbPool(projectIdNum);
+                try {
+                  await db.execute(
+                    `UPDATE processing_jobs SET stage = ?, progress_percent = ?, updated_at = NOW() WHERE document_id = ?`,
+                    [stage, progress, doc.id]
+                  );
+                } finally {
+                  await db.end();
+                }
+              };
+              
+              const { processDocument } = await import('./document-processor-v2');
+              
+              const result = await processDocument(
+                projectIdNum,
+                doc.id,
+                doc.filePath,
+                doc.documentType,
+                'llama3.2:latest',
+                undefined,
+                updateProgress
+              );
+              
+              // Save facts if any
+              if (result.facts && result.facts.length > 0) {
+                const { insertRawFacts } = await import('./simple-fact-inserter');
+                await insertRawFacts(bgProjectDb, projectIdNum, doc.id, result.facts);
+              }
+              
+              // Mark as completed
+              await bgProjectDb.execute(
+                `UPDATE processing_jobs SET status = 'completed', stage = 'done', progress_percent = 100, completed_at = NOW() WHERE document_id = ?`,
+                [doc.id]
+              );
+              console.log(`[RetryProcessing] Background processing completed for ${doc.id}`);
+            } catch (error: any) {
+              console.error(`[RetryProcessing] Background processing failed:`, error);
+              await bgProjectDb.execute(
+                `UPDATE processing_jobs SET status = 'failed', stage = 'error', error_message = ?, completed_at = NOW() WHERE document_id = ?`,
+                [error.message || 'Unknown error', doc.id]
+              );
+            } finally {
+              await bgProjectDb.end();
+            }
+          })();
+          
+          return { success: true, message: 'Processing started in background' };
+        } finally {
+          await projectDb.end();
+        }
       }),
   }),
 
@@ -937,6 +1167,37 @@ export const appRouter = router({
         } catch (error) {
           console.error('[listJobs] Error:', error);
           throw error;
+        }
+      }),
+    
+    // Get processing logs for a project (optionally filtered by document)
+    getLogs: protectedProcedure
+      .input(z.object({ projectId: z.string(), documentId: z.string().nullish() }))
+      .query(async ({ input }) => {
+        const projectIdNum = parseInt(input.projectId);
+        const connection = await createProjectDbConnection(projectIdNum);
+        
+        try {
+          let query = `
+            SELECT 
+              pl.id, pl.documentId, pl.step, pl.status, pl.message, pl.durationMs, pl.createdAt,
+              d.fileName as document_name
+            FROM processingLogs pl
+            LEFT JOIN documents d ON pl.documentId = d.id
+          `;
+          const params: any[] = [];
+          
+          if (input.documentId) {
+            query += ` WHERE pl.documentId = ?`;
+            params.push(input.documentId);
+          }
+          
+          query += ` ORDER BY pl.createdAt DESC LIMIT 100`;
+          
+          const [rows] = await connection.execute(query, params);
+          return rows as any[];
+        } finally {
+          await connection.end();
         }
       }),
     retryJob: protectedProcedure

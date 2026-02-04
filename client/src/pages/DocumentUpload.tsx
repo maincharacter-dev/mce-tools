@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ACCProjectBrowser } from "@/components/ACCProjectBrowser";
 import { trpc } from "@/lib/trpc";
 import { Upload, File, AlertCircle, CheckCircle, Loader2, X, ArrowLeft, Linkedin, Menu } from "lucide-react";
 import { ExtractionProgressBar } from "@/components/ExtractionProgressBar";
@@ -311,9 +313,10 @@ export default function DocumentUpload() {
       }
     }
     
-    // Redirect to documents page after all uploads complete
+    // Redirect to Processing Status page after all uploads complete
+    // This allows users to watch the live processing console
     setTimeout(() => {
-      setLocation(`/project/${projectId}/documents?projectId=${projectId}`);
+      setLocation(`/processing-status?projectId=${projectId}`);
     }, 1500);
   };
 
@@ -333,7 +336,7 @@ export default function DocumentUpload() {
           {/* Logo Section */}
           <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img 
-              src="/mce-logo.png" 
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png" 
               alt="Main Character Energy" 
               className="h-10 w-10 md:h-12 md:w-12" 
             />
@@ -422,7 +425,18 @@ export default function DocumentUpload() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Tabs defaultValue="local" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-800/50 mb-8 mx-auto">
+            <TabsTrigger value="local" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+              Local Files
+            </TabsTrigger>
+            <TabsTrigger value="acc" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+              Sync from ACC
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="local">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload Area */}
           <div className="lg:col-span-2">
             <Card className="bg-slate-900/50 border-slate-700/50">
@@ -596,7 +610,15 @@ export default function DocumentUpload() {
               </CardContent>
             </Card>
           </div>
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="acc">
+            <div className="max-w-4xl mx-auto">
+              <ACCProjectBrowser />
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

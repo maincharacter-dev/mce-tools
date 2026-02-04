@@ -1,0 +1,9 @@
+{
+  "id": "e6fe0741-2e8c-4f71-9489-6864cc308bb4",
+  "fileName": "tmy_19.638_56.884_2005_2023.csv",
+  "filePath": "/home/ubuntu/project-ingestion-engine/data/projects/proj_300001/documents/e6fe0741-2e8c-4f71-9489-6864cc308bb4.csv",
+  "fileSizeBytes": 589133,
+  "fileHash": "049cf8a34dc7dfb0cb20cabb8c5025a18e405ca35ac5903f181e318bd282dc37",
+  "documentType": "WEATHER_FILE",
+  "uploadDate": "2026-02-03T15:25:58.645Z"
+}

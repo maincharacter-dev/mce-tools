@@ -50,6 +50,20 @@
       "when": 1769241044596,
       "tag": "0006_nappy_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1769843526008,
+      "tag": "0007_goofy_newton_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1770131114063,
+      "tag": "0008_daffy_gargoyle",
+      "breakpoints": true
     }
   ]
 }

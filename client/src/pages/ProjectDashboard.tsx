@@ -100,7 +100,7 @@ export default function ProjectDashboard() {
           {/* Logo Section */}
           <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img 
-              src="/mce-logo.png" 
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png" 
               alt="Main Character Energy" 
               className="h-10 w-10 md:h-12 md:w-12" 
             />

@@ -7,4 +7,7 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // APS (Autodesk Platform Services) credentials for ACC integration
+  APS_CLIENT_ID: process.env.APS_CLIENT_ID ?? "",
+  APS_CLIENT_SECRET: process.env.APS_CLIENT_SECRET ?? "",
 };

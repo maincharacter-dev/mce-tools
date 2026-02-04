@@ -317,6 +317,11 @@
 - [ ] Implement document delete action (UI ready, backend TODO)
 - [x] Show document processing status (Uploaded, Processing, Processed, Error)
 
+## Duplicate Processing Bug Fix
+- [x] Remove processDocument call from upload endpoint - let processNext be single entry point
+- [x] Remove processNext trigger from Documents.tsx - only ProcessingStatus.tsx should trigger processing
+- [ ] Verify only one process runs per document
+
 ## Document Processing Pipeline (COMPLETED)
 - [x] Enable processDocument call in upload endpoint (routers.ts line 111)
 - [x] Update processDocument to accept string UUID documentId
@@ -1297,3 +1302,228 @@
 - [x] Fix production path issue - chunks 6-8 fail with ENOENT because temp directory doesn't exist in production Docker container (/usr/src/app)
 - [x] Fix documents not appearing in list - ROOT CAUSE: filesystem temp storage doesn't work in multi-instance production (chunks on Server A, finalize on Server B). Solution: use S3 for chunk storage
 - [x] FIXED: Column name mismatch in INSERT (snake_case vs camelCase) - chunked upload used wrong column names
+
+## CRITICAL BUG: Chunked Upload Documents Not Appearing
+- [x] Documents still not appearing after column name fix - need to trace exact failure point in background processing
+- [x] Confirmed via debug endpoint: 75MB file NOT in database, only 2 smaller files exist
+- [x] Add error tracking to capture background processing failures
+- [x] Confirmed: Zero errors logged - background async function not executing at all in production
+- [x] Change to synchronous processing to ensure document insertion
+- [x] Fix ECONNREFUSED 127.0.0.1:3306 - finalize endpoint trying to connect to MySQL instead of SQLite (was spreading string URL as object)
+- [x] Fix chunked upload to use table-prefix architecture (proj_N_documents) instead of separate databases
+- [x] Fix document processing stuck at 10% for large files (75MB PDF) - added logging and resume on startup
+- [x] Add comprehensive logging to track text extraction progress
+- [x] Optimize text extraction for large PDFs with streaming and timeouts
+- [x] Add automatic resume of incomplete document processing on server startup
+- [x] Fix file path issue causing processing to skip to Done without actually processing the file
+- [x] Add file existence validation before processing starts
+- [x] Add file verification after move operation in chunked upload
+- [x] Fix 130MB PDF still stuck at text extraction - switched to pdftotext for files >20MB
+- [x] Investigate if pdfjs-dist is hanging during initial PDF loading phase - yes, pdf-parse is too slow
+- [x] Implement simpler extraction approach - use native pdftotext command (10-100x faster)
+- [x] Fix file not found error - added chunked file download logic to document processor
+- [x] Debug why chunked file handling still fails - finalize endpoint was saving local path instead of chunked metadata
+- [x] Fix finalize endpoint to save chunked metadata JSON in filePath field
+- [x] Fix document processor to properly detect chunked metadata JSON and download from S3 (handle spaces in JSON)
+- [x] Fix document stuck at queued status - added processNext endpoint and frontend polling
+- [x] Verify background processing still works - fixed status mismatch between documents and processing_jobs tables
+- [x] Identify why 130MB file specifically fails - frontend was checking wrong status values (Processing vs processing)
+- [x] Add retry processing button for failed/stuck documents - allows reprocessing without re-uploading
+- [x] Fix retry processing to start background processing immediately instead of waiting for frontend polling
+- [x] Add live processing console to Processing Status page showing real-time logs (chunk downloads, extraction progress, LLM passes)
+- [x] Move processing trigger from Documents page to Processing Status page
+- [x] Redirect to Processing Status page after document upload
+- [ ] Fix text extraction hanging for 5+ minutes on 75MB hydrology file - investigate if pdftotext is timing out or if logging is not updating
+- [x] BUG: Large file uploads don't start processing until server restart - FIXED by changing initial job status to 'queued' instead of 'processing', so processNext can pick it up properly
+- [x] BUG: processNext is restarting processing repeatedly causing infinite download loop - FIXED by checking status before starting and using setImmediate for background processing
+- [x] BUG: Processing trigger is still on Documents page, not Processing Status page - FIXED by making processNext find next queued document when no documentId provided
+- [x] BUG: Text extraction keeps getting stuck - FIXED by adding 5-minute timeout to pdftotext command and better logging
+- [x] BUG: Processing still getting stuck - FIXED by adding stale job detection (5 min timeout) and heartbeat updates during chunk downloads
+- [x] BUG: Processing works on server restart but gets stuck when triggered by frontend polling - FIXED by removing setImmediate wrapper and using direct .then() like processing-resume
+- [ ] BUG: Text extraction specifically getting stuck for large files - trying setTimeout(0) to ensure processing runs after HTTP response
+- [ ] BUG: Processing repeats 30 minutes after completing and gets stuck at text extraction - need to investigate job status/stale detection
+
+## Processing Repeat Bug (Current - Jan 29, 2026)
+- [x] BUG: Processing repeats 30 minutes after completing and gets stuck at text extraction
+- [x] Added check in processing-resume to skip jobs that already have facts extracted
+- [x] If facts exist for document, mark job as completed instead of reprocessing
+- [ ] Test that completed jobs are not reprocessed after server restart
+- [x] BUG: pdftotext check causing large PDF processing to fail - removed strict check, now falls back to pdf-parse
+- [ ] BUG: Text extraction stalls when triggered from frontend but works after server restart - need to find root cause
+
+## Production PDF Extraction Fix
+- [x] Identified root cause: sandbox and production share same database but different environments
+- [x] Identified that pdftotext is available in sandbox but NOT in production
+- [x] Replaced pdf-parse with unpdf for serverless-compatible PDF extraction
+- [x] unpdf works in all environments (Node.js, Deno, Bun, browser, serverless)
+- [x] Tested PDF extraction in production - unpdf also stalls on large files due to serverless memory limits
+- [x] Implemented large file fallback: files >20MB are queued for sandbox processing instead of production
+
+## DEPLOYMENT NOTE: Large File Processing Limitation
+**IMPORTANT**: The current Manus serverless production environment has memory limits that prevent processing of large PDF files (>20MB). As a workaround:
+
+1. Small files (<20MB): Processed directly in production
+2. Large files (>20MB): Queued with status 'waiting_for_sandbox' - processed by sandbox dev server via processing-resume.ts
+
+**When deploying to a dedicated server (non-serverless):**
+- Remove the large file check in `server/routers.ts` processNext endpoint (lines ~835-870)
+- All files can then be processed directly without the sandbox fallback
+- Ensure pdftotext (poppler-utils) is installed on the server for optimal large file performance
+- The server should have at least 2GB RAM for processing 100+ MB files
+
+- [x] Implemented sandbox polling for waiting_for_sandbox jobs (every 30 seconds)
+- [x] Tested: Large file processing works via sandbox polling
+- [x] NOTE: Sandbox must be awake for polling to work - hibernates after inactivity
+
+- [x] BUG: Small files stuck in queued/pending status - fixed by removing sandbox fallback
+- [x] Implemented chunked page-by-page PDF processing for large files
+- [x] Removed waiting_for_sandbox fallback - all files now process directly in production
+
+## ACC (Autodesk Construction Cloud) Integration
+
+### Phase 1: Review Existing Implementation
+- [x] Clone and review acc-tools repo for ACC API patterns
+- [x] Clone and review mce-tools repo for additional ACC integration code
+- [x] Document existing OAuth flow and API usage patterns
+- [x] Identify reusable code for Docs API integration
+
+**Key Findings:**
+- Found complete APS/ACC integration in `acc-tools/server/_core/aps.ts`
+- OAuth flow: 3-legged OAuth with scopes `data:read data:write data:create account:read`
+- Existing implementation covers: Hubs, Projects, Categories, Locations, Asset Upload
+- Need to adapt for Docs API (currently implements Assets/Build API)
+- OAuth handler in `apsOAuthHandler.ts` - uses in-memory token store (needs DB persistence)
+- Environment variables: `APS_CLIENT_ID`, `APS_CLIENT_SECRET`
+
+### Phase 2: Architecture & Schema
+- [x] APS credentials added and validated
+- [x] Design database schema for ACC file references (accProjectId, accFileId, accFileUrl, etc.)
+- [x] Plan OAuth token storage and refresh mechanism
+- [x] Added ACC columns to documents table (accProjectId, accFolderId, accFileUrn, accVersionUrn, lastSyncedAt)
+- [x] Created acc_oauth_tokens table for user OAuth tokens
+- [x] Applied database migration successfully
+- [ ] Design folder mapping configuration structure
+- [ ] Plan document classification → folder routing logic
+
+### Phase 3: ACC Authentication
+- [x] Implement ACC OAuth 2.0 flow (tRPC procedures)
+- [x] Add ACC token storage and refresh (database-backed)
+- [x] Create ACCConnection UI component
+- [x] Add ACC connection to Project Dashboard
+- [x] Create OAuth callback handler page
+- [ ] Test OAuth flow end-to-end
+- [ ] Create ACC project/folder browsing UI
+- [ ] Add ACC connection status indicator
+
+### Phase 4: Path 1 - ACC → Engine (Pull)
+- [ ] Implement "Connect to ACC" button and OAuth flow
+- [ ] Build ACC project browser UI
+- [ ] Build ACC folder/file browser UI with checkboxes
+- [ ] Implement "Sync from ACC" to pull selected documents
+- [ ] Download files from ACC, process, store metadata only
+- [ ] Track lastSyncedAt and accVersionUrn for change detection
+
+### Phase 5: Path 2 - Engine → ACC (Push)
+- [ ] Modify upload flow to optionally push to ACC
+- [ ] Implement ACC folder creation/navigation
+- [ ] Upload processed files to ACC in correct folders
+- [ ] Store ACC file references in database
+- [ ] Handle upload failures and retries
+
+### Phase 6: Smart Folder Routing
+- [ ] Define document type → ACC folder mapping rules
+- [ ] Implement auto-classification based on extracted facts
+- [ ] Add UI for custom folder mapping configuration
+- [ ] Test routing logic with various document types
+
+### Phase 7: Testing & Delivery
+- [ ] Test OAuth flow and token refresh
+- [ ] Test ACC → Engine sync with various file types
+- [ ] Test Engine → ACC upload with folder routing
+- [ ] Test bidirectional sync (file added in ACC, updated via engine)
+- [ ] Create checkpoint and deliver
+
+## ACC Project Browser & Document Sync
+- [x] Create ACC project browser UI component
+- [x] Add tRPC procedures for listing folders and files
+- [x] Implement folder tree navigation
+- [x] Add document selection checkboxes
+- [ ] Implement "Sync from ACC" button
+- [ ] Add document download from ACC
+- [ ] Store ACC file references in database
+- [ ] Trigger processing for synced documents
+
+## BUG: ACC Hub Listing for Personal Accounts
+- [ ] Debug why listHubs returns empty for personal accounts
+- [ ] Fix hub listing to work with personal Autodesk accounts
+- [ ] Test hub and project listing with personal account
+
+## ACC Personal Account Hub Selection Fix
+- [x] Identified issue: Personal ACC accounts don't return hubs via listHubs API
+- [ ] Remove hub selection dropdown from ACCProjectBrowser
+- [ ] Add API method to list all accessible projects without requiring hub ID
+- [ ] Update ACCProjectBrowser to show projects directly without hub selection
+
+## ACC Folder/File Browser (Phase 1)
+- [ ] Add tRPC procedures for listing project folders
+- [ ] Add tRPC procedures for listing folder contents (files)
+- [ ] Update Upload page with tabs (Local Files / Sync from ACC)
+- [ ] Implement folder tree browser component
+- [ ] Add file selection UI with checkboxes
+- [ ] Implement "Sync Selected Files" button
+- [ ] Download selected files from ACC
+- [ ] Trigger document processing pipeline for synced files
+- [x] Fix ACC folder browser to load and display files when folders are expanded
+
+
+## Fix Project Dashboard ACC Status (Current - Feb 3, 2026)
+- [x] Investigate why ACC status card on Project Dashboard shows no hubs
+- [x] Fix ACC data fetching on Project Dashboard to use stored credentials (added query string fallback)
+- [ ] Test ACC status displays correctly on dashboard
+
+
+## Fix Document Delete (Current - Feb 3, 2026)
+- [x] Check server logs for delete error details
+- [x] Fix delete endpoint returning HTML instead of JSON
+- [x] Handle file deletion for both S3 URLs and local paths
+- [ ] Test document deletion works
+
+
+## Fix ACC Sync File Storage (Current - Feb 3, 2026)
+- [x] Investigate why ACC sync stores S3 URLs instead of downloading files locally
+- [x] Fix ACC sync to download files from ACC and store locally
+- [ ] Test ACC sync and processing workflow end-to-end
+
+
+## Fix ACC Folder Creation (Current - Feb 3, 2026)
+- [ ] Investigate ACC folder type requirements and error "Type 'folders:autodesk.core:Folder' is not allowed"
+- [ ] Fix folder creation to use correct ACC-specific folder types
+- [ ] Test Sync to ACC button with proper folder creation
+
+## ACC Sync Status & Batch Operations
+- [x] Add backend endpoint to fetch sync status for documents
+- [x] Update documents table to include sync status column
+- [x] Display sync status badges on document cards (Synced to ACC ✓ with timestamp)
+- [x] Add clickable links from sync badges to ACC web view URLs
+- [x] Implement batch sync backend endpoint (accepts array of document IDs)
+- [x] Add checkbox selection to documents table
+- [x] Create "Sync Selected to ACC" button with progress tracking
+- [x] Implement progress bar showing X/Y documents synced
+- [x] Add error handling for partial batch failures
+
+## Batch Sync Bug Fix
+- [x] Fix batch sync passing undefined document IDs and project ID
+- [x] Ensure ACC token is properly retrieved for batch operations
+- [x] Test batch sync with multiple documents
+
+## Batch Sync Debugging
+- [x] Add detailed error logging to batch sync endpoint
+- [x] Identify why all documents are failing to sync
+- [x] Fix the root cause and test batch sync
+
+## Documentation & GitHub Push
+- [x] Create comprehensive ACC integration documentation (docs/ACC_INTEGRATION.md)
+- [x] Update main README with project overview and architecture
+- [x] Document all API endpoints and data flows
+- [x] Save final checkpoint
+- [ ] Push to GitHub repository

@@ -12,11 +12,13 @@ import FactVerification from "./pages/FactVerification";
 import OllamaConfig from "./pages/OllamaConfig";
 import ProcessingStatus from "./pages/ProcessingStatus";
 import { Documents } from "./pages/Documents";
+import ACCFolderInspector from "./pages/ACCFolderInspector";
 import RedFlags from "./pages/RedFlags";
 import Conflicts from "./pages/Conflicts";
 import PerformanceValidation from "./pages/PerformanceValidation";
 import { PerformanceParameters } from "./pages/PerformanceParameters";
 import { FinancialData } from "./pages/FinancialData";
+import ACCCallback from "./pages/ACCCallback";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -27,6 +29,7 @@ function Router() {
       <Route path="/project-dashboard" component={ProjectDetailDashboard} />
       <Route path="/project/:id/upload" component={DocumentUpload} />
       <Route path="/project/:id/documents" component={Documents} />
+          <Route path="/project/:id/acc-inspector" component={ACCFolderInspector} />
       <Route path="/insights" component={FactVerification} />
       <Route path="/red-flags" component={RedFlags} />
       <Route path="/conflicts" component={Conflicts} />
@@ -35,6 +38,7 @@ function Router() {
       <Route path="/project/:projectId/financial" component={FinancialData} />
       <Route path="/ollama-config" component={OllamaConfig} />
       <Route path="/processing-status" component={ProcessingStatus} />
+      <Route path="/api/acc/oauth/callback" component={ACCCallback} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

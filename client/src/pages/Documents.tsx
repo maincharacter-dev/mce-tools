@@ -3,11 +3,11 @@ import { trpc } from "../lib/trpc";
 import { useAuth } from "../_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FileText, Download, Trash2, AlertCircle, CheckCircle, Clock, Edit } from "lucide-react";
+import { FileText, Download, Trash2, AlertCircle, CheckCircle, Clock, Edit, RefreshCw, Cloud, ExternalLink, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function Documents() {
   const [, setLocation] = useLocation();
@@ -18,6 +18,9 @@ export function Documents() {
   const [newDocType, setNewDocType] = useState<string>("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<any>(null);
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [batchSyncing, setBatchSyncing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   
   // Get projectId from URL path params
   const projectId = params.id as string;
@@ -34,6 +37,27 @@ export function Documents() {
     { enabled: !!projectId && isAuthenticated }
   );
 
+  // Fetch sync status for all documents
+  const documentIds = documents?.map((d: any) => d.id) || [];
+  const { data: syncStatuses } = (trpc.acc as any).getSyncStatus.useQuery(
+    { projectId: parseInt(projectId || "0"), documentIds },
+    { enabled: !!projectId && documentIds.length > 0 && isAuthenticated }
+  );
+
+  // Batch sync mutation
+  const batchSyncMutation = (trpc.acc as any).batchSync.useMutation({
+    onSuccess: (result: any) => {
+      setBatchSyncing(false);
+      alert(`Batch sync complete!\nSucceeded: ${result.succeeded}\nFailed: ${result.failed}`);
+      setSelectedDocs(new Set());
+      refetch();
+    },
+    onError: (error: any) => {
+      setBatchSyncing(false);
+      alert(`Batch sync failed: ${error.message}`);
+    },
+  });
+
   // Update document type mutation
   const updateDocTypeMutation = trpc.documents.updateDocumentType.useMutation({
     onSuccess: () => {
@@ -45,6 +69,59 @@ export function Documents() {
       alert(`Error: ${error.message || "Failed to update document type"}`);
     },
   });
+
+  // Sync to ACC mutation
+  const syncToACCMutation = trpc.documents.syncToACC.useMutation({
+    onSuccess: (result: any) => {
+      if (result?.success) {
+        alert(`Successfully synced to ACC!\nACC File: ${result.accFileName || 'Unknown'}\nFolder: ${result.accFolderPath || 'Unknown'}`);
+        refetch();
+      } else {
+        alert(`Sync failed: ${result?.error || "Unknown error"}`);
+      }
+    },
+    onError: (error: any) => {
+      alert(`Sync failed: ${error.message || "Failed to sync to ACC"}`);
+    },
+  });
+
+  // Retry processing mutation
+  const retryProcessingMutation = trpc.documents.retryProcessing.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        refetch();
+      } else {
+        alert(`Error: ${result.error || "Failed to retry processing"}`);
+      }
+    },
+    onError: (error) => {
+      alert(`Error: ${error.message || "Failed to retry processing"}`);
+    },
+  });
+
+  // NOTE: Processing is now triggered ONLY from ProcessingStatus page
+  // This page just displays document status - no processing triggers here
+  // This prevents duplicate processing race conditions
+  
+  // Auto-refresh documents list to show updated status
+  useEffect(() => {
+    if (!documents || !projectId || !isAuthenticated) return;
+
+    // Check if there are any documents being processed
+    const hasProcessing = documents.some(
+      (doc: any) => doc.status === 'processing' || doc.status === 'queued' || 
+                    doc.status === 'Processing' || doc.status === 'Queued'
+    );
+
+    if (!hasProcessing) return;
+
+    // Poll for status updates every 3 seconds (display only, no processing trigger)
+    const interval = setInterval(() => {
+      refetch();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [documents, projectId, isAuthenticated, refetch]);
 
   // Delete document mutation
   const deleteMutation = trpc.documents.delete.useMutation({
@@ -194,12 +271,67 @@ export function Documents() {
               <h2 className="text-xl font-semibold text-white">
                 {documents.length} Document{documents.length !== 1 ? "s" : ""}
               </h2>
+              {selectedDocs.size > 0 && (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedDocs.size} selected
+                  </span>
+                  <Button
+                    onClick={() => {
+                      setBatchSyncing(true);
+                      setBatchProgress({ current: 0, total: selectedDocs.size });
+                      batchSyncMutation.mutate({
+                        projectId: parseInt(projectId),
+                        documentIds: Array.from(selectedDocs),
+                        documentType: 'AUTO',
+                      });
+                    }}
+                    disabled={batchSyncing}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {batchSyncing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Syncing {batchProgress.current}/{batchProgress.total}...
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="h-4 w-4 mr-2" />
+                        Sync Selected to ACC
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedDocs(new Set())}
+                    disabled={batchSyncing}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              )}
             </div>
 
             {documents.map((doc: any) => (
               <Card key={doc.id} className="p-6 hover:border-orange-500/50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4 flex-1">
+                    {/* Checkbox for batch selection */}
+                    <input
+                      type="checkbox"
+                      checked={selectedDocs.has(doc.id)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedDocs);
+                        if (e.target.checked) {
+                          newSelected.add(doc.id);
+                        } else {
+                          newSelected.delete(doc.id);
+                        }
+                        setSelectedDocs(newSelected);
+                      }}
+                      disabled={batchSyncing}
+                      className="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
                     <div className="p-3 bg-orange-500/10 rounded-lg">
                       <FileText className="h-6 w-6 text-orange-500" />
                     </div>
@@ -210,6 +342,28 @@ export function Documents() {
                       <div className="flex flex-wrap gap-2 mb-2">
                         <Badge variant="outline">{doc.documentType}</Badge>
                         {getStatusBadge(doc.status)}
+                        {/* Sync status badge */}
+                        {(() => {
+                          const syncStatus = syncStatuses?.find((s: any) => s.document_id === doc.id);
+                          if (syncStatus && syncStatus.upload_status === 'completed') {
+                            return (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-500/10 text-green-500 border-green-500/50 cursor-pointer hover:bg-green-500/20"
+                                onClick={() => {
+                                  if (syncStatus.acc_web_view_url) {
+                                    window.open(syncStatus.acc_web_view_url, '_blank');
+                                  }
+                                }}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Synced to ACC
+                                <ExternalLink className="h-3 w-3 ml-1" />
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
                         <p>Size: {formatFileSize(doc.fileSizeBytes)}</p>
@@ -222,6 +376,48 @@ export function Documents() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {/* Sync to ACC button for completed documents */}
+                    {(doc.status === 'completed' || doc.status === 'Completed') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (projectId) {
+                            syncToACCMutation.mutate({
+                              projectId: projectId,
+                              documentId: doc.id,
+                            });
+                          }
+                        }}
+                        disabled={syncToACCMutation.isPending}
+                        title="Sync to ACC"
+                        className="text-blue-500 border-blue-500/50 hover:bg-blue-500/10"
+                      >
+                        <Cloud className={`h-4 w-4 ${syncToACCMutation.isPending ? 'animate-pulse' : ''}`} />
+                      </Button>
+                    )}
+                    {/* Show retry button for failed, stuck, or completed documents */}
+                    {(doc.status === 'failed' || doc.status === 'Failed' || 
+                      doc.status === 'completed' || doc.status === 'Completed' ||
+                      doc.status === 'uploaded' || doc.status === 'Uploaded') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (projectId) {
+                            retryProcessingMutation.mutate({
+                              projectId: projectId,
+                              documentId: doc.id,
+                            });
+                          }
+                        }}
+                        disabled={retryProcessingMutation.isPending}
+                        title="Retry processing"
+                        className="text-orange-500 border-orange-500/50 hover:bg-orange-500/10"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${retryProcessingMutation.isPending ? 'animate-spin' : ''}`} />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

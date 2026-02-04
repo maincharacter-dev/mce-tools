@@ -1,27 +1,43 @@
-# ACC Integration Setup - Critical Requirement
+# ACC Integration Setup Guide
 
-## ⚠️ IMPORTANT: Custom Integration Setup Required
+This document explains how to set up the Autodesk Construction Cloud (ACC) integration for the Project Ingestion Engine.
 
-**Any application integrating with Autodesk Construction Cloud (ACC) or BIM 360 MUST be added as a Custom Integration in the BIM 360 Account Admin portal before it can access hubs and projects.**
+## Overview
 
-Without this setup, the application will fail with:
-- Empty hub lists from the `/project/v1/hubs` API
-- 403 "You don't have permission to access this API" errors
-- BIM360DM_ERROR responses
+The ingestion engine integrates with Autodesk Construction Cloud to enable:
+- Browsing ACC hubs and projects
+- Selecting project folders and files
+- Syncing documents from ACC for processing
+- (Future) Uploading processed documents back to ACC
 
-## Why This Is Required
+## Prerequisites
 
-Autodesk Platform Services (APS) apps require explicit authorization to access BIM 360/ACC data through the "Custom Integrations" feature. **Three-legged OAuth authentication alone is NOT sufficient** to access BIM 360 hubs and projects.
+1. **Autodesk Platform Services (APS) App Registration**
+   - Register your app at https://aps.autodesk.com
+   - Note your Client ID and Client Secret
+   - Set the callback URL to: `https://your-domain.com/api/acc/oauth/callback`
 
-This is a security measure by Autodesk to ensure account administrators have full control over which applications can access their BIM 360/ACC data.
+2. **BIM 360 Account Admin Access**
+   - You must be an account administrator for the BIM 360/ACC account
+   - Access to the BIM 360 Account Admin portal
 
-## Setup Instructions
+## Critical Setup Step: Custom Integration
 
-### Prerequisites
-- BIM 360 Account Admin access
-- Your APS app's Client ID (from https://aps.autodesk.com)
+⚠️ **IMPORTANT: This step is REQUIRED for the integration to work.**
 
-### Steps
+Without completing this setup, the ACC integration will fail with empty hub lists and permission errors.
+
+### Why This Is Required
+
+Autodesk Platform Services apps must be explicitly authorized to access BIM 360/ACC data through the "Custom Integrations" feature. Three-legged OAuth authentication alone is **not sufficient** to access BIM 360 hubs and projects.
+
+According to the [official APS documentation](https://aps.autodesk.com/en/docs/bim360/v1/tutorials/getting-started/manage-access-to-docs/):
+
+> An APS app needs to be connected to a specific BIM 360 account before you can start accessing that account using the BIM 360 API.
+
+### Setup Instructions
+
+Follow these steps to add the ingestion engine as a Custom Integration:
 
 1. **Log in to BIM 360 Account Admin**
    - Navigate to https://admin.b360.autodesk.com
@@ -32,8 +48,8 @@ This is a security measure by Autodesk to ensure account administrators have ful
    - Select the **Custom Integrations** tab
 
 3. **Add Custom Integration**
-   - Click **Add Custom Integration**
-   - Select BIM 360 products to enable (e.g., BIM 360 Docs)
+   - Click the **Add Custom Integration** button
+   - Select the BIM 360 products you want to enable (e.g., BIM 360 Docs)
    - Click **Next**
 
 4. **Configure Integration**
@@ -42,117 +58,90 @@ This is a security measure by Autodesk to ensure account administrators have ful
 
 5. **Enter App Details**
    - **Forge Client ID**: Enter your APS app's Client ID
-   - **App Name**: Enter a descriptive name
+     - Example: `JxYfakNn1rsJj2mVehI3GvTXYGkmc3apm2vu8SvB4nrUlgXG`
+   - **App Name**: Enter a descriptive name (e.g., "Project Ingestion Engine")
+   - **App Description** (optional): Describe the app's purpose
+   - **App Logo** (optional): Upload a logo
    - Check **I have saved the Account ID information securely**
    - Click **Save**
 
-6. **Verify**
-   - The app should appear in your Custom Integrations list with "Active" status
+6. **Verify Setup**
+   - The app should now appear in your Custom Integrations list
+   - The status should show as "Active"
 
-## Troubleshooting
+### Troubleshooting
 
-### Empty Hub List
-**Symptom**: The `/project/v1/hubs` API returns an empty `data` array
+**Problem**: Empty hub list or "You don't have permission to access this API" errors
 
-**Cause**: The app has not been added as a Custom Integration
+**Solution**: Verify that:
+1. The Custom Integration has been added with the correct Client ID
+2. The integration status is "Active"
+3. You're authenticating with the same Autodesk account that has access to the BIM 360 account
+4. The integration has been approved (if added by invitation)
 
-**Solution**: Follow the setup instructions above
+**Problem**: "Custom Integrations" tab is not visible
 
-### Permission Errors
-**Symptom**: 403 errors with "BIM360DM_ERROR" or "You don't have permission to access this API"
-
-**Cause**: 
-- Custom Integration not set up, OR
-- Wrong Client ID entered in Custom Integration, OR
-- Integration not approved (if added by invitation)
-
-**Solution**: 
-- Verify the Custom Integration exists and is active
-- Verify the Client ID matches exactly
-- Check that the integration has been approved by the account admin
-
-### Custom Integrations Tab Not Visible
-**Symptom**: Cannot find the Custom Integrations tab in Settings
-
-**Cause**: Not all accounts have automatic access to this feature
-
-**Solution**: Contact Autodesk support at bim360appsactivations@autodesk.com with:
+**Solution**: Not all accounts have automatic access to Custom Integrations. Contact Autodesk support at bim360appsactivations@autodesk.com with:
 - BIM 360 Account Name
 - Email address of the account admin
-- BIM 360 Account ID (Settings → View Account ID)
+- BIM 360 Account ID (found in Settings → View Account ID)
 
-## Technical Details
+## Environment Variables
 
-### API Behavior Without Custom Integration
+Set the following environment variables in your deployment:
 
-When an APS app is NOT added as a Custom Integration:
-
-```json
-// GET /project/v1/hubs response
-{
-  "jsonapi": { "version": "1.0" },
-  "links": { "self": { "href": "/project/v1/hubs" } },
-  "data": [],  // Empty array - no hubs accessible
-  "meta": {
-    "warnings": [
-      {
-        "HttpStatusCode": "403",
-        "ErrorCode": "BIM360DM_ERROR",
-        "Title": "Unable to get hubs from BIM360DM US.",
-        "Detail": "You don't have permission to access this API"
-      }
-      // ... similar errors for other regions
-    ]
-  }
-}
+```bash
+APS_CLIENT_ID=your_client_id_here
+APS_CLIENT_SECRET=your_client_secret_here
 ```
 
-### API Behavior With Custom Integration
+These are automatically injected in the Manus platform. For local development, add them to your `.env` file.
 
-After adding the app as a Custom Integration:
+## OAuth Scopes
 
-```json
-// GET /project/v1/hubs response
-{
-  "jsonapi": { "version": "1.0" },
-  "links": { "self": { "href": "/project/v1/hubs" } },
-  "data": [
-    {
-      "type": "hubs",
-      "id": "b.cc47fb63-473c-4d21-b859-ad6b679007f1",
-      "attributes": {
-        "name": "Your BIM 360 Account",
-        "extension": {
-          "type": "hubs:autodesk.bim360:Account",
-          "version": "1.0"
-        },
-        "region": "US"
-      },
-      "links": {
-        "self": {
-          "href": "/project/v1/hubs/b.cc47fb63-473c-4d21-b859-ad6b679007f1"
-        }
-      },
-      "relationships": {
-        "projects": {
-          "links": {
-            "related": {
-              "href": "/project/v1/hubs/b.cc47fb63-473c-4d21-b859-ad6b679007f1/projects"
-            }
-          }
-        }
-      }
-    }
-  ]
-}
-```
+The integration uses the following OAuth scopes:
+- `data:read` - Read project data
+- `data:write` - Write project data
+- `data:create` - Create new items
+- `account:read` - Read account information
+
+## Testing the Integration
+
+1. **Navigate to a project dashboard** in the ingestion engine
+2. **Click "Authenticate with Autodesk"** in the ACC Project Browser
+3. **Complete the OAuth flow** in the popup window
+4. **Select a hub** from the dropdown (should show your BIM 360 account)
+5. **Select a project** from the dropdown
+6. **Browse folders and files** (when implemented)
+
+If you see hubs and projects, the integration is working correctly!
+
+## API Endpoints Used
+
+The integration uses the following Autodesk APIs:
+
+- **GET /project/v1/hubs** - List accessible hubs
+- **GET /project/v1/hubs/:hub_id/projects** - List projects in a hub
+- **GET /project/v1/hubs/:hub_id/projects/:project_id** - Get project details
+- **GET /data/v1/projects/:project_id/folders/:folder_id/contents** - List folder contents (future)
+
+## Security Considerations
+
+- OAuth tokens are stored client-side and passed to the server for API calls
+- Tokens are not persisted in the database
+- Each user authenticates with their own Autodesk account
+- The app only has access to projects the authenticated user can access
 
 ## References
 
-- [Official APS Documentation: Manage API Access to BIM 360 Docs](https://aps.autodesk.com/en/docs/bim360/v1/tutorials/getting-started/manage-access-to-docs/)
-- [Official APS Documentation: Get Access to a BIM 360 Account](https://aps.autodesk.com/en/docs/bim360/v1/tutorials/getting-started/get-access-to-account/)
+- [Autodesk Platform Services Documentation](https://aps.autodesk.com/)
+- [BIM 360 API Documentation](https://aps.autodesk.com/en/docs/bim360/v1/overview/)
+- [Manage API Access to BIM 360 Docs](https://aps.autodesk.com/en/docs/bim360/v1/tutorials/getting-started/manage-access-to-docs/)
 - [Data Management API Reference](https://aps.autodesk.com/en/docs/data/v2/reference/http/hubs-GET/)
 
-## Summary
+## Support
 
-**Remember**: Custom Integration setup is a **mandatory prerequisite** for any ACC/BIM 360 integration. Plan for this step in your deployment process and ensure account administrators complete it before expecting the integration to work.
+For issues with:
+- **Custom Integration setup**: Contact your BIM 360 account administrator
+- **APS app registration**: Visit the [APS Developer Portal](https://aps.autodesk.com/)
+- **Integration code**: Check the project repository or contact the development team
