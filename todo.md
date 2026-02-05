@@ -59,3 +59,11 @@
 - [x] Update all ACC API calls to use user credentials
 - [x] Update ProjectDetail UI to show user-level auth status
 - [x] Test OAuth flow with user-level credentials
+
+## Fix OAuth Consent Screen Issue
+
+- [x] Investigate getAuthUrl implementation in ACC router
+- [x] Check OAuth URL parameters (response_type, scope, prompt)
+- [x] Verify APS application settings (OAuth flow type)
+- [x] Fix OAuth URL to show consent screen instead of login (removed prompt: "login")
+- [ ] Test OAuth flow shows "Allow OE Toolkit to access..." screen

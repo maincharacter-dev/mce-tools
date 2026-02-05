@@ -83,8 +83,7 @@ export function getAPSAuthUrl(redirectUri: string, state?: string): string {
     response_type: "code",
     client_id: ENV.APS_CLIENT_ID,
     redirect_uri: redirectUri,
-    scope: "data:read data:write data:create account:read",
-    prompt: "login", // Force fresh login to ensure correct account
+    scope: "data:read data:write data:create account:read"
   });
 
   if (state) {
