@@ -158,5 +158,19 @@
 ## Fix User Assignment API - Use Email Instead of UserId
 
 - [x] Change assignProjectAdmin to send only email field (not userId)
-- [ ] API requires email as mandatory field despite contradictory error messages
-- [ ] Test complete flow with email-based assignment
+- [x] API requires email as mandatory field despite contradictory error messages
+- [x] Test complete flow with email-based assignment
+
+## Fix Folder Structure to Match Agreed ISO 19650 Design
+
+- [x] Review the agreed folder structure from earlier conversation
+- [x] Update folder creation code in accRouter.ts to match correct structure
+- [x] Test folder creation with new structure
+- [x] Verify folders appear correctly in ACC
+
+## Fix UI Error Message Despite Successful ACC Creation
+
+- [ ] Investigate why UI shows error when ACC project is created successfully
+- [ ] Check if database update is failing after folder creation
+- [ ] Add try-catch around database update with better error handling
+- [ ] Test that UI shows success message when project is created
