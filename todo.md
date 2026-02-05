@@ -67,3 +67,13 @@
 - [x] Verify APS application settings (OAuth flow type)
 - [x] Fix OAuth URL to show consent screen instead of login (removed prompt: "login")
 - [ ] Test OAuth flow shows "Allow OE Toolkit to access..." screen
+
+## Compare OAuth with TA/TDD Engine
+
+- [x] Find TA/TDD engine OAuth implementation (mce-tools)
+- [x] Compare OAuth URL parameters
+- [x] Compare OAuth flow (popup vs redirect)
+- [x] Identify why consent screen isn't showing (need popup window)
+- [x] Implement popup window OAuth flow like mce-tools
+- [x] Update callback to use postMessage
+- [x] Update ProjectDetail to open popup and listen for postMessage

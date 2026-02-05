@@ -102,7 +102,43 @@ export default function ProjectDetail() {
     try {
       const result = await getAuthUrl.refetch();
       if (result.data?.authUrl) {
-        window.location.href = result.data.authUrl;
+        // Open OAuth in popup window (like mce-tools)
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        
+        const popup = window.open(
+          result.data.authUrl,
+          "ACC Authorization",
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+
+        // Listen for postMessage from popup
+        const handleMessage = (event: MessageEvent) => {
+          // Verify origin for security
+          if (event.origin !== window.location.origin) return;
+          
+          if (event.data.type === "ACC_AUTH_SUCCESS") {
+            toast.success("Successfully connected to ACC!");
+            setShowConnectDialog(false);
+            refetchCredentials();
+            // Remove listener
+            window.removeEventListener("message", handleMessage);
+          } else if (event.data.type === "ACC_AUTH_ERROR") {
+            toast.error(`Authorization failed: ${event.data.error}`);
+            // Remove listener
+            window.removeEventListener("message", handleMessage);
+          }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        // Check if popup was blocked
+        if (!popup || popup.closed || typeof popup.closed === "undefined") {
+          toast.error("Popup was blocked. Please allow popups for this site.");
+          window.removeEventListener("message", handleMessage);
+        }
       }
     } catch (error) {
       toast.error("Failed to get authorization URL");

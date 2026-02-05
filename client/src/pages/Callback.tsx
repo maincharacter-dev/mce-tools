@@ -1,37 +1,43 @@
 import { useEffect, useState } from "react";
-import { useLocation, useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 /**
  * OAuth Callback Page
  * 
  * Handles the OAuth callback from Autodesk Platform Services (APS)
- * Exchanges the authorization code for access tokens and stores them
+ * This page runs in a popup window and communicates back to the parent via postMessage
  */
 export default function Callback() {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/callback");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   const exchangeCode = trpc.acc.exchangeCode.useMutation({
     onSuccess: () => {
       setStatus("success");
-      // Redirect to project page after 2 seconds
+      // Send success message to parent window
+      if (window.opener) {
+        window.opener.postMessage(
+          { type: "ACC_AUTH_SUCCESS", projectId },
+          window.location.origin
+        );
+      }
+      // Close popup after a short delay
       setTimeout(() => {
-        if (projectId) {
-          setLocation(`/projects/${projectId}`);
-        } else {
-          setLocation("/projects");
-        }
-      }, 2000);
+        window.close();
+      }, 1500);
     },
     onError: (error) => {
       setStatus("error");
       setErrorMessage(error.message);
+      // Send error message to parent window
+      if (window.opener) {
+        window.opener.postMessage(
+          { type: "ACC_AUTH_ERROR", error: error.message },
+          window.location.origin
+        );
+      }
     },
   });
 
@@ -47,38 +53,39 @@ export default function Callback() {
     if (error) {
       setStatus("error");
       setErrorMessage(errorDescription || error);
+      if (window.opener) {
+        window.opener.postMessage(
+          { type: "ACC_AUTH_ERROR", error: errorDescription || error },
+          window.location.origin
+        );
+      }
       return;
     }
 
     // Validate required parameters
-    if (!code || !state) {
+    if (!code) {
       setStatus("error");
-      setErrorMessage("Missing authorization code or state parameter");
+      setErrorMessage("Missing authorization code");
+      if (window.opener) {
+        window.opener.postMessage(
+          { type: "ACC_AUTH_ERROR", error: "Missing authorization code" },
+          window.location.origin
+        );
+      }
       return;
     }
 
-    // Parse state to get project ID and redirect URI
-    try {
-      const stateData = JSON.parse(decodeURIComponent(state));
-      const { projectId: pid, redirectUri } = stateData;
-
-      if (!pid || !redirectUri) {
-        setStatus("error");
-        setErrorMessage("Invalid state parameter");
-        return;
-      }
-
-      setProjectId(pid);
-
-      // Exchange code for tokens (credentials stored per user)
-      exchangeCode.mutate({
-        code,
-        redirectUri,
-      });
-    } catch (err) {
-      setStatus("error");
-      setErrorMessage("Failed to parse state parameter");
+    // Get projectId from state if provided
+    if (state) {
+      setProjectId(state);
     }
+
+    // Exchange code for tokens
+    const redirectUri = `${window.location.origin}/callback`;
+    exchangeCode.mutate({
+      code,
+      redirectUri,
+    });
   }, []);
 
   return (
@@ -106,7 +113,7 @@ export default function Callback() {
                 Successfully Connected!
               </h2>
               <p className="text-slate-300 mb-4">
-                Your ACC credentials have been saved. Redirecting...
+                Your ACC credentials have been saved. This window will close automatically.
               </p>
             </div>
           )}
@@ -121,23 +128,9 @@ export default function Callback() {
               <p className="text-slate-300 mb-4">
                 {errorMessage || "An error occurred during authorization"}
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  onClick={() => setLocation("/projects")}
-                  variant="outline"
-                  className="border-slate-600 text-white hover:bg-slate-800"
-                >
-                  Back to Projects
-                </Button>
-                {projectId && (
-                  <Button
-                    onClick={() => setLocation(`/projects/${projectId}`)}
-                    className="bg-orange-500 hover:bg-orange-600"
-                  >
-                    Try Again
-                  </Button>
-                )}
-              </div>
+              <p className="text-sm text-slate-400">
+                You can close this window and try again.
+              </p>
             </div>
           )}
         </div>
