@@ -165,7 +165,7 @@ export default function ProjectDetail() {
     );
   }
 
-  const hasACCConnection = !!credentials;
+  const hasACCConnection = credentials?.hasCredentials === true;
   const hasACCProject = !!project.accProjectId;
 
   return (

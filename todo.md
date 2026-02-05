@@ -35,3 +35,17 @@
 - [x] Add Tools link to mobile hamburger menu  
 - [x] Test mobile navigation on actual device
 - [x] Ensure menu closes after clicking link
+
+## Database Cleanup for ACC Testing
+
+- [ ] Clear test projects from database
+- [ ] Clear test ACC credentials from database
+- [ ] Verify fresh project creation works
+- [ ] Test ACC OAuth connection flow
+
+## ACC Connection Status Fix
+
+- [x] Fix hasAccCredentials check to verify actual user credentials exist
+- [x] Update ProjectDetail page to show correct connection status
+- [x] Test OAuth flow shows "Connect to ACC" when not connected
+- [x] Test shows "Connected" only after successful OAuth
