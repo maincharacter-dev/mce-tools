@@ -15,6 +15,13 @@
       "when": 1770274918781,
       "tag": "0001_panoramic_lenny_balinger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770279877109,
+      "tag": "0002_lush_blur",
+      "breakpoints": true
     }
   ]
 }

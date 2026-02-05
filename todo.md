@@ -49,3 +49,13 @@
 - [x] Update ProjectDetail page to show correct connection status
 - [x] Test OAuth flow shows "Connect to ACC" when not connected
 - [x] Test shows "Connected" only after successful OAuth
+
+## Refactor ACC Credentials to User-Level
+
+- [x] Update accCredentials schema to use userId instead of projectId
+- [x] Add migration to handle existing data
+- [x] Update getStoredCredentials to query by userId
+- [x] Update exchangeCode to store credentials by userId
+- [x] Update all ACC API calls to use user credentials
+- [x] Update ProjectDetail UI to show user-level auth status
+- [x] Test OAuth flow with user-level credentials

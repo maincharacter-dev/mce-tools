@@ -70,11 +70,10 @@ export default function Callback() {
 
       setProjectId(pid);
 
-      // Exchange code for tokens
+      // Exchange code for tokens (credentials stored per user)
       exchangeCode.mutate({
         code,
         redirectUri,
-        projectId: pid,
       });
     } catch (err) {
       setStatus("error");

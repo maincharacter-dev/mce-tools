@@ -44,11 +44,8 @@ export default function ProjectDetail() {
     { enabled: !!projectId }
   );
 
-  // Check ACC credentials
-  const { data: credentials, isLoading: credentialsLoading, refetch: refetchCredentials } = trpc.acc.getStoredCredentials.useQuery(
-    { projectId: projectId! },
-    { enabled: !!projectId }
-  );
+  // Check ACC credentials (user-level)
+  const { data: credentials, isLoading: credentialsLoading, refetch: refetchCredentials } = trpc.acc.getStoredCredentials.useQuery();
 
   // Get auth URL mutation
   const getAuthUrl = trpc.acc.getAuthUrl.useQuery(
@@ -59,9 +56,9 @@ export default function ProjectDetail() {
     { enabled: false }
   );
 
-  // List hubs mutation
+  // List hubs (user-level)
   const { data: hubs, isLoading: hubsLoading, refetch: refetchHubs } = trpc.acc.listHubs.useQuery(
-    { projectId: projectId! },
+    undefined,
     { enabled: false }
   );
 
@@ -255,7 +252,7 @@ export default function ProjectDetail() {
                       Create ACC Project
                     </Button>
                     <Button
-                      onClick={() => disconnectACC.mutate({ projectId: project.id })}
+                      onClick={() => disconnectACC.mutate()}
                       variant="outline"
                       className="border-slate-600 text-white hover:bg-slate-800"
                     >
@@ -284,7 +281,7 @@ export default function ProjectDetail() {
                       Open in ACC
                     </Button>
                     <Button
-                      onClick={() => disconnectACC.mutate({ projectId: project.id })}
+                      onClick={() => disconnectACC.mutate()}
                       variant="outline"
                       className="border-slate-600 text-white hover:bg-slate-800"
                     >

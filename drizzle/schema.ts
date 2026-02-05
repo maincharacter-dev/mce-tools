@@ -47,11 +47,12 @@ export type InsertProject = typeof projects.$inferInsert;
 
 /**
  * ACC credentials table
- * Stores Autodesk Platform Services OAuth tokens per project
+ * Stores Autodesk Platform Services OAuth tokens per user
+ * Each user has one set of credentials used across all their projects
  */
 export const accCredentials = mysqlTable("accCredentials", {
   id: int("id").autoincrement().primaryKey(),
-  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull().unique(), // One credential set per user
   accessToken: text("accessToken").notNull(),
   refreshToken: text("refreshToken"),
   expiresAt: timestamp("expiresAt").notNull(),

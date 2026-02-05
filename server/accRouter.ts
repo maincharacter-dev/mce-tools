@@ -38,61 +38,52 @@ export const accRouter = router({
     }),
 
   /**
-   * Exchange authorization code for access token and store credentials
+   * Exchange authorization code for access token and store credentials for current user
    */
-  exchangeCode: publicProcedure
+  exchangeCode: protectedProcedure
     .input(
       z.object({
         code: z.string(),
         redirectUri: z.string(),
-        projectId: z.number().optional(), // Optional: store credentials for specific project
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const tokens = await exchangeCodeForToken(input.code, input.redirectUri);
       
-      // If projectId provided, store credentials
-      if (input.projectId) {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        
-        // Calculate expiry time (tokens typically expire in 3600 seconds)
-        const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
-        
-        // Delete any existing credentials for this project
-        await db.delete(accCredentials).where(eq(accCredentials.projectId, input.projectId));
-        
-        // Insert new credentials
-        await db.insert(accCredentials).values({
-          projectId: input.projectId,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          expiresAt,
-        });
-        
-        console.log(`[ACC Auth] Stored credentials for project ${input.projectId}`);
-      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Calculate expiry time (tokens typically expire in 3600 seconds)
+      const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+      
+      // Delete any existing credentials for this user
+      await db.delete(accCredentials).where(eq(accCredentials.userId, ctx.user.id));
+      
+      // Insert new credentials
+      await db.insert(accCredentials).values({
+        userId: ctx.user.id,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt,
+      });
+      
+      console.log(`[ACC Auth] Stored credentials for user ${ctx.user.id}`);
       
       return tokens;
     }),
 
   /**
-   * Get stored ACC credentials for a project
+   * Get stored ACC credentials for the current user
    */
   getStoredCredentials: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-      })
-    )
-    .query(async ({ input }) => {
+    .query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
       const creds = await db
         .select()
         .from(accCredentials)
-        .where(eq(accCredentials.projectId, input.projectId))
+        .where(eq(accCredentials.userId, ctx.user.id))
         .limit(1);
       
       if (!creds || creds.length === 0) {
@@ -142,44 +133,34 @@ export const accRouter = router({
     }),
 
   /**
-   * Disconnect ACC (remove credentials)
+   * Disconnect ACC (remove user credentials)
    */
   disconnect: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-      })
-    )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
-      await db.delete(accCredentials).where(eq(accCredentials.projectId, input.projectId));
+      await db.delete(accCredentials).where(eq(accCredentials.userId, ctx.user.id));
       
       return { success: true };
     }),
 
   /**
-   * List all accessible ACC hubs
+   * List all accessible ACC hubs for current user
    */
   listHubs: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-      })
-    )
-    .query(async ({ input }) => {
+    .query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
       const creds = await db
         .select()
         .from(accCredentials)
-        .where(eq(accCredentials.projectId, input.projectId))
+        .where(eq(accCredentials.userId, ctx.user.id))
         .limit(1);
       
       if (!creds || creds.length === 0) {
-        throw new Error("No ACC credentials found for this project");
+        throw new Error("No ACC credentials found. Please connect to ACC first.");
       }
       
       return await listHubs(creds[0].accessToken);
@@ -191,22 +172,21 @@ export const accRouter = router({
   listProjects: protectedProcedure
     .input(
       z.object({
-        projectId: z.number(),
         hubId: z.string(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
       const creds = await db
         .select()
         .from(accCredentials)
-        .where(eq(accCredentials.projectId, input.projectId))
+        .where(eq(accCredentials.userId, ctx.user.id))
         .limit(1);
       
       if (!creds || creds.length === 0) {
-        throw new Error("No ACC credentials found for this project");
+        throw new Error("No ACC credentials found. Please connect to ACC first.");
       }
       
       return await listProjects(creds[0].accessToken, input.hubId);
@@ -224,18 +204,18 @@ export const accRouter = router({
         projectType: z.enum(["TA_TDD", "OE"]),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
       const creds = await db
         .select()
         .from(accCredentials)
-        .where(eq(accCredentials.projectId, input.projectId))
+        .where(eq(accCredentials.userId, ctx.user.id))
         .limit(1);
       
       if (!creds || creds.length === 0) {
-        throw new Error("No ACC credentials found for this project");
+        throw new Error("No ACC credentials found. Please connect to ACC first.");
       }
       
       // Create ACC project

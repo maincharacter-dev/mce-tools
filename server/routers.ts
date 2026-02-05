@@ -112,7 +112,7 @@ export const appRouter = router({
           id: z.number(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         
@@ -135,15 +135,15 @@ export const appRouter = router({
           throw new Error("Project must have an ACC project before transitioning");
         }
         
-        // Get ACC credentials
+        // Get ACC credentials for current user
         const [creds] = await db
           .select()
           .from(accCredentials)
-          .where(eq(accCredentials.projectId, input.id))
+          .where(eq(accCredentials.userId, ctx.user.id))
           .limit(1);
         
         if (!creds) {
-          throw new Error("No ACC credentials found for this project");
+          throw new Error("No ACC credentials found. Please connect to ACC first.");
         }
         
         // Get project folders to find "Project Files" folder
