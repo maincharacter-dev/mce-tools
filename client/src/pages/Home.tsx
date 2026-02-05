@@ -111,9 +111,16 @@ export default function Home() {
             <SheetContent side="right" className="w-[300px] bg-slate-900 border-slate-700">
               <div className="flex flex-col gap-8 mt-8">
                 <a 
+                  href="/projects"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
+                >
+                  Projects
+                </a>
+                <a 
                   href="#tools"
                   onClick={() => setIsMenuOpen(false)}
-                  className="text-xl font-semibold text-slate-300 hover:text-white transition-colors py-2"
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
                 >
                   Tools
                 </a>
