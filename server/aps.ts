@@ -154,6 +154,27 @@ export async function refreshAccessToken(
 }
 
 /**
+ * Get current user profile information
+ */
+export async function getUserProfile(accessToken: string): Promise<any> {
+  const response = await fetch(
+    `${APS_DATA_URL}/userprofile/v1/users/@me`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get user profile: ${error}`);
+  }
+
+  return response.json();
+}
+
+/**
  * List ACC hubs (accounts)
  */
 export async function listHubs(accessToken: string): Promise<APSHub[]> {
@@ -1032,6 +1053,57 @@ export async function createACCProject(
 
   const data = await response.json();
   console.log('[APS] Created ACC project:', JSON.stringify(data, null, 2));
+  return data;
+}
+
+/**
+ * Assign a user as project administrator
+ */
+export async function assignProjectAdmin(
+  accessToken: string,
+  projectId: string,
+  userId: string,
+  email: string
+): Promise<any> {
+  console.log(`[APS] Assigning user ${email} (${userId}) as project admin for project ${projectId}`);
+  
+  const response = await fetch(
+    `${APS_DATA_URL}/construction/admin/v2/projects/${projectId}/users:import`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        users: [
+          {
+            email: email,
+            userId: userId,
+            products: [
+              {
+                key: 'projectAdministration',
+                access: 'administrator',
+              },
+              {
+                key: 'docs',
+                access: 'administrator',
+              },
+            ],
+          },
+        ],
+      }),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.text();
+    console.error(`[APS] Failed to assign project admin: ${error}`);
+    throw new Error(`Failed to assign project admin: ${error}`);
+  }
+  
+  const data = await response.json();
+  console.log('[APS] Project admin assigned:', JSON.stringify(data, null, 2));
   return data;
 }
 

@@ -139,3 +139,11 @@
 - [x] Add logging for activation status checks
 - [ ] Test that projects appear in ACC web interface after activation
 - [ ] Verify folder creation only happens after full activation
+
+## Add Automatic Project Admin Assignment
+
+- [x] Get user's Autodesk user ID from access token or API
+- [x] Add assignProjectAdmin function in aps.ts to call POST projects/:projectId/users:import
+- [x] Update createACCProject mutation to assign current user as project admin after activation
+- [ ] Test that user appears as project member in ACC
+- [ ] Verify project appears in user's ACC dashboard (not just Account Admin)

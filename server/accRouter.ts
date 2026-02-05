@@ -14,6 +14,8 @@ import {
   listProjects,
   createACCProject,
   pollProjectActivation,
+  getUserProfile,
+  assignProjectAdmin,
   createFolder,
   listProjectFolders,
 } from "./aps";
@@ -248,6 +250,25 @@ export const accRouter = router({
       } catch (error: any) {
         console.error('[ACC] Project activation timeout:', error.message);
         throw new Error(`Project created but activation timed out: ${error.message}. The project may still be activating in ACC.`);
+      }
+      
+      // Assign current user as project administrator
+      console.log('[ACC] Assigning current user as project administrator...');
+      try {
+        const userProfile = await getUserProfile(creds[0].accessToken);
+        console.log('[ACC] User profile:', JSON.stringify(userProfile, null, 2));
+        
+        await assignProjectAdmin(
+          creds[0].accessToken,
+          accProject.id,
+          userProfile.userId,
+          userProfile.emailId
+        );
+        console.log('[ACC] User assigned as project admin!');
+      } catch (error: any) {
+        console.error('[ACC] Failed to assign project admin:', error.message);
+        // Don't fail the whole operation if user assignment fails
+        // The project is still created and activated
       }
       
       // Wait for ACC to provision the project folders (retry with exponential backoff)
