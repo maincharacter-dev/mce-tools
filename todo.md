@@ -127,3 +127,15 @@
 - [x] Add logging to see actual API response structure
 - [x] Fix response parsing to extract projects array correctly (use data.results)
 - [ ] Test that projects list shows actual ACC projects
+
+## Fix ACC Project Visibility - Implement Activation Polling
+
+- [x] Add pollProjectActivation function in aps.ts to check project status
+- [x] Poll GET /construction/admin/v1/projects/:projectId until status is "active"
+- [x] Check products array - ensure "docs" product is "active"
+- [x] Implement exponential backoff (2s, 4s, 8s, 16s, 32s)
+- [x] Add maximum retry attempts (10 times, ~2 minutes total)
+- [x] Update createACCProject in accRouter to call pollProjectActivation before folder creation
+- [x] Add logging for activation status checks
+- [ ] Test that projects appear in ACC web interface after activation
+- [ ] Verify folder creation only happens after full activation

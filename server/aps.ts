@@ -1036,6 +1036,94 @@ export async function createACCProject(
 }
 
 /**
+ * Poll project activation status until it's active
+ * @param accessToken APS access token
+ * @param projectId ACC project ID (UUID format, not b.xxx)
+ * @param maxRetries Maximum number of polling attempts (default: 10)
+ * @param initialDelay Initial delay in milliseconds (default: 2000)
+ * @returns The active project data
+ */
+export async function pollProjectActivation(
+  accessToken: string,
+  projectId: string,
+  maxRetries: number = 10,
+  initialDelay: number = 2000
+): Promise<any> {
+  console.log(`[APS] Polling project activation for ${projectId}...`);
+  
+  let delay = initialDelay;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Wait before checking (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      console.log(`[APS] Activation check attempt ${attempt}/${maxRetries} (delay: ${delay}ms)`);
+      
+      // Get project status
+      const response = await fetch(
+        `${APS_DATA_URL}/construction/admin/v1/projects/${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.text();
+        console.error(`[APS] Failed to get project status: ${error}`);
+        // Continue retrying even on error
+        delay *= 2; // Exponential backoff
+        continue;
+      }
+      
+      const project = await response.json();
+      console.log(`[APS] Project status: ${project.status}`);
+      
+      // Log product statuses
+      if (project.products && Array.isArray(project.products)) {
+        console.log('[APS] Product statuses:');
+        project.products.forEach((product: any) => {
+          console.log(`  - ${product.name} (${product.key}): ${product.status}`);
+        });
+      }
+      
+      // Check if project is active
+      if (project.status === 'active') {
+        // Also check if critical products are active
+        const docsProduct = project.products?.find((p: any) => p.key === 'docs');
+        const projectAdminProduct = project.products?.find((p: any) => p.key === 'projectAdministration');
+        
+        if (docsProduct && docsProduct.status !== 'active') {
+          console.log(`[APS] Project is active but docs product is still ${docsProduct.status}, continuing to poll...`);
+          delay *= 2;
+          continue;
+        }
+        
+        if (projectAdminProduct && projectAdminProduct.status !== 'active') {
+          console.log(`[APS] Project is active but projectAdministration is still ${projectAdminProduct.status}, continuing to poll...`);
+          delay *= 2;
+          continue;
+        }
+        
+        console.log('[APS] ✓ Project fully activated!');
+        return project;
+      }
+      
+      console.log(`[APS] Project not yet active (status: ${project.status}), retrying...`);
+      delay *= 2; // Exponential backoff
+      
+    } catch (error) {
+      console.error(`[APS] Error checking project activation (attempt ${attempt}):`, error);
+      delay *= 2;
+    }
+  }
+  
+  throw new Error(`Project activation timed out after ${maxRetries} attempts. Project may still be activating in the background.`);
+}
+
+/**
  * List all ACC projects in an account
  */
 export async function listACCProjects(

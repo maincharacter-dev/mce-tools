@@ -13,6 +13,7 @@ import {
   listHubs,
   listProjects,
   createACCProject,
+  pollProjectActivation,
   createFolder,
   listProjectFolders,
 } from "./aps";
@@ -239,7 +240,17 @@ export const accRouter = router({
       const dmProjectId = `b.${accProject.id}`;
       console.log('[ACC] Created project ID:', accProject.id, '-> DM format:', dmProjectId);
       
-      // Wait for ACC to provision the project (retry with exponential backoff)
+      // Wait for project activation (project must be active before folder operations)
+      console.log('[ACC] Waiting for project activation...');
+      try {
+        await pollProjectActivation(creds[0].accessToken, accProject.id);
+        console.log('[ACC] Project activation complete!');
+      } catch (error: any) {
+        console.error('[ACC] Project activation timeout:', error.message);
+        throw new Error(`Project created but activation timed out: ${error.message}. The project may still be activating in ACC.`);
+      }
+      
+      // Wait for ACC to provision the project folders (retry with exponential backoff)
       let folders: any[] = [];
       let retries = 0;
       const maxRetries = 5;
