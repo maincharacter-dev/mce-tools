@@ -80,13 +80,13 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-6">
             <a 
               href="/projects"
-              className="text-slate-300 hover:text-orange-400 transition-colors font-medium"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
             >
               Projects
             </a>
             <a 
               href="#tools"
-              className="text-slate-300 hover:text-orange-400 transition-colors font-medium"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
             >
               Tools
             </a>

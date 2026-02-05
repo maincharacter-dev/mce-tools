@@ -21,3 +21,10 @@
 - [x] Update project type from TA_TDD to OE
 - [x] Preserve existing folders and add new OE folders
 - [x] Test transition workflow end-to-end
+
+## Navigation Fix
+
+- [x] Investigate why Projects and Tools links are not visible to user
+- [x] Fix navigation header visibility/styling
+- [x] Ensure navigation works on all pages
+- [x] Test project creation flow from home page
