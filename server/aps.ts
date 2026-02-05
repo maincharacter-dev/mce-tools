@@ -1063,8 +1063,12 @@ export async function listACCProjects(
   }
 
   const data = await response.json();
-  console.log(`[APS] Found ${data.length || 0} ACC projects`);
-  return data || [];
+  console.log('[APS] listACCProjects raw response:', JSON.stringify(data, null, 2));
+  
+  // ACC Admin API returns projects in a 'results' array
+  const projects = data.results || [];
+  console.log(`[APS] Found ${projects.length} ACC projects`);
+  return projects;
 }
 
 /**

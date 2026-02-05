@@ -45,6 +45,9 @@ export default function ACCProjects() {
     { hubId: selectedHub },
     { enabled: !!selectedHub }
   );
+  
+  // Debug logging
+  console.log('[ACCProjects] selectedHub:', selectedHub, 'accProjects:', accProjects);
 
   // Delete project mutation
   const deleteProject = trpc.acc.deleteACCProject.useMutation({

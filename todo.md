@@ -121,3 +121,9 @@
 - [x] Fix project creation to properly handle 409 errors
 - [x] Stop execution when project creation fails
 - [x] Show user-friendly error message for duplicate names
+
+## Fix listACCProjects Response Parsing
+
+- [x] Add logging to see actual API response structure
+- [x] Fix response parsing to extract projects array correctly (use data.results)
+- [ ] Test that projects list shows actual ACC projects
