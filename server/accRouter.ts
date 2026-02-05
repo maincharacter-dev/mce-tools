@@ -222,7 +222,8 @@ export const accRouter = router({
       const accProject = await createACCProject(
         creds[0].accessToken,
         input.hubId,
-        input.projectName
+        input.projectName,
+        input.projectType === 'TA_TDD' ? 'Office' : 'Office' // Map project type to ACC type
       );
       
       // Get project folders to find "Project Files" folder

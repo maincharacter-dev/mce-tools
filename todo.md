@@ -77,3 +77,12 @@
 - [x] Implement popup window OAuth flow like mce-tools
 - [x] Update callback to use postMessage
 - [x] Update ProjectDetail to open popup and listen for postMessage
+
+## Fix ACC Project Creation Error
+
+- [x] Check createACCProject API endpoint and request format
+- [x] Compare with mce-tools implementation  
+- [x] Fix endpoint URL (use ACC Admin API not Data Management API)
+- [x] Add account:write OAuth scope
+- [ ] Test project creation successfully creates ACC project
+- [ ] Verify folder structure is created correctly

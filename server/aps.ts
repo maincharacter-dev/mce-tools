@@ -83,7 +83,7 @@ export function getAPSAuthUrl(redirectUri: string, state?: string): string {
     response_type: "code",
     client_id: ENV.APS_CLIENT_ID,
     redirect_uri: redirectUri,
-    scope: "data:read data:write data:create account:read"
+    scope: "data:read data:write data:create account:read account:write"
   });
 
   if (state) {
@@ -996,24 +996,30 @@ export async function getUserInfo(accessToken: string): Promise<any> {
  */
 export async function createACCProject(
   accessToken: string,
-  hubId: string,
-  projectName: string
+  accountId: string,
+  projectName: string,
+  projectType: string
 ): Promise<any> {
-  const response = await fetch(`${APS_DATA_URL}/project/v1/hubs/${hubId}/projects`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/vnd.api+json',
-    },
-    body: JSON.stringify({
-      data: {
-        type: 'projects',
-        attributes: {
-          name: projectName,
-        },
+  // Convert hubId (b.xxx) to accountId (xxx) if needed
+  const cleanAccountId = accountId.startsWith('b.') ? accountId.substring(2) : accountId;
+  
+  console.log('[APS] Creating ACC project:', { accountId: cleanAccountId, projectName, projectType });
+  
+  const response = await fetch(
+    `${APS_DATA_URL}/construction/admin/v1/accounts/${cleanAccountId}/projects`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        name: projectName,
+        type: projectType || 'Office', // Default to Office if not specified
+        startDate: new Date().toISOString().split('T')[0],
+      }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.text();
@@ -1023,7 +1029,7 @@ export async function createACCProject(
 
   const data = await response.json();
   console.log('[APS] Created ACC project:', JSON.stringify(data, null, 2));
-  return data.data;
+  return data;
 }
 
 /**
