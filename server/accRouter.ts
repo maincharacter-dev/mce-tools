@@ -274,7 +274,7 @@ export const accRouter = router({
       // Wait for ACC to provision the project folders (retry with exponential backoff)
       let folders: any[] = [];
       let retries = 0;
-      const maxRetries = 5;
+      const maxRetries = 10; // Increased from 5 to 10 for more patience
       
       while (retries < maxRetries) {
         try {

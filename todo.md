@@ -147,3 +147,10 @@
 - [x] Update createACCProject mutation to assign current user as project admin after activation
 - [ ] Test that user appears as project member in ACC
 - [ ] Verify project appears in user's ACC dashboard (not just Account Admin)
+
+## Fix User Assignment and Folder Polling Issues
+
+- [x] Fix assignProjectAdmin to send only userId (not both email and userId)
+- [x] Increase folder polling max retries from 5 to 10
+- [ ] Increase folder polling timeout or add longer delays
+- [ ] Test complete flow: project creation → activation → user assignment → folder creation
