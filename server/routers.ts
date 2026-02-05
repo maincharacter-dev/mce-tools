@@ -4,8 +4,9 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { accRouter } from "./accRouter";
 import { getDb } from "./db";
-import { projects } from "../drizzle/schema";
+import { projects, accCredentials } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { listProjectFolders, createFolder } from "./aps";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -99,6 +100,85 @@ export const appRouter = router({
         await db
           .update(projects)
           .set({ phase: input.phase })
+          .where(eq(projects.id, input.id));
+        
+        return { success: true };
+      }),
+
+    // Transition TA/TDD project to OE
+    transitionToOE: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        
+        // Get project
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, input.id))
+          .limit(1);
+        
+        if (!project) {
+          throw new Error("Project not found");
+        }
+        
+        if (project.projectType !== "TA_TDD") {
+          throw new Error("Only TA/TDD projects can be transitioned to OE");
+        }
+        
+        if (!project.accProjectId || !project.accHubId) {
+          throw new Error("Project must have an ACC project before transitioning");
+        }
+        
+        // Get ACC credentials
+        const [creds] = await db
+          .select()
+          .from(accCredentials)
+          .where(eq(accCredentials.projectId, input.id))
+          .limit(1);
+        
+        if (!creds) {
+          throw new Error("No ACC credentials found for this project");
+        }
+        
+        // Get project folders to find "Project Files" folder
+        const folders = await listProjectFolders(
+          creds.accessToken,
+          project.accHubId,
+          project.accProjectId
+        );
+        const projectFilesFolder = folders.find(
+          (f: any) => f.attributes.displayName === "Project Files"
+        );
+        
+        if (!projectFilesFolder) {
+          throw new Error("Could not find Project Files folder in ACC project");
+        }
+        
+        // Note: Existing 03_Deliverables folder will remain for historical data
+        // New 07_Deliverables will be used going forward
+        
+        // Create new OE folders (03-06)
+        await createFolder(creds.accessToken, project.accProjectId, projectFilesFolder.id, "03_Design_Review");
+        await createFolder(creds.accessToken, project.accProjectId, projectFilesFolder.id, "04_Construction_Monitoring");
+        await createFolder(creds.accessToken, project.accProjectId, projectFilesFolder.id, "05_Quality_Documentation_Review");
+        await createFolder(creds.accessToken, project.accProjectId, projectFilesFolder.id, "06_Project_Completion");
+        
+        // Create 07_Deliverables (note: existing 03_Deliverables will remain for historical data)
+        await createFolder(creds.accessToken, project.accProjectId, projectFilesFolder.id, "07_Deliverables");
+        
+        // Update project type to OE
+        await db
+          .update(projects)
+          .set({
+            projectType: "OE",
+            phase: "Design Review",
+          })
           .where(eq(projects.id, input.id));
         
         return { success: true };

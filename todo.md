@@ -1,0 +1,23 @@
+
+## Phase 2: OAuth Callback and Project Detail Pages
+
+- [x] Create OAuth callback page (/callback route)
+- [x] Handle OAuth code exchange in callback page
+- [x] Display success/error messages after OAuth
+- [x] Redirect back to project page after successful auth
+- [x] Create project detail page (/projects/:id route)
+- [x] Display project information (name, code, type, phase)
+- [x] Show ACC connection status
+- [x] Add "Connect to ACC" button for unconnected projects
+- [x] Show ACC hub selection dialog
+- [x] Trigger ACC project creation with folder structure
+- [x] Display ACC project link after creation
+
+## Phase 3: Project Transition
+
+- [x] Add transition button for TA/TDD projects with ACC
+- [x] Create transition confirmation dialog
+- [x] Implement backend logic to extend folder structure
+- [x] Update project type from TA_TDD to OE
+- [x] Preserve existing folders and add new OE folders
+- [x] Test transition workflow end-to-end

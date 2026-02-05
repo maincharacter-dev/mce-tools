@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, ExternalLink, Folder } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 export default function Projects() {
+  const [, setLocation] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectCode, setProjectCode] = useState("");
@@ -150,6 +152,7 @@ export default function Projects() {
               <Card
                 key={project.id}
                 className="bg-slate-900/50 border-slate-700/50 hover:border-orange-500/50 transition-all duration-300 cursor-pointer group"
+                onClick={() => setLocation(`/projects/${project.id}`)}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
