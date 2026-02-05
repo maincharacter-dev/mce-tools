@@ -154,3 +154,9 @@
 - [x] Increase folder polling max retries from 5 to 10
 - [ ] Increase folder polling timeout or add longer delays
 - [ ] Test complete flow: project creation → activation → user assignment → folder creation
+
+## Fix User Assignment API - Use Email Instead of UserId
+
+- [x] Change assignProjectAdmin to send only email field (not userId)
+- [ ] API requires email as mandatory field despite contradictory error messages
+- [ ] Test complete flow with email-based assignment

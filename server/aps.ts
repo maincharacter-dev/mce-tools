@@ -1078,7 +1078,7 @@ export async function assignProjectAdmin(
       body: JSON.stringify({
         users: [
           {
-            userId: userId,
+            email: email,
             products: [
               {
                 key: 'projectAdministration',
