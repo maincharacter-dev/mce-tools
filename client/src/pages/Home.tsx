@@ -1,5 +1,6 @@
 import { ArrowRight, Zap, BarChart3, Linkedin, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -47,6 +48,10 @@ const tools: ToolCard[] = [
 ];
 
 export default function Home() {
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -57,7 +62,7 @@ export default function Home() {
           {/* Logo Section */}
           <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img 
-              src="/mce-logo.png" 
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/YkbsvFTFeEzIpOEy.png" 
               alt="Main Character Energy" 
               className="h-10 w-10 md:h-12 md:w-12" 
             />
@@ -73,6 +78,12 @@ export default function Home() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
+            <a 
+              href="/projects"
+              className="text-slate-300 hover:text-orange-400 transition-colors font-medium"
+            >
+              Projects
+            </a>
             <a 
               href="#tools"
               className="text-slate-300 hover:text-orange-400 transition-colors font-medium"
