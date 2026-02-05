@@ -86,3 +86,19 @@
 - [x] Add account:write OAuth scope
 - [ ] Test project creation successfully creates ACC project
 - [ ] Verify folder structure is created correctly
+
+## Debug HTML Response from ACC API
+
+- [ ] Check server logs for actual response content
+- [ ] Verify endpoint URL is correct
+- [ ] Check if authentication is working properly
+- [ ] Test with different request format
+- [ ] Compare with working mce-tools implementation if available
+
+## Fix Project ID Format Mismatch
+
+- [x] Check what ID format ACC Admin API returns (UUID)
+- [x] Check what ID format Data Management API expects (b.{UUID})
+- [x] Add logging to see the actual project ID returned
+- [x] Map between ACC Admin project ID and Data Management project ID (add b. prefix)
+- [ ] Test folder creation with correct ID format

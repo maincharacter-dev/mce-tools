@@ -1023,8 +1023,11 @@ export async function createACCProject(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('[APS] createACCProject error:', error);
-    throw new Error(`Failed to create ACC project: ${error}`);
+    console.error('[APS] createACCProject error response:');
+    console.error('[APS] Status:', response.status, response.statusText);
+    console.error('[APS] Headers:', Object.fromEntries(response.headers));
+    console.error('[APS] Body:', error.substring(0, 500));
+    throw new Error(`Failed to create ACC project (${response.status}): ${error.substring(0, 200)}`);
   }
 
   const data = await response.json();

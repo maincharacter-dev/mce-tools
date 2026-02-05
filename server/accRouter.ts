@@ -226,8 +226,12 @@ export const accRouter = router({
         input.projectType === 'TA_TDD' ? 'Office' : 'Office' // Map project type to ACC type
       );
       
+      // Convert ACC Admin project ID to Data Management format (add b. prefix)
+      const dmProjectId = `b.${accProject.id}`;
+      console.log('[ACC] Created project ID:', accProject.id, '-> DM format:', dmProjectId);
+      
       // Get project folders to find "Project Files" folder
-      const folders = await listProjectFolders(creds[0].accessToken, input.hubId, accProject.id);
+      const folders = await listProjectFolders(creds[0].accessToken, input.hubId, dmProjectId);
       const projectFilesFolder = folders.find((f: any) => f.attributes.displayName === "Project Files");
       
       if (!projectFilesFolder) {
@@ -237,26 +241,26 @@ export const accRouter = router({
       // Create folder structure based on project type
       if (input.projectType === "TA_TDD") {
         // TA/TDD structure: 01_PM, 02_Data_Incoming, 03_Deliverables
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "01_PM");
-        const dataIncoming = await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "02_Data_Incoming");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "03_Deliverables");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "01_PM");
+        const dataIncoming = await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "02_Data_Incoming");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "03_Deliverables");
         
         // Create subfolders in Data_Incoming
-        await createFolder(creds[0].accessToken, accProject.id, dataIncoming.id, "Information_Memorandum");
-        await createFolder(creds[0].accessToken, accProject.id, dataIncoming.id, "Due_Diligence_Pack");
-        await createFolder(creds[0].accessToken, accProject.id, dataIncoming.id, "Contracts");
-        await createFolder(creds[0].accessToken, accProject.id, dataIncoming.id, "Grid_Studies");
-        await createFolder(creds[0].accessToken, accProject.id, dataIncoming.id, "Concept_Design");
-        await createFolder(creds[0].accessToken, accProject.id, dataIncoming.id, "Other_Documents");
+        await createFolder(creds[0].accessToken, dmProjectId, dataIncoming.id, "Information_Memorandum");
+        await createFolder(creds[0].accessToken, dmProjectId, dataIncoming.id, "Due_Diligence_Pack");
+        await createFolder(creds[0].accessToken, dmProjectId, dataIncoming.id, "Contracts");
+        await createFolder(creds[0].accessToken, dmProjectId, dataIncoming.id, "Grid_Studies");
+        await createFolder(creds[0].accessToken, dmProjectId, dataIncoming.id, "Concept_Design");
+        await createFolder(creds[0].accessToken, dmProjectId, dataIncoming.id, "Other_Documents");
       } else {
         // OE structure: 01_PM, 02_Data_Incoming, 03-06 (OE phases), 07_Deliverables
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "01_PM");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "02_Data_Incoming");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "03_Design_Review");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "04_Construction_Monitoring");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "05_Quality_Documentation_Review");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "06_Project_Completion");
-        await createFolder(creds[0].accessToken, accProject.id, projectFilesFolder.id, "07_Deliverables");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "01_PM");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "02_Data_Incoming");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "03_Design_Review");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "04_Construction_Monitoring");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "05_Quality_Documentation_Review");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "06_Project_Completion");
+        await createFolder(creds[0].accessToken, dmProjectId, projectFilesFolder.id, "07_Deliverables");
       }
       
       // Update OE Toolkit project with ACC project ID and hub ID
@@ -270,7 +274,7 @@ export const accRouter = router({
       
       return {
         accProjectId: accProject.id,
-        accProjectName: accProject.attributes.name,
+        accProjectName: accProject.name,
       };
     }),
 });
