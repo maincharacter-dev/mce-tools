@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1770274784366,
+      "tag": "0000_elite_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1770274918781,
+      "tag": "0001_panoramic_lenny_balinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770279877109,
+      "tag": "0002_lush_blur",
+      "breakpoints": true
+    }
+  ]
+}
