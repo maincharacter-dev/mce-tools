@@ -219,12 +219,21 @@ export const accRouter = router({
       }
       
       // Create ACC project
-      const accProject = await createACCProject(
-        creds[0].accessToken,
-        input.hubId,
-        input.projectName,
-        input.projectType === 'TA_TDD' ? 'Office' : 'Office' // Map project type to ACC type
-      );
+      let accProject;
+      try {
+        accProject = await createACCProject(
+          creds[0].accessToken,
+          input.hubId,
+          input.projectName,
+          input.projectType === 'TA_TDD' ? 'Office' : 'Office' // Map project type to ACC type
+        );
+      } catch (error: any) {
+        // Handle 409 Conflict (duplicate project name)
+        if (error.message.includes('409')) {
+          throw new Error(`A project named "${input.projectName}" already exists in this ACC account. Please choose a different name.`);
+        }
+        throw error;
+      }
       
       // Convert ACC Admin project ID to Data Management format (add b. prefix)
       const dmProjectId = `b.${accProject.id}`;
@@ -296,5 +305,64 @@ export const accRouter = router({
         accProjectId: accProject.id,
         accProjectName: accProject.name,
       };
+    }),
+
+  /**
+   * List all ACC projects in a hub/account
+   */
+  listACCProjects: protectedProcedure
+    .input(
+      z.object({
+        hubId: z.string(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Get user's ACC credentials
+      const creds = await db
+        .select()
+        .from(accCredentials)
+        .where(eq(accCredentials.userId, ctx.user.id));
+      
+      if (creds.length === 0) {
+        throw new Error("No ACC credentials found. Please connect to ACC first.");
+      }
+      
+      const { listACCProjects } = await import("./aps");
+      const projects = await listACCProjects(creds[0].accessToken, input.hubId);
+      
+      return projects;
+    }),
+
+  /**
+   * Delete an ACC project
+   */
+  deleteACCProject: protectedProcedure
+    .input(
+      z.object({
+        hubId: z.string(),
+        projectId: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Get user's ACC credentials
+      const creds = await db
+        .select()
+        .from(accCredentials)
+        .where(eq(accCredentials.userId, ctx.user.id));
+      
+      if (creds.length === 0) {
+        throw new Error("No ACC credentials found. Please connect to ACC first.");
+      }
+      
+      const { deleteACCProject } = await import("./aps");
+      await deleteACCProject(creds[0].accessToken, input.hubId, input.projectId);
+      
+      return { success: true };
     }),
 });

@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Projects from "./pages/Projects";
 import Callback from "./pages/Callback";
 import ProjectDetail from "./pages/ProjectDetail";
+import ACCProjects from "./pages/ACCProjects";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -16,6 +17,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectDetail} />
+      <Route path="/acc-projects" component={ACCProjects} />
       <Route path="/callback" component={Callback} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

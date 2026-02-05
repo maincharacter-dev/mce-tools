@@ -1036,6 +1036,70 @@ export async function createACCProject(
 }
 
 /**
+ * List all ACC projects in an account
+ */
+export async function listACCProjects(
+  accessToken: string,
+  accountId: string
+): Promise<any[]> {
+  // Convert hubId (b.xxx) to accountId (xxx) if needed
+  const cleanAccountId = accountId.startsWith('b.') ? accountId.substring(2) : accountId;
+  
+  console.log('[APS] Listing ACC projects for account:', cleanAccountId);
+  
+  const response = await fetch(
+    `${APS_DATA_URL}/construction/admin/v1/accounts/${cleanAccountId}/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[APS] listACCProjects error:', error);
+    throw new Error(`Failed to list ACC projects (${response.status}): ${error}`);
+  }
+
+  const data = await response.json();
+  console.log(`[APS] Found ${data.length || 0} ACC projects`);
+  return data || [];
+}
+
+/**
+ * Delete an ACC project
+ */
+export async function deleteACCProject(
+  accessToken: string,
+  accountId: string,
+  projectId: string
+): Promise<void> {
+  // Convert hubId (b.xxx) to accountId (xxx) if needed
+  const cleanAccountId = accountId.startsWith('b.') ? accountId.substring(2) : accountId;
+  
+  console.log('[APS] Deleting ACC project:', { accountId: cleanAccountId, projectId });
+  
+  const response = await fetch(
+    `${APS_DATA_URL}/construction/admin/v1/accounts/${cleanAccountId}/projects/${projectId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[APS] deleteACCProject error:', error);
+    throw new Error(`Failed to delete ACC project (${response.status}): ${error}`);
+  }
+
+  console.log('[APS] Successfully deleted ACC project:', projectId);
+}
+
+/**
  * Create a folder in ACC project
  */
 export async function createFolder(

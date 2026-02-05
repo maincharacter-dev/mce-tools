@@ -110,3 +110,14 @@
 - [x] Add maximum retry attempts (5 times)
 - [x] Log retry attempts for debugging
 - [ ] Test that folder creation succeeds after retry
+
+## ACC Project Cleanup Features
+
+- [x] Add listACCProjects endpoint to list all projects in hub
+- [x] Add deleteACCProject endpoint to delete projects by ID
+- [x] Build ACC Projects management page/dialog
+- [x] Show list of all ACC projects with delete buttons
+- [x] Add confirmation dialog before deletion
+- [x] Fix project creation to properly handle 409 errors
+- [x] Stop execution when project creation fails
+- [x] Show user-friendly error message for duplicate names
