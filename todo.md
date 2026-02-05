@@ -102,3 +102,11 @@
 - [x] Add logging to see the actual project ID returned
 - [x] Map between ACC Admin project ID and Data Management project ID (add b. prefix)
 - [ ] Test folder creation with correct ID format
+
+## Add Retry Logic for Project Provisioning
+
+- [x] Add sleep/delay function after project creation
+- [x] Implement retry logic for listProjectFolders with exponential backoff (2s, 4s, 8s, 16s)
+- [x] Add maximum retry attempts (5 times)
+- [x] Log retry attempts for debugging
+- [ ] Test that folder creation succeeds after retry

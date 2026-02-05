@@ -230,8 +230,28 @@ export const accRouter = router({
       const dmProjectId = `b.${accProject.id}`;
       console.log('[ACC] Created project ID:', accProject.id, '-> DM format:', dmProjectId);
       
-      // Get project folders to find "Project Files" folder
-      const folders = await listProjectFolders(creds[0].accessToken, input.hubId, dmProjectId);
+      // Wait for ACC to provision the project (retry with exponential backoff)
+      let folders: any[] = [];
+      let retries = 0;
+      const maxRetries = 5;
+      
+      while (retries < maxRetries) {
+        try {
+          console.log(`[ACC] Attempting to list project folders (attempt ${retries + 1}/${maxRetries})...`);
+          folders = await listProjectFolders(creds[0].accessToken, input.hubId, dmProjectId);
+          console.log('[ACC] Successfully listed project folders');
+          break;
+        } catch (error: any) {
+          retries++;
+          if (retries >= maxRetries) {
+            console.error('[ACC] Max retries reached, project may not be provisioned yet');
+            throw new Error(`Failed to list project folders after ${maxRetries} attempts: ${error.message}`);
+          }
+          const delay = Math.pow(2, retries) * 1000; // Exponential backoff: 2s, 4s, 8s, 16s
+          console.log(`[ACC] Retry ${retries}/${maxRetries} - waiting ${delay}ms before next attempt`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
       const projectFilesFolder = folders.find((f: any) => f.attributes.displayName === "Project Files");
       
       if (!projectFilesFolder) {
