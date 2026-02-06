@@ -37,6 +37,9 @@ export const projects = mysqlTable("projects", {
   phase: varchar("phase", { length: 64 }).notNull().default("Initiation"),
   accProjectId: varchar("accProjectId", { length: 255 }),
   accHubId: varchar("accHubId", { length: 255 }),
+  // TA/TDD Engine integration
+  taTddProjectId: int("taTddProjectId"), // Link to TA/TDD engine project
+  taTddDbName: varchar("taTddDbName", { length: 255 }), // Per-project DB name in TA/TDD engine
   createdByUserId: int("createdByUserId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

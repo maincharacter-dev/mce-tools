@@ -174,3 +174,15 @@
 - [ ] Check if database update is failing after folder creation
 - [ ] Add try-catch around database update with better error handling
 - [ ] Test that UI shows success message when project is created
+
+
+## Integrate with TA/TDD Engine
+
+- [x] Add ACC integration fields to OE Toolkit projects table (taTddProjectId, taTddDbName)
+- [x] Create TA/TDD database connection helper (taTddIntegration.ts)
+- [x] Update OE Toolkit project creation to also create TA/TDD engine project
+- [x] Link OE Toolkit project ID with TA/TDD engine project ID
+- [x] Store ACC mapping in TA/TDD per-project database
+- [x] Store ACC credentials in TA/TDD per-project database
+- [ ] Test end-to-end project creation (OE Toolkit → TA/TDD → ACC)
+- [ ] Verify TA/TDD engine can sync documents to ACC using stored credentials

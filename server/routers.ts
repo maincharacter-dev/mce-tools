@@ -8,6 +8,7 @@ import { projects, accCredentials } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { listProjectFolders, createFolder } from "./aps";
 import { z } from "zod";
+import { createTaTddProject } from "./taTddIntegration";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -63,25 +64,44 @@ export const appRouter = router({
           projectName: z.string().min(1),
           projectCode: z.string().min(1),
           projectType: z.enum(["TA_TDD", "OE"]),
+          description: z.string().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         
+        console.log(`[Project Creation] Creating project: ${input.projectName}`);
+        
+        // Step 1: Create TA/TDD engine project
+        const { projectId: taTddProjectId, dbName: taTddDbName } = await createTaTddProject({
+          name: input.projectName,
+          description: input.description,
+          createdByUserId: ctx.user.id,
+        });
+        
+        console.log(`[Project Creation] Created TA/TDD project ${taTddProjectId} with DB ${taTddDbName}`);
+        
+        // Step 2: Create OE Toolkit project with link to TA/TDD project
         const [result] = await db.insert(projects).values({
           projectName: input.projectName,
           projectCode: input.projectCode,
           projectType: input.projectType,
           phase: "Initiation",
+          taTddProjectId: taTddProjectId,
+          taTddDbName: taTddDbName,
           createdByUserId: ctx.user.id,
         }).$returningId();
+        
+        console.log(`[Project Creation] Created OE Toolkit project ${result.id}`);
         
         return {
           id: result.id,
           projectName: input.projectName,
           projectCode: input.projectCode,
           projectType: input.projectType,
+          taTddProjectId: taTddProjectId,
+          taTddDbName: taTddDbName,
         };
       }),
 
