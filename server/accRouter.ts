@@ -342,7 +342,7 @@ export const accRouter = router({
         .limit(1);
       
       // If this project has a linked TA/TDD project, store ACC mapping in per-project DB
-      if (project && project.taTddDbName) {
+      if (project && project.taTddDbName && project.taTddProjectId) {
         console.log(`[TA/TDD Integration] Storing ACC mapping in ${project.taTddDbName}`);
         
         // Get hub name from listHubs (we only have hubId)
@@ -351,8 +351,7 @@ export const accRouter = router({
         const hubName = (hub as any)?.attributes?.name || 'Unknown Hub';
         
         // Store ACC project mapping
-        await storeAccMapping({
-          dbName: project.taTddDbName,
+        await storeAccMapping(project.taTddProjectId, {
           accHubId: input.hubId,
           accHubName: hubName,
           accProjectId: accProject.id,
@@ -360,8 +359,7 @@ export const accRouter = router({
         });
         
         // Store ACC credentials in per-project DB
-        await storeAccCredentials({
-          dbName: project.taTddDbName,
+        await storeAccCredentials(project.taTddProjectId, {
           accessToken: creds[0].accessToken,
           refreshToken: creds[0].refreshToken || undefined,
           expiresAt: new Date(creds[0].expiresAt),

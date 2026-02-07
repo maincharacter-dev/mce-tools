@@ -201,3 +201,12 @@
 - [x] Update package.json dev script to use tsx without --watch flag
 - [x] Restart dev server and verify it starts successfully
 - [x] Document that manual restart is needed after code changes
+
+
+## Fix TA/TDD Integration - Use Table Prefix Architecture
+
+- [ ] Read TA/TDD table-prefix-helper.ts and project-table-provisioner.ts
+- [ ] Understand how TA/TDD creates per-project tables with prefixes
+- [ ] Rewrite taTddIntegration.ts to create prefixed tables instead of databases
+- [ ] Update createTaTddProject to use table provisioning logic
+- [ ] Test project creation with table prefix architecture

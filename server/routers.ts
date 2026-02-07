@@ -74,10 +74,10 @@ export const appRouter = router({
         console.log(`[Project Creation] Creating project: ${input.projectName}`);
         
         // Step 1: Create TA/TDD engine project
-        const { projectId: taTddProjectId, dbName: taTddDbName } = await createTaTddProject({
+        const { id: taTddProjectId, dbName: taTddDbName } = await createTaTddProject({
           name: input.projectName,
           description: input.description,
-          createdByUserId: ctx.user.id,
+          projectType: input.projectType,
         });
         
         console.log(`[Project Creation] Created TA/TDD project ${taTddProjectId} with DB ${taTddDbName}`);

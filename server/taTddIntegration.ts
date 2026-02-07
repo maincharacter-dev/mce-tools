@@ -1,216 +1,289 @@
 /**
  * TA/TDD Engine Integration
  * 
- * Handles creation and linking of TA/TDD engine projects
- * when creating projects in OE Toolkit
+ * Integrates OE Toolkit with the TA/TDD engine using shared database access.
+ * Projects are created in the TA/TDD engine with prefixed tables (proj_{id}_*).
  */
 
 import mysql from 'mysql2/promise';
 
 /**
- * Get TA/TDD engine database connection config
- * Uses TA_TDD_DATABASE_URL environment variable for cross-project database access
+ * Get TA/TDD database connection
  */
-function getTaTddDbConfig(): string | mysql.ConnectionOptions {
-  const taTddDatabaseUrl = process.env.TA_TDD_DATABASE_URL;
-  
-  if (taTddDatabaseUrl) {
-    // Production: Use TA_TDD_DATABASE_URL directly
-    return taTddDatabaseUrl;
-  } else {
-    // Development: Connect to local TA/TDD engine database
-    return {
-      host: '127.0.0.1',
-      port: 3306,
-      user: 'root',
-      password: '',
-      database: 'ingestion_engine_main',
-    };
+async function getTaTddDbConnection() {
+  const dbUrl = process.env.TA_TDD_DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('TA_TDD_DATABASE_URL environment variable not set');
   }
+
+  const url = new URL(dbUrl);
+  return await mysql.createConnection({
+    host: url.hostname,
+    port: parseInt(url.port) || 3306,
+    user: url.username,
+    password: url.password,
+    database: url.pathname.slice(1), // Remove leading /
+    ssl: { rejectUnauthorized: true },
+  });
 }
 
 /**
- * Get per-project database connection config
- * Uses TA_TDD_DATABASE_URL to build per-project database URLs
+ * Get table prefix for a project
  */
-function getProjectDbConfig(dbName: string): string | mysql.ConnectionOptions {
-  const taTddDatabaseUrl = process.env.TA_TDD_DATABASE_URL;
-  
-  if (taTddDatabaseUrl) {
-    // Production: Parse TA_TDD_DATABASE_URL and replace database name
-    const urlObj = new URL(taTddDatabaseUrl);
-    urlObj.pathname = `/${dbName}`;
-    return urlObj.toString();
-  } else {
-    // Development: Connect to local per-project database
-    return {
-      host: '127.0.0.1',
-      port: 3306,
-      user: 'root',
-      password: '',
-      database: dbName,
-    };
-  }
+export function getTablePrefix(projectId: number): string {
+  return `proj_${projectId}_`;
 }
 
 /**
- * Create a TA/TDD engine project
- * Returns the project ID and per-project database name
+ * Get full table name with prefix
  */
-export async function createTaTddProject(params: {
+export function getTableName(projectId: number, tableName: string): string {
+  return `${getTablePrefix(projectId)}${tableName}`;
+}
+
+/**
+ * Create a new TA/TDD engine project
+ */
+export async function createTaTddProject(data: {
   name: string;
   description?: string;
-  createdByUserId: number;
-}): Promise<{ projectId: number; dbName: string }> {
-  const connection = await mysql.createConnection(getTaTddDbConfig() as any);
-  
+  projectType: string;
+}): Promise<{ id: number; dbName: string }> {
+  const connection = await getTaTddDbConnection();
+
   try {
-    // Generate unique database name for per-project database
-    const timestamp = Date.now();
-    const dbName = `project_${timestamp}`;
-    
-    // Insert project into TA/TDD engine main database
+    // Insert project into TA/TDD projects table
     const [result] = await connection.execute(
-      `INSERT INTO projects (name, description, dbName, dbHost, dbPort, createdByUserId, status, createdAt, updatedAt) 
-       VALUES (?, ?, ?, 'localhost', 3306, ?, 'Active', NOW(), NOW())`,
-      [params.name, params.description || '', dbName, params.createdByUserId]
+      `INSERT INTO projects (name, description, project_type, db_name, created_at, updated_at)
+       VALUES (?, ?, ?, '', NOW(), NOW())`,
+      [data.name, data.description || '', data.projectType]
     ) as any;
-    
-    const projectId = result.insertId;
-    
-    console.log(`[TA/TDD Integration] Created TA/TDD project ${projectId} with database ${dbName}`);
-    
-    // Create per-project database
-    await createProjectDatabase(dbName);
-    
-    return { projectId, dbName };
+
+    const projectId = Number(result.insertId);
+    const dbName = `proj_${projectId}`;
+
+    // Update the dbName field
+    await connection.execute(
+      `UPDATE projects SET db_name = ?, updated_at = NOW() WHERE id = ?`,
+      [dbName, projectId]
+    );
+
+    console.log(`[TaTddIntegration] Created TA/TDD project: ${projectId} (${data.name})`);
+
+    // Provision prefixed tables for this project
+    await provisionProjectTables(projectId);
+
+    return { id: projectId, dbName };
+  } catch (error) {
+    console.error('[TaTddIntegration] Failed to create TA/TDD project:', error);
+    throw error;
   } finally {
     await connection.end();
   }
 }
 
 /**
- * Create per-project database with schema
+ * Provision prefixed tables for a project
  */
-async function createProjectDatabase(dbName: string) {
-  const connection = await mysql.createConnection(getTaTddDbConfig() as any);
-  
-  try {
-    // Create database
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-    console.log(`[TA/TDD Integration] Created database ${dbName}`);
-  } finally {
-    await connection.end();
+async function provisionProjectTables(projectId: number): Promise<void> {
+  const dbUrl = process.env.TA_TDD_DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('TA_TDD_DATABASE_URL not set');
   }
-  
-  // Connect to the new database and create schema
-  const projectConnection = await mysql.createConnection(getProjectDbConfig(dbName) as any);
-  
+
+  const url = new URL(dbUrl);
+  const connection = await mysql.createConnection({
+    host: url.hostname,
+    port: parseInt(url.port) || 3306,
+    user: url.username,
+    password: url.password,
+    database: url.pathname.slice(1),
+    multipleStatements: true,
+    ssl: { rejectUnauthorized: true },
+  });
+
   try {
-    // Create acc_project_mapping table
-    await projectConnection.execute(`
-      CREATE TABLE IF NOT EXISTS acc_project_mapping (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        acc_hub_id VARCHAR(100) NOT NULL,
-        acc_hub_name VARCHAR(255),
-        acc_project_id VARCHAR(100) NOT NULL,
-        acc_project_name VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Create acc_credentials table
-    await projectConnection.execute(`
-      CREATE TABLE IF NOT EXISTS acc_credentials (
+    const prefix = getTablePrefix(projectId);
+    console.log(`[TaTddIntegration] Provisioning tables with prefix: ${prefix}`);
+
+    // Create essential project tables with prefix
+    const tables = [
+      // Documents table
+      `CREATE TABLE IF NOT EXISTS \`${prefix}documents\` (
+        id VARCHAR(255) PRIMARY KEY,
+        fileName VARCHAR(500) NOT NULL,
+        filePath VARCHAR(1000) NOT NULL,
+        fileSizeBytes BIGINT NOT NULL,
+        fileHash VARCHAR(64),
+        documentType VARCHAR(100),
+        uploadDate DATETIME NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'uploaded',
+        extractedText LONGTEXT,
+        pageCount INT,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deletedAt DATETIME NULL,
+        INDEX idx_upload_date (uploadDate),
+        INDEX idx_status (status),
+        INDEX idx_document_type (documentType)
+      )`,
+
+      // Extracted facts table
+      `CREATE TABLE IF NOT EXISTS \`${prefix}extracted_facts\` (
+        id VARCHAR(255) PRIMARY KEY,
+        project_id INT NOT NULL,
+        data_type VARCHAR(100) NOT NULL,
+        category VARCHAR(100),
+        extracted_value TEXT NOT NULL,
+        confidence DECIMAL(5,4),
+        source_document_id VARCHAR(255),
+        source_page INT,
+        source_text_snippet TEXT,
+        extraction_method VARCHAR(50),
+        verification_status VARCHAR(50) DEFAULT 'pending',
+        verified_by_user_id INT,
+        verified_at DATETIME,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at DATETIME NULL,
+        INDEX idx_data_type (data_type),
+        INDEX idx_category (category),
+        INDEX idx_verification_status (verification_status)
+      )`,
+
+      // ACC credentials table
+      `CREATE TABLE IF NOT EXISTS \`${prefix}acc_credentials\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         access_token TEXT NOT NULL,
         refresh_token TEXT,
-        expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Create documents table (basic version - TA/TDD engine will add more fields as needed)
-    await projectConnection.execute(`
-      CREATE TABLE IF NOT EXISTS documents (
-        id VARCHAR(36) PRIMARY KEY,
-        file_name VARCHAR(255) NOT NULL,
-        file_path VARCHAR(500) NOT NULL,
-        file_size_bytes INT NOT NULL,
-        file_hash VARCHAR(64),
-        document_type VARCHAR(50),
-        upload_date TIMESTAMP NOT NULL,
-        status VARCHAR(20) DEFAULT 'uploaded',
-        extracted_text TEXT,
-        page_count INT,
-        acc_project_id VARCHAR(100),
-        acc_folder_id VARCHAR(100),
-        acc_file_urn VARCHAR(500),
-        acc_version_urn VARCHAR(500),
-        last_synced_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    console.log(`[TA/TDD Integration] Created schema for database ${dbName}`);
-  } finally {
-    await projectConnection.end();
-  }
-}
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
 
-/**
- * Store ACC project mapping in per-project database
- */
-export async function storeAccMapping(params: {
-  dbName: string;
-  accHubId: string;
-  accHubName: string;
-  accProjectId: string;
-  accProjectName: string;
-}) {
-  const connection = await mysql.createConnection(getProjectDbConfig(params.dbName) as any);
-  
-  try {
-    // Delete any existing mapping
-    await connection.execute(`DELETE FROM acc_project_mapping`);
-    
-    // Insert new mapping
-    await connection.execute(
-      `INSERT INTO acc_project_mapping (acc_hub_id, acc_hub_name, acc_project_id, acc_project_name) 
-       VALUES (?, ?, ?, ?)`,
-      [params.accHubId, params.accHubName, params.accProjectId, params.accProjectName]
-    );
-    
-    console.log(`[TA/TDD Integration] Stored ACC mapping in ${params.dbName}`);
+      // ACC project mapping table
+      `CREATE TABLE IF NOT EXISTS \`${prefix}acc_project_mapping\` (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        acc_hub_id VARCHAR(255) NOT NULL,
+        acc_hub_name VARCHAR(500),
+        acc_project_id VARCHAR(255) NOT NULL,
+        acc_project_name VARCHAR(500),
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+
+      // Processing jobs table
+      `CREATE TABLE IF NOT EXISTS \`${prefix}processing_jobs\` (
+        id VARCHAR(255) PRIMARY KEY,
+        document_id VARCHAR(255) NOT NULL,
+        job_type VARCHAR(100) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'queued',
+        started_at DATETIME,
+        completed_at DATETIME,
+        error_message TEXT,
+        progress_percent INT DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_document_id (document_id),
+        INDEX idx_status (status)
+      )`,
+    ];
+
+    for (const createTableSql of tables) {
+      await connection.execute(createTableSql);
+    }
+
+    console.log(`[TaTddIntegration] ✓ Provisioned ${tables.length} tables for project ${projectId}`);
+  } catch (error) {
+    console.error(`[TaTddIntegration] Failed to provision tables for project ${projectId}:`, error);
+    throw error;
   } finally {
     await connection.end();
   }
 }
 
 /**
- * Store ACC credentials in per-project database
+ * Store ACC project mapping in TA/TDD per-project table
  */
-export async function storeAccCredentials(params: {
-  dbName: string;
-  accessToken: string;
-  refreshToken?: string;
-  expiresAt: Date;
-}) {
-  const connection = await mysql.createConnection(getProjectDbConfig(params.dbName) as any);
-  
+export async function storeAccMapping(
+  projectId: number,
+  mapping: {
+    accHubId: string;
+    accHubName: string;
+    accProjectId: string;
+    accProjectName: string;
+  }
+): Promise<void> {
+  const dbUrl = process.env.TA_TDD_DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('TA_TDD_DATABASE_URL not set');
+  }
+
+  const url = new URL(dbUrl);
+  const connection = await mysql.createConnection({
+    host: url.hostname,
+    port: parseInt(url.port) || 3306,
+    user: url.username,
+    password: url.password,
+    database: url.pathname.slice(1),
+    ssl: { rejectUnauthorized: true },
+  });
+
   try {
-    // Delete any existing credentials
-    await connection.execute(`DELETE FROM acc_credentials`);
-    
-    // Insert new credentials
+    const tableName = getTableName(projectId, 'acc_project_mapping');
     await connection.execute(
-      `INSERT INTO acc_credentials (access_token, refresh_token, expires_at) 
-       VALUES (?, ?, ?)`,
-      [params.accessToken, params.refreshToken || null, params.expiresAt]
+      `INSERT INTO \`${tableName}\` (acc_hub_id, acc_hub_name, acc_project_id, acc_project_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, NOW(), NOW())`,
+      [mapping.accHubId, mapping.accHubName, mapping.accProjectId, mapping.accProjectName]
     );
-    
-    console.log(`[TA/TDD Integration] Stored ACC credentials in ${params.dbName}`);
+
+    console.log(`[TaTddIntegration] Stored ACC mapping for project ${projectId}`);
+  } catch (error) {
+    console.error(`[TaTddIntegration] Failed to store ACC mapping:`, error);
+    throw error;
+  } finally {
+    await connection.end();
+  }
+}
+
+/**
+ * Store ACC credentials in TA/TDD per-project table
+ */
+export async function storeAccCredentials(
+  projectId: number,
+  credentials: {
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt: Date;
+  }
+): Promise<void> {
+  const dbUrl = process.env.TA_TDD_DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('TA_TDD_DATABASE_URL not set');
+  }
+
+  const url = new URL(dbUrl);
+  const connection = await mysql.createConnection({
+    host: url.hostname,
+    port: parseInt(url.port) || 3306,
+    user: url.username,
+    password: url.password,
+    database: url.pathname.slice(1),
+    ssl: { rejectUnauthorized: true },
+  });
+
+  try {
+    const tableName = getTableName(projectId, 'acc_credentials');
+    await connection.execute(
+      `INSERT INTO \`${tableName}\` (access_token, refresh_token, expires_at, created_at, updated_at)
+       VALUES (?, ?, ?, NOW(), NOW())`,
+      [credentials.accessToken, credentials.refreshToken || null, credentials.expiresAt]
+    );
+
+    console.log(`[TaTddIntegration] Stored ACC credentials for project ${projectId}`);
+  } catch (error) {
+    console.error(`[TaTddIntegration] Failed to store ACC credentials:`, error);
+    throw error;
   } finally {
     await connection.end();
   }
