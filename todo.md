@@ -186,3 +186,11 @@
 - [x] Store ACC credentials in TA/TDD per-project database
 - [ ] Test end-to-end project creation (OE Toolkit → TA/TDD → ACC)
 - [ ] Verify TA/TDD engine can sync documents to ACC using stored credentials
+
+
+## Configure TA/TDD Database Access
+
+- [x] Add TA_TDD_DATABASE_URL environment variable
+- [x] Update taTddIntegration.ts to use TA_TDD_DATABASE_URL instead of hardcoded connection
+- [ ] Test project creation with shared database access (blocked by sandbox file descriptor limit)
+- [x] Document database credentials setup in README

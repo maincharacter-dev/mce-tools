@@ -9,16 +9,14 @@ import mysql from 'mysql2/promise';
 
 /**
  * Get TA/TDD engine database connection config
- * Uses same DATABASE_URL as OE Toolkit but connects to TA/TDD engine's main database
+ * Uses TA_TDD_DATABASE_URL environment variable for cross-project database access
  */
 function getTaTddDbConfig(): string | mysql.ConnectionOptions {
-  const databaseUrl = process.env.DATABASE_URL;
+  const taTddDatabaseUrl = process.env.TA_TDD_DATABASE_URL;
   
-  if (databaseUrl) {
-    // Production: Use DATABASE_URL but replace database name with TA/TDD engine's main DB
-    const urlObj = new URL(databaseUrl);
-    urlObj.pathname = '/ingestion_engine_main'; // TA/TDD engine main database
-    return urlObj.toString();
+  if (taTddDatabaseUrl) {
+    // Production: Use TA_TDD_DATABASE_URL directly
+    return taTddDatabaseUrl;
   } else {
     // Development: Connect to local TA/TDD engine database
     return {
@@ -33,15 +31,18 @@ function getTaTddDbConfig(): string | mysql.ConnectionOptions {
 
 /**
  * Get per-project database connection config
+ * Uses TA_TDD_DATABASE_URL to build per-project database URLs
  */
 function getProjectDbConfig(dbName: string): string | mysql.ConnectionOptions {
-  const databaseUrl = process.env.DATABASE_URL;
+  const taTddDatabaseUrl = process.env.TA_TDD_DATABASE_URL;
   
-  if (databaseUrl) {
-    const urlObj = new URL(databaseUrl);
+  if (taTddDatabaseUrl) {
+    // Production: Parse TA_TDD_DATABASE_URL and replace database name
+    const urlObj = new URL(taTddDatabaseUrl);
     urlObj.pathname = `/${dbName}`;
     return urlObj.toString();
   } else {
+    // Development: Connect to local per-project database
     return {
       host: '127.0.0.1',
       port: 3306,
