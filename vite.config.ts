@@ -27,6 +27,7 @@ export default defineConfig({
   },
   server: {
     host: true,
+    watch: null, // Disable file watching to avoid EMFILE errors
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",

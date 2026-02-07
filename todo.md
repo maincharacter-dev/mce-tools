@@ -194,3 +194,10 @@
 - [x] Update taTddIntegration.ts to use TA_TDD_DATABASE_URL instead of hardcoded connection
 - [ ] Test project creation with shared database access (blocked by sandbox file descriptor limit)
 - [x] Document database credentials setup in README
+
+
+## Disable File Watching to Fix Dev Server
+
+- [x] Update package.json dev script to use tsx without --watch flag
+- [x] Restart dev server and verify it starts successfully
+- [x] Document that manual restart is needed after code changes
