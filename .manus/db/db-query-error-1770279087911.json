@@ -1,8 +1,0 @@
-{
-  "query": "DELETE FROM acc_credentials; DELETE FROM projects;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.405138ace671 --database nTnpyunD5XzV7piz4sZYaw --execute DELETE FROM acc_credentials; DELETE FROM projects;",
-  "returncode": 1,
-  "logs": [
-    "ERROR 1146 (42S02) at line 1: Table 'ntnpyund5xzv7piz4szyaw.acc_credentials' doesn't exist"
-  ]
-}

@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id FROM documents WHERE id LIKE 'doc-%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT id FROM documents WHERE id LIKE 'doc-%' LIMIT 10;",
+  "rows": [
+    {
+      "id": "doc-001-clare-im"
+    },
+    {
+      "id": "doc-002-grid-study"
+    },
+    {
+      "id": "doc-003-geotech"
+    },
+    {
+      "id": "doc-004-planning"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ndoc-001-clare-im\ndoc-002-grid-study\ndoc-003-geotech\ndoc-004-planning\n",
+  "stderr": "",
+  "execution_time_ms": 1567
+}
