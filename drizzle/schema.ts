@@ -32,7 +32,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const projects = mysqlTable("projects", {
   id: int("id").autoincrement().primaryKey(),
   projectName: varchar("projectName", { length: 255 }).notNull(),
-  projectCode: varchar("projectCode", { length: 64 }).notNull().unique(),
+  projectCode: varchar("projectCode", { length: 64 }).notNull(),
   projectType: mysqlEnum("projectType", ["TA_TDD", "OE"]).notNull(),
   phase: varchar("phase", { length: 64 }).notNull().default("Initiation"),
   accProjectId: varchar("accProjectId", { length: 255 }),

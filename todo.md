@@ -228,3 +228,10 @@
 - [x] Remove ACC rename/archive operations from archive mutation
 - [x] Add All/Active/Archived filter tabs to Projects page
 - [x] Filter projects based on selected tab
+
+## Fix Duplicate Key Error on Project Creation
+- [x] Investigate why taTddProjectId constraint is failing
+- [x] Check if taTddProjectId should be unique or allow duplicates
+- [x] Fix schema or project creation logic to handle archived projects
+- [x] Removed unique constraint from projectCode
+- [ ] Test creating new project after archiving
