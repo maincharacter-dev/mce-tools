@@ -40,6 +40,9 @@ export const projects = mysqlTable("projects", {
   // TA/TDD Engine integration
   taTddProjectId: int("taTddProjectId"), // Link to TA/TDD engine project
   taTddDbName: varchar("taTddDbName", { length: 255 }), // Per-project DB name in TA/TDD engine
+  // Archive tracking
+  status: mysqlEnum("status", ["Active", "Archived"]).notNull().default("Active"),
+  archivedAt: timestamp("archivedAt"),
   createdByUserId: int("createdByUserId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

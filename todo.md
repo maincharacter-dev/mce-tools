@@ -210,3 +210,13 @@
 - [ ] Rewrite taTddIntegration.ts to create prefixed tables instead of databases
 - [ ] Update createTaTddProject to use table provisioning logic
 - [ ] Test project creation with table prefix architecture
+
+## Archive Feature
+- [x] Add archive button to project list and detail pages
+- [x] Implement ACC project rename API call (add "[Archived]" suffix)
+- [x] Implement ACC project archive API call
+- [x] Create archiveProject tRPC mutation
+- [x] Update project status to "Archived" in OE Toolkit database
+- [x] Update project status to "Archived" in TA/TDD database
+- [x] Add confirmation dialog before archiving
+- [ ] Test archive workflow end-to-end

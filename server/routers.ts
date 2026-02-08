@@ -203,6 +203,86 @@ export const appRouter = router({
         
         return { success: true };
       }),
+
+    // Archive project
+    archive: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        
+        // Get project
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, input.id))
+          .limit(1);
+        
+        if (!project) {
+          throw new Error("Project not found");
+        }
+        
+        console.log(`[Archive] Archiving project ${project.id}: ${project.projectName}`);
+        
+        // Step 1: If project has ACC integration, update ACC project
+        if (project.accProjectId) {
+          // Get ACC credentials for current user
+          const [creds] = await db
+            .select()
+            .from(accCredentials)
+            .where(eq(accCredentials.userId, ctx.user.id))
+            .limit(1);
+          
+          if (creds) {
+            const { updateACCProjectName, archiveACCProject } = await import('./aps');
+            
+            // Add "[Archived]" to project name if not already present
+            const newName = project.projectName.includes('[Archived]') 
+              ? project.projectName 
+              : `${project.projectName} [Archived]`;
+            
+            try {
+              console.log(`[Archive] Renaming ACC project to: ${newName}`);
+              await updateACCProjectName(creds.accessToken, project.accProjectId, newName);
+              
+              console.log(`[Archive] Setting ACC project status to inactive`);
+              await archiveACCProject(creds.accessToken, project.accProjectId);
+            } catch (error) {
+              console.error('[Archive] Failed to archive ACC project:', error);
+              // Continue with OE Toolkit archive even if ACC fails
+            }
+          }
+        }
+        
+        // Step 2: Archive in OE Toolkit database
+        await db
+          .update(projects)
+          .set({ 
+            status: 'Archived',
+            archivedAt: new Date(),
+          })
+          .where(eq(projects.id, input.id));
+        
+        console.log(`[Archive] ✓ Archived project in OE Toolkit`);
+        
+        // Step 3: Archive in TA/TDD database (if linked)
+        if (project.taTddProjectId) {
+          try {
+            const { archiveTaTddProject } = await import('./taTddIntegration');
+            await archiveTaTddProject(project.taTddProjectId);
+            console.log(`[Archive] ✓ Archived project in TA/TDD engine`);
+          } catch (error) {
+            console.error('[Archive] Failed to archive TA/TDD project:', error);
+            // Continue even if TA/TDD archive fails
+          }
+        }
+        
+        return { success: true };
+      }),
   }),
 });
 

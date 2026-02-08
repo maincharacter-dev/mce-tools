@@ -29,6 +29,13 @@
       "when": 1770371277301,
       "tag": "0003_bright_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1770569102921,
+      "tag": "0004_concerned_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

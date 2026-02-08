@@ -289,3 +289,24 @@ export async function storeAccCredentials(
     await connection.end();
   }
 }
+
+/**
+ * Archive a TA/TDD engine project (set status to Archived)
+ */
+export async function archiveTaTddProject(projectId: number): Promise<void> {
+  const connection = await getTaTddDbConnection();
+
+  try {
+    await connection.execute(
+      `UPDATE projects SET status = 'Archived', updatedAt = NOW() WHERE id = ?`,
+      [projectId]
+    );
+
+    console.log(`[TaTddIntegration] Archived TA/TDD project ${projectId}`);
+  } catch (error) {
+    console.error(`[TaTddIntegration] Failed to archive TA/TDD project:`, error);
+    throw error;
+  } finally {
+    await connection.end();
+  }
+}

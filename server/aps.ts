@@ -1310,3 +1310,72 @@ export async function createFolder(
   console.log('[APS] Created folder:', folderName);
   return data.data;
 }
+
+/**
+ * Update ACC project name (e.g., to add "[Archived]" suffix)
+ */
+export async function updateACCProjectName(
+  accessToken: string,
+  projectId: string,
+  newName: string
+): Promise<any> {
+  console.log('[APS] Updating ACC project name:', { projectId, newName });
+  
+  const response = await fetch(
+    `https://developer.api.autodesk.com/construction/admin/v1/projects/${projectId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: newName,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[APS] updateACCProjectName error:', error);
+    throw new Error(`Failed to update project name: ${error}`);
+  }
+
+  const data = await response.json();
+  console.log('[APS] ✓ Updated project name to:', newName);
+  return data;
+}
+
+/**
+ * Archive ACC project (set status to inactive)
+ */
+export async function archiveACCProject(
+  accessToken: string,
+  projectId: string
+): Promise<any> {
+  console.log('[APS] Archiving ACC project:', projectId);
+  
+  const response = await fetch(
+    `https://developer.api.autodesk.com/construction/admin/v1/projects/${projectId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'inactive',
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[APS] archiveACCProject error:', error);
+    throw new Error(`Failed to archive project: ${error}`);
+  }
+
+  const data = await response.json();
+  console.log('[APS] ✓ Archived ACC project');
+  return data;
+}

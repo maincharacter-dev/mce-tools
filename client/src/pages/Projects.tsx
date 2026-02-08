@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, ExternalLink, Folder } from "lucide-react";
+import { Plus, ExternalLink, Folder, Archive } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -33,6 +33,23 @@ export default function Projects() {
       toast.error(`Failed to create project: ${error.message}`);
     },
   });
+
+  const archiveProject = trpc.projects.archive.useMutation({
+    onSuccess: () => {
+      toast.success("Project archived successfully");
+      utils.projects.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to archive project: ${error.message}`);
+    },
+  });
+
+  const handleArchiveProject = (e: React.MouseEvent, projectId: number, projectName: string) => {
+    e.stopPropagation(); // Prevent card click
+    if (confirm(`Are you sure you want to archive "${projectName}"? This will:\n\n1. Rename the ACC project to add "[Archived]"\n2. Set ACC project status to inactive\n3. Mark the project as archived in OE Toolkit and TA/TDD\n\nYou can still view archived projects, but they will be marked as inactive.`)) {
+      archiveProject.mutate({ id: projectId });
+    }
+  };
 
   const handleCreateProject = () => {
     if (!projectName || !projectCode) {
@@ -181,6 +198,16 @@ export default function Projects() {
                         {project.phase}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Status:</span>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                        project.status === 'Archived' 
+                          ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                          : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                      }`}>
+                        {project.status}
+                      </span>
+                    </div>
                     {project.accProjectId && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-400">ACC:</span>
@@ -190,6 +217,20 @@ export default function Projects() {
                       </div>
                     )}
                   </div>
+                  {project.status !== 'Archived' && (
+                    <div className="mt-4 pt-4 border-t border-slate-700/50">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => handleArchiveProject(e, project.id, project.projectName)}
+                        disabled={archiveProject.isPending}
+                        className="w-full border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+                      >
+                        <Archive className="mr-2 h-4 w-4" />
+                        {archiveProject.isPending ? "Archiving..." : "Archive Project"}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
