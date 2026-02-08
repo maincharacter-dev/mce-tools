@@ -16,6 +16,7 @@ export default function Projects() {
   const [projectName, setProjectName] = useState("");
   const [projectCode, setProjectCode] = useState("");
   const [projectType, setProjectType] = useState<"TA_TDD" | "OE">("TA_TDD");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Archived">("Active");
 
   const utils = trpc.useUtils();
   const { data: projects, isLoading } = trpc.projects.list.useQuery();
@@ -46,7 +47,7 @@ export default function Projects() {
 
   const handleArchiveProject = (e: React.MouseEvent, projectId: number, projectName: string) => {
     e.stopPropagation(); // Prevent card click
-    if (confirm(`Are you sure you want to archive "${projectName}"? This will:\n\n1. Rename the ACC project to add "[Archived]"\n2. Set ACC project status to inactive\n3. Mark the project as archived in OE Toolkit and TA/TDD\n\nYou can still view archived projects, but they will be marked as inactive.`)) {
+    if (confirm(`Are you sure you want to archive "${projectName}"?\n\nThis will mark the project as archived in OE Toolkit and TA/TDD.\n\nNote: ACC projects must be manually renamed and archived in ACC.`)) {
       archiveProject.mutate({ id: projectId });
     }
   };
@@ -144,6 +145,25 @@ export default function Projects() {
         </div>
       </header>
 
+      {/* Filter Tabs */}
+      <div className="container mx-auto px-4 pt-6">
+        <div className="flex gap-2 border-b border-slate-700">
+          {["All", "Active", "Archived"].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setStatusFilter(filter as "All" | "Active" | "Archived")}
+              className={`px-4 py-2 font-medium transition-colors ${
+                statusFilter === filter
+                  ? "text-orange-400 border-b-2 border-orange-400"
+                  : "text-slate-400 hover:text-slate-300"
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Projects Grid */}
       <main className="container mx-auto px-4 py-8">
         {isLoading ? (
@@ -165,7 +185,12 @@ export default function Projects() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {projects
+              .filter((project) => {
+                if (statusFilter === "All") return true;
+                return project.status === statusFilter;
+              })
+              .map((project) => (
               <Card
                 key={project.id}
                 className="bg-slate-900/50 border-slate-700/50 hover:border-orange-500/50 transition-all duration-300 cursor-pointer group"

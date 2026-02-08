@@ -220,3 +220,11 @@
 - [x] Update project status to "Archived" in TA/TDD database
 - [x] Add confirmation dialog before archiving
 - [ ] Test archive workflow end-to-end
+
+## Fix ACC Archive + Add Tabs
+- [x] Add debug logging to archive mutation to see why ACC operations skipped
+- [x] Research correct ACC API endpoints for updating project name and status
+- [x] Confirmed ACC API doesn't support updating project properties
+- [x] Remove ACC rename/archive operations from archive mutation
+- [x] Add All/Active/Archived filter tabs to Projects page
+- [x] Filter projects based on selected tab

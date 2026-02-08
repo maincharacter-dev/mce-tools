@@ -227,38 +227,9 @@ export const appRouter = router({
         }
         
         console.log(`[Archive] Archiving project ${project.id}: ${project.projectName}`);
+        console.log(`[Archive] Note: ACC projects must be manually renamed and archived in ACC`);
         
-        // Step 1: If project has ACC integration, update ACC project
-        if (project.accProjectId) {
-          // Get ACC credentials for current user
-          const [creds] = await db
-            .select()
-            .from(accCredentials)
-            .where(eq(accCredentials.userId, ctx.user.id))
-            .limit(1);
-          
-          if (creds) {
-            const { updateACCProjectName, archiveACCProject } = await import('./aps');
-            
-            // Add "[Archived]" to project name if not already present
-            const newName = project.projectName.includes('[Archived]') 
-              ? project.projectName 
-              : `${project.projectName} [Archived]`;
-            
-            try {
-              console.log(`[Archive] Renaming ACC project to: ${newName}`);
-              await updateACCProjectName(creds.accessToken, project.accProjectId, newName);
-              
-              console.log(`[Archive] Setting ACC project status to inactive`);
-              await archiveACCProject(creds.accessToken, project.accProjectId);
-            } catch (error) {
-              console.error('[Archive] Failed to archive ACC project:', error);
-              // Continue with OE Toolkit archive even if ACC fails
-            }
-          }
-        }
-        
-        // Step 2: Archive in OE Toolkit database
+        // Step 1: Archive in OE Toolkit database
         await db
           .update(projects)
           .set({ 
@@ -269,7 +240,7 @@ export const appRouter = router({
         
         console.log(`[Archive] ✓ Archived project in OE Toolkit`);
         
-        // Step 3: Archive in TA/TDD database (if linked)
+        // Step 2: Archive in TA/TDD database (if linked)
         if (project.taTddProjectId) {
           try {
             const { archiveTaTddProject } = await import('./taTddIntegration');
