@@ -99,6 +99,16 @@ export default function ProcessingStatus() {
     },
   });
 
+  const clearLogsMutation = trpc.processing.clearLogs.useMutation({
+    onSuccess: () => {
+      refetchLogs();
+      toast.success("Console cleared");
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to clear logs: ${error.message}`);
+    },
+  });
+
   const retryJobMutation = trpc.processing.retryJob.useMutation({
     onSuccess: () => {
       toast.success("Job queued for retry");
@@ -356,7 +366,21 @@ export default function ProcessingStatus() {
             </div>
             <div className="flex items-center gap-2">
               {logs && logs.length > 0 && (
-                <span className="text-xs text-slate-400">{logs.length} log entries</span>
+                <>
+                  <span className="text-xs text-slate-400">{logs.length} log entries</span>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (projectId) clearLogsMutation.mutate({ projectId: String(projectId) });
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700"
+                    disabled={clearLogsMutation.isPending}
+                  >
+                    Clear
+                  </Button>
+                </>
               )}
               {consoleExpanded ? (
                 <ChevronUp className="h-5 w-5 text-slate-400" />

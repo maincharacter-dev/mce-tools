@@ -873,6 +873,17 @@ export const appRouter = router({
             
             console.log(`[ProcessNext] Lock acquired for ${doc.id} (affectedRows: ${updateResult.affectedRows})`);
             
+            // Clear old processing logs from previous jobs to give a fresh console
+            try {
+              await projectDb.execute(
+                `DELETE FROM processingLogs WHERE documentId != ?`,
+                [doc.id]
+              );
+              console.log(`[ProcessNext] Cleared old processing logs`);
+            } catch (clearErr) {
+              console.error(`[ProcessNext] Failed to clear old logs:`, clearErr);
+            }
+            
             // Get the document's fileName for the job object
             const [docDetails] = await projectDb.execute(
               `SELECT fileName FROM documents WHERE id = ?`,
@@ -1246,6 +1257,19 @@ export const appRouter = router({
           await connection.end();
         }
       }),
+    clearLogs: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .mutation(async ({ input }) => {
+        const projectIdNum = parseInt(input.projectId);
+        const connection = await createProjectDbConnection(projectIdNum);
+        try {
+          await connection.execute(`DELETE FROM processingLogs`);
+          return { success: true };
+        } finally {
+          await connection.end();
+        }
+      }),
+
     retryJob: protectedProcedure
       .input(z.object({ projectId: z.string(), jobId: z.number() }))
       .mutation(async ({ input }) => {

@@ -11,8 +11,11 @@ export function getTableName(dbName: string, tableName: string): string {
 }
 
 /**
- * Create all project tables with the given prefix in the main database
- * @param dbName - The project database name to use as prefix
+ * @deprecated Use provisionProjectTables() from project-table-provisioner.ts instead
+ * This function is kept for backward compatibility only
+ * 
+ * Creates project-specific tables with table prefix architecture
+ * @param dbName - Project database name (e.g., "proj_150004")
  * @returns true if successful, false otherwise
  */
 export async function createProjectTables(dbName: string): Promise<boolean> {
@@ -32,7 +35,7 @@ export async function createProjectTables(dbName: string): Promise<boolean> {
         fileSizeBytes BIGINT NOT NULL,
         fileHash VARCHAR(64),
         documentType VARCHAR(100),
-        uploadDate DATETIME NOT NULL,
+        uploadDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         status VARCHAR(50) NOT NULL DEFAULT 'uploaded',
         extractedText LONGTEXT,
         pageCount INT,
@@ -102,6 +105,7 @@ export async function createProjectTables(dbName: string): Promise<boolean> {
         document_id VARCHAR(255) NOT NULL,
         job_type VARCHAR(100) NOT NULL,
         status VARCHAR(50) NOT NULL DEFAULT 'queued',
+        stage VARCHAR(100) DEFAULT 'queued',
         started_at DATETIME,
         completed_at DATETIME,
         error_message TEXT,

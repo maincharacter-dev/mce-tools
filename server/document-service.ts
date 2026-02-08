@@ -243,8 +243,8 @@ export async function uploadDocument(
     // Use table prefix for project-specific documents table
     const tableName = `proj_${projectId}_documents`;
     await connection.execute(
-      `INSERT INTO ${tableName} (id, fileName, filePath, fileSizeBytes, fileHash, documentType, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ${tableName} (id, fileName, filePath, fileSizeBytes, fileHash, documentType, uploadDate, status)
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)`,
       [metadata.id, fileName, metadata.filePath, fileSize, metadata.fileHash, documentType, 'Uploaded']
     );
   } finally {

@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE proj_390002_processing_jobs ADD COLUMN stage VARCHAR(100) DEFAULT 'queued' AFTER status;\nALTER TABLE proj_390005_processing_jobs ADD COLUMN stage VARCHAR(100) DEFAULT 'queued' AFTER status;\nALTER TABLE proj_390006_processing_jobs ADD COLUMN stage VARCHAR(100) DEFAULT 'queued' AFTER status;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute ALTER TABLE proj_390002_processing_jobs ADD COLUMN stage VARCHAR(100) DEFAULT 'queued' AFTER status;\nALTER TABLE proj_390005_processing_jobs ADD COLUMN stage VARCHAR(100) DEFAULT 'queued' AFTER status;\nALTER TABLE proj_390006_processing_jobs ADD COLUMN stage VARCHAR(100) DEFAULT 'queued' AFTER status;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3368
+}

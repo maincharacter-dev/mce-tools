@@ -1,0 +1,31 @@
+{
+  "query": "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_TYPE \nFROM INFORMATION_SCHEMA.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nAND COLUMN_NAME = 'uploadDate'\nORDER BY TABLE_NAME",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_TYPE \nFROM INFORMATION_SCHEMA.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nAND COLUMN_NAME = 'uploadDate'\nORDER BY TABLE_NAME",
+  "rows": [
+    {
+      "TABLE_NAME": "proj_390002_documents",
+      "COLUMN_NAME": "uploadDate",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "COLUMN_TYPE": "datetime"
+    },
+    {
+      "TABLE_NAME": "proj_390005_documents",
+      "COLUMN_NAME": "uploadDate",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "COLUMN_TYPE": "datetime"
+    },
+    {
+      "TABLE_NAME": "proj_390006_documents",
+      "COLUMN_NAME": "uploadDate",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "COLUMN_TYPE": "datetime"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tCOLUMN_NAME\tIS_NULLABLE\tCOLUMN_DEFAULT\tCOLUMN_TYPE\nproj_390002_documents\tuploadDate\tNO\tNULL\tdatetime\nproj_390005_documents\tuploadDate\tNO\tNULL\tdatetime\nproj_390006_documents\tuploadDate\tNO\tNULL\tdatetime\n",
+  "stderr": "",
+  "execution_time_ms": 1860
+}

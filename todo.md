@@ -1657,3 +1657,22 @@
 - [x] Fixed JSON parsing issue - MySQL returns parsed objects, code was trying to JSON.parse again
 - [x] Weather files from ACC sync now properly detected and parsed during consolidation
 - [x] Created comprehensive documentation (docs/CONSOLIDATION_FIXES_2026-02-04.md)
+
+
+## Upload & Processing Status Fixes (Feb 9, 2026)
+- [x] Fix "Upload failed - upload date has no default" error during document upload
+- [x] Clear processing status terminal at start of a new processing job
+- [x] Add clearLogs mutation and Clear Console button to ProcessingStatus page
+- [x] Fix document-service.ts INSERT to include uploadDate column
+- [x] Fix table-prefix-helper uploadDate column to have DEFAULT CURRENT_TIMESTAMP
+- [x] Fix existing project tables (390002, 390005, 390006) with ALTER TABLE
+- [x] Add missing stage column to processing_jobs tables (390002, 390005, 390006)
+
+
+## Project Creation Standardization (Feb 9, 2026)
+- [x] Audit all project creation paths (table-prefix-helper, project-table-provisioner, external tools)
+- [x] Identify schema differences between table-prefix-helper and db-project-schema.sql
+- [x] Update table-prefix-helper to match db-project-schema.sql exactly (added stage column)
+- [x] Mark table-prefix-helper as deprecated
+- [x] Document the single source of truth for project schema (docs/PROJECT_CREATION_STANDARD.md)
+- [x] Fix existing projects with schema mismatches (added stage column to 390002, 390005, 390006)
