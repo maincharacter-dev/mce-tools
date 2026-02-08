@@ -47,16 +47,17 @@ export function getTableName(projectId: number, tableName: string): string {
 export async function createTaTddProject(data: {
   name: string;
   description?: string;
-  projectType: string;
+  createdByUserId: number;
 }): Promise<{ id: number; dbName: string }> {
   const connection = await getTaTddDbConnection();
 
   try {
     // Insert project into TA/TDD projects table
+    // Note: dbName is set to empty string initially, then updated after we get the project ID
     const [result] = await connection.execute(
-      `INSERT INTO projects (name, description, project_type, db_name, created_at, updated_at)
-       VALUES (?, ?, ?, '', NOW(), NOW())`,
-      [data.name, data.description || '', data.projectType]
+      `INSERT INTO projects (name, description, dbName, createdByUserId, createdAt, updatedAt)
+       VALUES (?, ?, '', ?, NOW(), NOW())`,
+      [data.name, data.description || '', data.createdByUserId]
     ) as any;
 
     const projectId = Number(result.insertId);
@@ -64,7 +65,7 @@ export async function createTaTddProject(data: {
 
     // Update the dbName field
     await connection.execute(
-      `UPDATE projects SET db_name = ?, updated_at = NOW() WHERE id = ?`,
+      `UPDATE projects SET dbName = ?, updatedAt = NOW() WHERE id = ?`,
       [dbName, projectId]
     );
 

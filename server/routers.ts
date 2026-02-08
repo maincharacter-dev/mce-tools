@@ -77,7 +77,7 @@ export const appRouter = router({
         const { id: taTddProjectId, dbName: taTddDbName } = await createTaTddProject({
           name: input.projectName,
           description: input.description,
-          projectType: input.projectType,
+          createdByUserId: ctx.user.id, // Use the authenticated user's ID
         });
         
         console.log(`[Project Creation] Created TA/TDD project ${taTddProjectId} with DB ${taTddDbName}`);
