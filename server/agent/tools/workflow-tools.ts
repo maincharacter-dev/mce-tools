@@ -30,7 +30,7 @@ export const getWorkflowStatusTool: ToolDefinition = {
 
     // Check document ingestion workflow
     if (workflow === "document_ingestion" || workflow === "all") {
-      const [docStats] = await context.projectDb.execute(
+      const result = await context.projectDb.execute(
         `SELECT 
           COUNT(*) as total,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
@@ -38,55 +38,55 @@ export const getWorkflowStatusTool: ToolDefinition = {
           SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
          FROM documents 
          WHERE project_id = ?`,
-        [context.projectId]
-      );
+        [context.projectId]);
+      const docStats = result[0] as any[];
 
       status.document_ingestion = {
-        total: (docStats as any[])[0]?.total || 0,
-        completed: (docStats as any[])[0]?.completed || 0,
-        processing: (docStats as any[])[0]?.processing || 0,
-        failed: (docStats as any[])[0]?.failed || 0,
-        status: (docStats as any[])[0]?.processing > 0 ? "in_progress" : "complete",
+        total: docStats[0]?.total || 0,
+        completed: docStats[0]?.completed || 0,
+        processing: docStats[0]?.processing || 0,
+        failed: docStats[0]?.failed || 0,
+        status: docStats[0]?.processing > 0 ? "in_progress" : "complete",
       };
     }
 
     // Check fact extraction workflow
     if (workflow === "fact_extraction" || workflow === "all") {
-      const [factStats] = await context.projectDb.execute(
+      const result = await context.projectDb.execute(
         `SELECT 
           COUNT(*) as total,
           SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified,
           COUNT(DISTINCT category) as categories
          FROM extracted_facts 
          WHERE project_id = ?`,
-        [context.projectId]
-      );
+        [context.projectId]);
+      const factStats = result[0] as any[];
 
-      const totalFacts = (factStats as any[])[0]?.total || 0;
-      const verifiedFacts = (factStats as any[])[0]?.verified || 0;
+      const totalFacts = factStats[0]?.total || 0;
+      const verifiedFacts = factStats[0]?.verified || 0;
 
       status.fact_extraction = {
         total: totalFacts,
         verified: verifiedFacts,
         unverified: totalFacts - verifiedFacts,
-        categories: (factStats as any[])[0]?.categories || 0,
+        categories: factStats[0]?.categories || 0,
         status: totalFacts === 0 ? "not_started" : verifiedFacts === totalFacts ? "complete" : "in_progress",
       };
     }
 
     // Check deliverables preparation
     if (workflow === "deliverables_prep" || workflow === "all") {
-      const [redFlagStats] = await context.projectDb.execute(
+      const result = await context.projectDb.execute(
         `SELECT 
           COUNT(*) as total,
           SUM(CASE WHEN mitigated = 1 THEN 1 ELSE 0 END) as mitigated
          FROM red_flags 
          WHERE project_id = ?`,
-        [context.projectId]
-      );
+        [context.projectId]);
+      const redFlagStats = result[0] as any[];
 
-      const totalRedFlags = (redFlagStats as any[])[0]?.total || 0;
-      const mitigatedRedFlags = (redFlagStats as any[])[0]?.mitigated || 0;
+      const totalRedFlags = redFlagStats[0]?.total || 0;
+      const mitigatedRedFlags = redFlagStats[0]?.mitigated || 0;
 
       status.deliverables_prep = {
         redFlags: {
@@ -135,15 +135,15 @@ export const suggestNextActionsTool: ToolDefinition = {
     }> = [];
 
     // Check for documents that need processing
-    const [unprocessedDocs] = await context.projectDb.execute(
+    const result1 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM documents 
        WHERE project_id = ? AND status IN ('uploaded', 'failed')`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const unprocessedDocs = result1[0] as any[];
 
-    if ((unprocessedDocs as any[])[0]?.count > 0) {
+    if (unprocessedDocs[0]?.count > 0) {
       suggestions.push({
-        action: `Process ${(unprocessedDocs as any[])[0].count} pending documents`,
+        action: `Process ${unprocessedDocs[0].count} pending documents`,
         reason: "Documents are uploaded but not yet processed for fact extraction",
         priority: "high",
         category: "document_processing",
@@ -151,15 +151,15 @@ export const suggestNextActionsTool: ToolDefinition = {
     }
 
     // Check for unverified facts
-    const [unverifiedFacts] = await context.projectDb.execute(
+    const result2 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM extracted_facts 
        WHERE project_id = ? AND verified = 0`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const unverifiedFacts = result2[0] as any[];
 
-    if ((unverifiedFacts as any[])[0]?.count > 0) {
+    if (unverifiedFacts[0]?.count > 0) {
       suggestions.push({
-        action: `Verify ${(unverifiedFacts as any[])[0].count} extracted facts`,
+        action: `Verify ${unverifiedFacts[0].count} extracted facts`,
         reason: "Facts have been extracted but need verification for accuracy",
         priority: "medium",
         category: "fact_verification",
@@ -167,15 +167,15 @@ export const suggestNextActionsTool: ToolDefinition = {
     }
 
     // Check for high-severity red flags
-    const [criticalRedFlags] = await context.projectDb.execute(
+    const result3 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM red_flags 
        WHERE project_id = ? AND severity IN ('critical', 'high') AND mitigated = 0`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const criticalRedFlags = result3[0] as any[];
 
-    if ((criticalRedFlags as any[])[0]?.count > 0) {
+    if (criticalRedFlags[0]?.count > 0) {
       suggestions.push({
-        action: `Address ${(criticalRedFlags as any[])[0].count} critical/high-severity red flags`,
+        action: `Address ${criticalRedFlags[0].count} critical/high-severity red flags`,
         reason: "High-priority risks need mitigation strategies",
         priority: "high",
         category: "risk_mitigation",
@@ -183,12 +183,12 @@ export const suggestNextActionsTool: ToolDefinition = {
     }
 
     // Check if project has minimal data
-    const [factCount] = await context.projectDb.execute(
+    const result4 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM extracted_facts WHERE project_id = ?`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const factCount = result4[0] as any[];
 
-    if ((factCount as any[])[0]?.count < 10) {
+    if (factCount[0]?.count < 10) {
       suggestions.push({
         action: "Upload more project documents",
         reason: "Project has limited data for comprehensive analysis",
@@ -198,12 +198,12 @@ export const suggestNextActionsTool: ToolDefinition = {
     }
 
     // Check for missing critical fact categories
-    const [categories] = await context.projectDb.execute(
+    const result5 = await context.projectDb.execute(
       `SELECT DISTINCT category FROM extracted_facts WHERE project_id = ?`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const categories = result5[0] as any[];
 
-    const existingCategories = (categories as any[]).map((c) => c.category);
+    const existingCategories = categories.map((c: any) => c.category);
     const criticalCategories = ["technical", "financial", "location", "performance"];
     const missingCategories = criticalCategories.filter(
       (c) => !existingCategories.includes(c)
@@ -294,13 +294,13 @@ export const identifyMissingDataTool: ToolDefinition = {
       const fields = expectedFields[cat] || [];
 
       for (const { field, importance } of fields) {
-        const [result] = await context.projectDb.execute(
+        const queryResult = await context.projectDb.execute(
           `SELECT COUNT(*) as count FROM extracted_facts 
            WHERE project_id = ? AND category = ? AND \`key\` = ?`,
-          [context.projectId, cat, field]
-        );
+          [context.projectId, cat, field]);
+        const result = queryResult[0] as any[];
 
-        if ((result as any[])[0]?.count === 0) {
+        if (result[0]?.count === 0) {
           missingData.push({
             category: cat,
             field,
@@ -349,11 +349,11 @@ export const validateProjectCompletenessTool: ToolDefinition = {
     };
 
     // Check 1: Documents uploaded (20 points)
-    const [docCount] = await context.projectDb.execute(
+    const result1 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM documents WHERE project_id = ?`,
-      [context.projectId]
-    );
-    const docs = (docCount as any[])[0]?.count || 0;
+      [context.projectId]);
+    const docCount = result1[0] as any[];
+    const docs = docCount[0]?.count || 0;
     const docScore = Math.min(20, docs * 5);
     validation.checks.push({
       name: "Documents uploaded",
@@ -365,11 +365,11 @@ export const validateProjectCompletenessTool: ToolDefinition = {
     validation.score += docScore;
 
     // Check 2: Facts extracted (30 points)
-    const [factCount] = await context.projectDb.execute(
+    const result2 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM extracted_facts WHERE project_id = ?`,
-      [context.projectId]
-    );
-    const facts = (factCount as any[])[0]?.count || 0;
+      [context.projectId]);
+    const factCount = result2[0] as any[];
+    const facts = factCount[0]?.count || 0;
     const factScore = Math.min(30, facts * 2);
     validation.checks.push({
       name: "Facts extracted",
@@ -381,11 +381,11 @@ export const validateProjectCompletenessTool: ToolDefinition = {
     validation.score += factScore;
 
     // Check 3: Critical categories present (25 points)
-    const [categories] = await context.projectDb.execute(
+    const result3 = await context.projectDb.execute(
       `SELECT DISTINCT category FROM extracted_facts WHERE project_id = ?`,
-      [context.projectId]
-    );
-    const existingCategories = (categories as any[]).map((c) => c.category);
+      [context.projectId]);
+    const categories = result3[0] as any[];
+    const existingCategories = categories.map((c: any) => c.category);
     const criticalCategories = ["technical", "financial", "location"];
     const presentCategories = criticalCategories.filter((c) =>
       existingCategories.includes(c)
@@ -401,11 +401,11 @@ export const validateProjectCompletenessTool: ToolDefinition = {
     validation.score += Math.round(categoryScore);
 
     // Check 4: Red flags identified (15 points)
-    const [redFlagCount] = await context.projectDb.execute(
+    const result4 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM red_flags WHERE project_id = ?`,
-      [context.projectId]
-    );
-    const redFlags = (redFlagCount as any[])[0]?.count || 0;
+      [context.projectId]);
+    const redFlagCount = result4[0] as any[];
+    const redFlags = redFlagCount[0]?.count || 0;
     const redFlagScore = Math.min(15, redFlags * 5);
     validation.checks.push({
       name: "Red flags identified",
@@ -417,11 +417,11 @@ export const validateProjectCompletenessTool: ToolDefinition = {
     validation.score += redFlagScore;
 
     // Check 5: Facts verified (10 points)
-    const [verifiedCount] = await context.projectDb.execute(
+    const result5 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM extracted_facts WHERE project_id = ? AND verified = 1`,
-      [context.projectId]
-    );
-    const verified = (verifiedCount as any[])[0]?.count || 0;
+      [context.projectId]);
+    const verifiedCount = result5[0] as any[];
+    const verified = verifiedCount[0]?.count || 0;
     const verificationRate = facts > 0 ? (verified / facts) * 10 : 0;
     validation.checks.push({
       name: "Facts verified",

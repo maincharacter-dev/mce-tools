@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { invokeLLM } from "../_core/llm";
 import {
@@ -45,32 +45,33 @@ export class LearningEngine {
     feedback?: string
   ): Promise<void> {
     // Get the original generated content
-    const [rows] = await this.db.execute(
-      `SELECT * FROM agent_generated_content WHERE id = ?`,
-      [contentId]
-    );
-
-    const generated = (rows as any[])[0];
+    const [generated] = await this.db
+      .select()
+      .from(agentGeneratedContent)
+      .where(eq(agentGeneratedContent.id, contentId));
     if (!generated) {
       throw new Error(`Generated content ${contentId} not found`);
     }
 
     // Update the generated content record
-    await this.db.execute(
-      `UPDATE agent_generated_content 
-       SET final_content = ?, accepted = ?, feedback = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [finalContent, finalContent === generated.generated_content, feedback, contentId]
-    );
+    await this.db
+      .update(agentGeneratedContent)
+      .set({
+        finalContent,
+        accepted: finalContent === generated.generatedContent,
+        feedback,
+        updatedAt: new Date(),
+      })
+      .where(eq(agentGeneratedContent.id, contentId));
 
     // If content was accepted without changes, no learning needed
-    if (finalContent === generated.generated_content) {
+    if (finalContent === generated.generatedContent) {
       return;
     }
 
     // Analyze the edit
     const analysis = await this.analyzeEdit(
-      generated.generated_content,
+      generated.generatedContent,
       finalContent
     );
 
@@ -78,10 +79,10 @@ export class LearningEngine {
     const sampleId = uuidv4();
     await this.db.insert(agentLearningSamples).values({
       id: sampleId,
-      userId: generated.user_id,
-      projectId: generated.project_id,
-      contentType: generated.content_type,
-      draftContent: generated.generated_content,
+      userId: generated.userId,
+      projectId: generated.projectId,
+      contentType: generated.contentType,
+      draftContent: generated.generatedContent,
       finalContent,
       extractedPatterns: {
         addedPhrases: analysis.addedPhrases,
@@ -94,7 +95,7 @@ export class LearningEngine {
     });
 
     // Update style model
-    await this.updateStyleModel(generated.user_id, analysis);
+    await this.updateStyleModel(generated.userId, analysis);
   }
 
   /**
@@ -203,12 +204,12 @@ Provide your analysis in JSON format.`;
     analysis: EditAnalysis
   ): Promise<void> {
     // Get current style model
-    const [rows] = await this.db.execute(
-      `SELECT * FROM agent_style_models WHERE user_id = ? ORDER BY version DESC LIMIT 1`,
-      [userId]
-    );
-
-    const currentModel = (rows as any[])[0];
+    const [currentModel] = await this.db
+      .select()
+      .from(agentStyleModels)
+      .where(eq(agentStyleModels.userId, userId))
+      .orderBy(desc(agentStyleModels.version))
+      .limit(1);
 
     // Extract patterns from analysis
     const newPatterns = await this.extractPatterns(analysis);
@@ -216,7 +217,7 @@ Provide your analysis in JSON format.`;
     if (currentModel) {
       // Merge with existing patterns
       const mergedPatterns = this.mergePatterns(
-        currentModel.patterns,
+        currentModel.patterns as StylePatterns || {} as StylePatterns,
         newPatterns
       );
 
@@ -234,12 +235,15 @@ Provide your analysis in JSON format.`;
         stats.totalEdits;
 
       // Update existing model
-      await this.db.execute(
-        `UPDATE agent_style_models 
-         SET patterns = ?, statistics = ?, version = version + 1, updated_at = NOW()
-         WHERE user_id = ?`,
-        [JSON.stringify(mergedPatterns), JSON.stringify(stats), userId]
-      );
+      await this.db
+        .update(agentStyleModels)
+        .set({
+          patterns: mergedPatterns,
+          statistics: stats,
+          version: sql`${agentStyleModels.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(agentStyleModels.userId, userId));
     } else {
       // Create new style model
       const modelId = uuidv4();
@@ -330,13 +334,14 @@ Provide your analysis in JSON format.`;
    * Get user's current style model
    */
   async getStyleModel(userId: number): Promise<StylePatterns | null> {
-    const [rows] = await this.db.execute(
-      `SELECT patterns FROM agent_style_models WHERE user_id = ? ORDER BY version DESC LIMIT 1`,
-      [userId]
-    );
+    const [model] = await this.db
+      .select({ patterns: agentStyleModels.patterns })
+      .from(agentStyleModels)
+      .where(eq(agentStyleModels.userId, userId))
+      .orderBy(desc(agentStyleModels.version))
+      .limit(1);
 
-    const model = (rows as any[])[0];
-    return model ? model.patterns : null;
+    return model ? model.patterns as StylePatterns : null;
   }
 
   /**
@@ -349,12 +354,15 @@ Provide your analysis in JSON format.`;
     improvementScore: number;
     styleModelVersion: number;
   }> {
-    const [rows] = await this.db.execute(
-      `SELECT statistics, version FROM agent_style_models WHERE user_id = ? ORDER BY version DESC LIMIT 1`,
-      [userId]
-    );
-
-    const model = (rows as any[])[0];
+    const [model] = await this.db
+      .select({
+        statistics: agentStyleModels.statistics,
+        version: agentStyleModels.version,
+      })
+      .from(agentStyleModels)
+      .where(eq(agentStyleModels.userId, userId))
+      .orderBy(desc(agentStyleModels.version))
+      .limit(1);
     if (!model) {
       return {
         totalEdits: 0,
@@ -365,8 +373,12 @@ Provide your analysis in JSON format.`;
       };
     }
 
+    const stats = model.statistics as any || {};
     return {
-      ...model.statistics,
+      totalEdits: stats.totalEdits || 0,
+      totalGenerations: stats.totalGenerations || 0,
+      averageEditDistance: stats.averageEditDistance || 0,
+      improvementScore: stats.improvementScore || 0,
       styleModelVersion: model.version,
     };
   }
@@ -378,14 +390,13 @@ Provide your analysis in JSON format.`;
     userId: number,
     limit: number = 10
   ): Promise<any[]> {
-    const [rows] = await this.db.execute(
-      `SELECT * FROM agent_learning_samples 
-       WHERE user_id = ? 
-       ORDER BY created_at DESC 
-       LIMIT ?`,
-      [userId, limit]
-    );
+    const rows = await this.db
+      .select()
+      .from(agentLearningSamples)
+      .where(eq(agentLearningSamples.userId, userId))
+      .orderBy(desc(agentLearningSamples.createdAt))
+      .limit(limit);
 
-    return rows as any[];
+    return rows;
   }
 }

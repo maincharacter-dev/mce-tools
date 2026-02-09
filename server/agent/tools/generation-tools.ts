@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
+import { eq, desc } from "drizzle-orm";
 import { invokeLLM } from "../../_core/llm";
 import type { ToolDefinition } from "../tool-executor";
-import { agentGeneratedContent } from "../schema";
+import { agentGeneratedContent, agentStyleModels } from "../schema";
 
 /**
  * Content Generation Tools
@@ -44,29 +45,30 @@ export const generateRiskNarrativeTool: ToolDefinition = {
     // Get the fact or red flag details
     let subject: any;
     if (args.factId) {
-      const [rows] = await context.projectDb.execute(
+      const result = await context.projectDb.execute(
         `SELECT * FROM extracted_facts WHERE id = ? AND project_id = ?`,
-        [args.factId, context.projectId]
-      );
-      subject = (rows as any[])[0];
+        [args.factId, context.projectId]);
+      const rows = result[0] as any[];
+      subject = rows[0];
       if (!subject) throw new Error(`Fact ${args.factId} not found`);
     } else if (args.redFlagId) {
-      const [rows] = await context.projectDb.execute(
+      const result = await context.projectDb.execute(
         `SELECT * FROM red_flags WHERE id = ? AND project_id = ?`,
-        [args.redFlagId, context.projectId]
-      );
-      subject = (rows as any[])[0];
+        [args.redFlagId, context.projectId]);
+      const rows = result[0] as any[];
+      subject = rows[0];
       if (!subject) throw new Error(`Red flag ${args.redFlagId} not found`);
     } else {
       throw new Error("Either factId or redFlagId must be provided");
     }
 
     // Get user's style model (if available)
-    const [styleRows] = await context.db.execute(
-      `SELECT * FROM agent_style_models WHERE user_id = ? ORDER BY version DESC LIMIT 1`,
-      [context.userId]
-    );
-    const styleModel = (styleRows as any[])[0];
+    const [styleModel] = await context.db
+      .select()
+      .from(agentStyleModels)
+      .where(eq(agentStyleModels.userId, context.userId))
+      .orderBy(desc(agentStyleModels.version))
+      .limit(1);
 
     // Build the prompt
     const tone = args.tone || "technical";
@@ -171,27 +173,27 @@ export const generateProjectSummaryTool: ToolDefinition = {
       : ["overview", "risks", "key_facts"];
 
     // Gather project data
-    const [facts] = await context.projectDb.execute(
+    const result1 = await context.projectDb.execute(
       `SELECT category, \`key\`, value FROM extracted_facts WHERE project_id = ? LIMIT 100`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const facts = result1[0] as any[];
 
-    const [redFlags] = await context.projectDb.execute(
+    const result2 = await context.projectDb.execute(
       `SELECT category, title, severity FROM red_flags WHERE project_id = ? ORDER BY 
        CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const redFlags = result2[0] as any[];
 
-    const [documents] = await context.projectDb.execute(
+    const result3 = await context.projectDb.execute(
       `SELECT document_type, COUNT(*) as count FROM documents WHERE project_id = ? GROUP BY document_type`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const documents = result3[0] as any[];
 
     // Build prompt
     let prompt = `Generate a ${format} project summary based on the following data:\n\n`;
     prompt += `Focus areas: ${focusAreas.join(", ")}\n\n`;
     prompt += `Documents: ${JSON.stringify(documents, null, 2)}\n\n`;
-    prompt += `Key Facts (sample): ${JSON.stringify((facts as any[]).slice(0, 20), null, 2)}\n\n`;
+    prompt += `Key Facts (sample): ${JSON.stringify(facts.slice(0, 20), null, 2)}\n\n`;
     prompt += `Red Flags: ${JSON.stringify(redFlags, null, 2)}\n\n`;
     prompt += `Generate a well-structured summary that covers the requested focus areas.`;
 
@@ -234,8 +236,8 @@ export const generateProjectSummaryTool: ToolDefinition = {
       metadata: {
         format,
         focusAreas,
-        factCount: (facts as any[]).length,
-        redFlagCount: (redFlags as any[]).length,
+        factCount: facts.length,
+        redFlagCount: redFlags.length,
         tokens: response.usage?.total_tokens,
       },
     };
@@ -276,7 +278,8 @@ export const generateTechnicalSpecificationTool: ToolDefinition = {
 
     query += ` ORDER BY category, \`key\``;
 
-    const [facts] = await context.projectDb.execute(query, params);
+    const result = await context.projectDb.execute(query, params);
+    const facts = result[0] as any[];
 
     // Build prompt
     let prompt = `Generate a technical specification document based on these facts:\n\n`;
@@ -329,7 +332,7 @@ export const generateTechnicalSpecificationTool: ToolDefinition = {
       metadata: {
         category: args.category,
         includeCalculations: args.includeCalculations === "true",
-        factCount: (facts as any[]).length,
+        factCount: facts.length,
         tokens: response.usage?.total_tokens,
       },
     };

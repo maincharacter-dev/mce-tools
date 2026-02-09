@@ -43,9 +43,9 @@ export class ProjectDbConnection {
   /**
    * Execute a query with automatic table prefix transformation
    */
-  async execute(query: string, values?: any): Promise<any> {
+  async execute(query: string, values?: any): Promise<[any, any]> {
     const transformedQuery = this.transformQuery(query);
-    return await this.connection.execute(transformedQuery, values);
+    return await this.connection.execute(transformedQuery, values) as [any, any];
   }
 
   /**
@@ -103,9 +103,9 @@ export class ProjectDbPool {
   /**
    * Execute a query with automatic table prefix transformation
    */
-  async execute(query: string, values?: any): Promise<any> {
+  async execute(query: string, values?: any): Promise<[any, any]> {
     const transformedQuery = this.transformQuery(query);
-    return await this.pool.execute(transformedQuery, values);
+    return await this.pool.execute(transformedQuery, values) as [any, any];
   }
 
   /**

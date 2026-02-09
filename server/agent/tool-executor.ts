@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import type { MySql2Database } from "drizzle-orm/mysql2";
+import type { ProjectDbPool } from "../project-db-wrapper";
 import { agentActions, type InsertAgentAction } from "./schema";
 import type { Tool } from "../_core/llm";
 
@@ -30,7 +31,7 @@ export interface ToolExecutionContext {
   projectId: number;
   conversationId?: string;
   db: MySql2Database<any>;
-  projectDb?: MySql2Database<any>;
+  projectDb?: ProjectDbPool;
 }
 
 export interface ToolExecutionResult {

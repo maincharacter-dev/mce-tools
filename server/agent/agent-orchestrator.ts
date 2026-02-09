@@ -1,5 +1,6 @@
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { invokeLLM, type Message, type ToolCall } from "../_core/llm";
+import type { ProjectDbPool } from "../project-db-wrapper";
 import { ConversationManager } from "./conversation-manager";
 import { ToolExecutor, type ToolExecutionContext } from "./tool-executor";
 import { LearningEngine } from "./learning-engine";
@@ -34,6 +35,7 @@ export interface AgentResponse {
   conversationId: string;
   message: string;
   toolCalls?: Array<{
+    id: string;
     name: string;
     arguments: Record<string, unknown>;
     result: unknown;
@@ -53,7 +55,7 @@ export class AgentOrchestrator {
 
   constructor(
     private db: MySql2Database<any>,
-    private getProjectDb: (projectId: number) => Promise<MySql2Database<any>>
+    private getProjectDb: (projectId: number) => Promise<ProjectDbPool>
   ) {
     this.conversationManager = new ConversationManager(db);
     this.toolExecutor = new ToolExecutor(db);
@@ -129,6 +131,7 @@ export class AgentOrchestrator {
       const assistantMessage = llmResponse.choices[0].message;
       let responseContent = assistantMessage.content as string;
       const toolCallResults: Array<{
+        id: string;
         name: string;
         arguments: Record<string, unknown>;
         result: unknown;
@@ -154,6 +157,7 @@ export class AgentOrchestrator {
 
           toolsUsed.push(toolCall.function.name);
           toolCallResults.push({
+            id: toolCall.id,
             name: toolCall.function.name,
             arguments: args,
             result: result.result,

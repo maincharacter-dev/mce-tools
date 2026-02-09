@@ -65,11 +65,12 @@ export const queryFactsTool: ToolDefinition = {
 
     query += ` ORDER BY created_at DESC LIMIT ${limit}`;
 
-    const [rows] = await context.projectDb.execute(query);
+    const result = await context.projectDb.execute(query);
+    const rows = result[0] as any[];
     
     return {
       facts: rows,
-      count: (rows as any[]).length,
+      count: rows.length,
       filters: {
         category: args.category,
         key: args.key,
@@ -133,11 +134,12 @@ export const queryDocumentsTool: ToolDefinition = {
       LIMIT ${limit}
     `;
 
-    const [rows] = await context.projectDb.execute(query);
+    const result = await context.projectDb.execute(query);
+    const rows = result[0] as any[];
 
     return {
       documents: rows,
-      count: (rows as any[]).length,
+      count: rows.length,
       filters: {
         documentType: args.documentType,
         searchTerm: args.searchTerm,
@@ -209,11 +211,12 @@ export const queryRedFlagsTool: ToolDefinition = {
       LIMIT ${limit}
     `;
 
-    const [rows] = await context.projectDb.execute(query);
+    const result = await context.projectDb.execute(query);
+    const rows = result[0] as any[];
 
     return {
       redFlags: rows,
-      count: (rows as any[]).length,
+      count: rows.length,
       filters: {
         category: args.category,
         severity: args.severity,
@@ -248,13 +251,14 @@ export const getFactByIdTool: ToolDefinition = {
       WHERE ef.id = ? AND ef.project_id = ?
     `;
 
-    const [rows] = await context.projectDb.execute(query, [args.factId, context.projectId]);
+    const result = await context.projectDb.execute(query, [args.factId, context.projectId]);
+    const rows = result[0] as any[];
 
-    if ((rows as any[]).length === 0) {
+    if (rows.length === 0) {
       throw new Error(`Fact with ID ${args.factId} not found`);
     }
 
-    return (rows as any[])[0];
+    return rows[0];
   },
 };
 
@@ -272,42 +276,44 @@ export const getProjectSummaryTool: ToolDefinition = {
     }
 
     // Get counts
-    const [docCount] = await context.projectDb.execute(
+    const result1 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM documents WHERE project_id = ?`,
-      [context.projectId]
-    );
-    const [factCount] = await context.projectDb.execute(
+      [context.projectId]);
+    const docCount = result1[0] as any[];
+    
+    const result2 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM extracted_facts WHERE project_id = ?`,
-      [context.projectId]
-    );
-    const [redFlagCount] = await context.projectDb.execute(
+      [context.projectId]);
+    const factCount = result2[0] as any[];
+    
+    const result3 = await context.projectDb.execute(
       `SELECT COUNT(*) as count FROM red_flags WHERE project_id = ?`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const redFlagCount = result3[0] as any[];
 
     // Get red flag breakdown by severity
-    const [severityBreakdown] = await context.projectDb.execute(
+    const result4 = await context.projectDb.execute(
       `SELECT severity, COUNT(*) as count 
        FROM red_flags 
        WHERE project_id = ? 
        GROUP BY severity`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const severityBreakdown = result4[0] as any[];
 
     // Get document type breakdown
-    const [docTypeBreakdown] = await context.projectDb.execute(
+    const result5 = await context.projectDb.execute(
       `SELECT document_type, COUNT(*) as count 
        FROM documents 
        WHERE project_id = ? 
        GROUP BY document_type`,
-      [context.projectId]
-    );
+      [context.projectId]);
+    const docTypeBreakdown = result5[0] as any[];
 
     return {
       projectId: context.projectId,
-      documentCount: (docCount as any[])[0]?.count || 0,
-      factCount: (factCount as any[])[0]?.count || 0,
-      redFlagCount: (redFlagCount as any[])[0]?.count || 0,
+      documentCount: docCount[0]?.count || 0,
+      factCount: factCount[0]?.count || 0,
+      redFlagCount: redFlagCount[0]?.count || 0,
       redFlagsBySeverity: severityBreakdown,
       documentsByType: docTypeBreakdown,
     };
