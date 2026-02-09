@@ -418,3 +418,134 @@ export const accUploads = mysqlTable("acc_uploads", {
 
 export type ACCUpload = typeof accUploads.$inferSelect;
 export type InsertACCUpload = typeof accUploads.$inferInsert;
+
+/**
+ * ========================================
+ * AI AGENT MODULE TABLES
+ * ========================================
+ * Tables for managing AI agent conversations, learning, and style adaptation
+ */
+
+/**
+ * Agent conversations - stores multi-turn conversation history
+ */
+export const agentConversations = mysqlTable("agent_conversations", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("user_id").notNull(),
+  projectId: int("project_id").notNull(),
+  title: varchar("title", { length: 255 }),
+  context: json("context"),
+  status: varchar("status", { length: 20 }).default("active"), // active, archived
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Agent messages - individual messages within conversations
+ */
+export const agentMessages = mysqlTable("agent_messages", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  conversationId: varchar("conversation_id", { length: 36 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull(), // user, assistant, system, tool
+  content: text("content").notNull(),
+  toolCalls: json("tool_calls"),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Agent actions log - audit trail of all agent operations
+ */
+export const agentActions = mysqlTable("agent_actions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  conversationId: varchar("conversation_id", { length: 36 }),
+  userId: int("user_id").notNull(),
+  projectId: int("project_id").notNull(),
+  actionType: varchar("action_type", { length: 50 }).notNull(), // query, generate, modify, analyze
+  actionName: varchar("action_name", { length: 100 }).notNull(),
+  input: json("input"),
+  output: json("output"),
+  success: int("success").notNull(), // 1 = true, 0 = false
+  errorMessage: text("error_message"),
+  executionTimeMs: int("execution_time_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Agent style models - user-specific writing style patterns
+ */
+export const agentStyleModels = mysqlTable("agent_style_models", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("user_id").notNull().unique(),
+  version: int("version").notNull().default(1),
+  patterns: json("patterns"),
+  statistics: json("statistics"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Agent learning samples - draft vs final comparisons for training
+ */
+export const agentLearningSamples = mysqlTable("agent_learning_samples", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("user_id").notNull(),
+  projectId: int("project_id").notNull(),
+  contentType: varchar("content_type", { length: 50 }).notNull(), // risk_narrative, report, specification
+  draftContent: text("draft_content").notNull(),
+  finalContent: text("final_content").notNull(),
+  extractedPatterns: json("extracted_patterns"),
+  editDistance: int("edit_distance"),
+  applied: int("applied").default(0), // 1 = true, 0 = false
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Agent knowledge base - de-identified cross-project insights
+ */
+export const agentKnowledgeBase = mysqlTable("agent_knowledge_base", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  category: varchar("category", { length: 100 }).notNull(), // domain_knowledge, best_practice, pattern
+  topic: varchar("topic", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  confidence: varchar("confidence", { length: 20 }).default("medium"), // low, medium, high
+  sourceCount: int("source_count").default(1), // Number of projects this was derived from
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Agent generated content - tracking for learning and improvement
+ */
+export const agentGeneratedContent = mysqlTable("agent_generated_content", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("user_id").notNull(),
+  projectId: int("project_id").notNull(),
+  conversationId: varchar("conversation_id", { length: 36 }),
+  contentType: varchar("content_type", { length: 50 }).notNull(),
+  prompt: text("prompt").notNull(),
+  generatedContent: text("generated_content").notNull(),
+  finalContent: text("final_content"), // Set when user edits and saves
+  accepted: int("accepted"), // 1 if used without edits, 0 if rejected, null if pending
+  feedback: text("feedback"), // User's explicit feedback
+  styleModelVersion: int("style_model_version"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Type exports for AI Agent module
+export type AgentConversation = typeof agentConversations.$inferSelect;
+export type InsertAgentConversation = typeof agentConversations.$inferInsert;
+export type AgentMessage = typeof agentMessages.$inferSelect;
+export type InsertAgentMessage = typeof agentMessages.$inferInsert;
+export type AgentAction = typeof agentActions.$inferSelect;
+export type InsertAgentAction = typeof agentActions.$inferInsert;
+export type AgentStyleModel = typeof agentStyleModels.$inferSelect;
+export type InsertAgentStyleModel = typeof agentStyleModels.$inferInsert;
+export type AgentLearningSample = typeof agentLearningSamples.$inferSelect;
+export type InsertAgentLearningSample = typeof agentLearningSamples.$inferInsert;
+export type AgentKnowledgeBase = typeof agentKnowledgeBase.$inferSelect;
+export type InsertAgentKnowledgeBase = typeof agentKnowledgeBase.$inferInsert;
+export type AgentGeneratedContent = typeof agentGeneratedContent.$inferSelect;
+export type InsertAgentGeneratedContent = typeof agentGeneratedContent.$inferInsert;

@@ -12,12 +12,14 @@ import { processDocument } from './document-processor-v2';
 import { resumeDocumentProcessing } from './processing-resume';
 import { demoRouter } from "./demo-router";
 import { accRouter } from "./accRouter";
+import { agentRouter } from "./agent/agent-router";
 import mysql from 'mysql2/promise';
 import { sql } from 'drizzle-orm';
 
 export const appRouter = router({
   system: systemRouter,
   acc: accRouter,
+  agent: agentRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
