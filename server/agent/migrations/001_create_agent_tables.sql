@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS agent_messages (
   role VARCHAR(20) NOT NULL,
   content TEXT NOT NULL,
   tool_calls JSON,
+  tool_call_id VARCHAR(100) DEFAULT NULL,
   metadata JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   INDEX idx_conversation (conversation_id),
