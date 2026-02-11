@@ -449,6 +449,7 @@ export const agentMessages = mysqlTable("agent_messages", {
   role: varchar("role", { length: 20 }).notNull(), // user, assistant, system, tool
   content: text("content").notNull(),
   toolCalls: json("tool_calls"),
+  toolCallId: varchar("tool_call_id", { length: 100 }),
   metadata: json("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

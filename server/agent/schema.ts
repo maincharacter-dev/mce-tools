@@ -39,6 +39,7 @@ export const agentMessages = mysqlTable("agent_messages", {
     arguments: Record<string, unknown>;
     result?: unknown;
   }>>(),
+  toolCallId: varchar("tool_call_id", { length: 100 }),
   metadata: json("metadata").$type<{
     tokens?: number;
     model?: string;
