@@ -106,15 +106,33 @@ export class AgentOrchestrator {
       const systemPrompt = this.buildSystemPrompt(request);
 
       // Prepare messages for LLM
+      // IMPORTANT: We must preserve the full message structure from buildLLMContext,
+      // including tool_calls on assistant messages and tool_call_id on tool messages.
+      // OpenAI requires that messages with role 'tool' follow an assistant message
+      // with tool_calls, and each tool message must include a matching tool_call_id.
       const messages: Message[] = [
         {
           role: "system",
           content: systemPrompt,
         },
-        ...history.map((msg) => ({
-          role: msg.role as "user" | "assistant" | "system",
-          content: msg.content,
-        })),
+        ...history.map((msg) => {
+          const llmMsg: any = {
+            role: msg.role as "user" | "assistant" | "system" | "tool",
+            content: msg.content,
+          };
+
+          // Preserve tool_calls on assistant messages
+          if (msg.tool_calls) {
+            llmMsg.tool_calls = msg.tool_calls;
+          }
+
+          // Preserve tool_call_id on tool messages
+          if (msg.tool_call_id) {
+            llmMsg.tool_call_id = msg.tool_call_id;
+          }
+
+          return llmMsg;
+        }),
       ];
 
       // Get available tools
@@ -148,12 +166,41 @@ export class AgentOrchestrator {
 
       // Execute tool calls if any
       if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-        // Add the assistant message with tool_calls to the conversation
+        // Add the assistant message with tool_calls to the in-memory messages array
         messages.push({
           role: "assistant",
           content: assistantMessage.content || null,
           tool_calls: assistantMessage.tool_calls,
         } as any);
+
+        // Save the intermediate assistant message (with tool_calls) to the database
+        // This is critical for conversation history: when loaded later, OpenAI requires
+        // that tool messages are preceded by an assistant message with tool_calls.
+        const toolCallsForDb = assistantMessage.tool_calls.map((tc: ToolCall) => {
+          let parsedArgs: Record<string, unknown> = {};
+          try {
+            parsedArgs = JSON.parse(tc.function.arguments);
+          } catch {
+            parsedArgs = { raw: tc.function.arguments };
+          }
+          return {
+            id: tc.id,
+            name: tc.function.name,
+            arguments: parsedArgs,
+          };
+        });
+
+        await this.conversationManager.addMessage({
+          conversationId,
+          role: "assistant",
+          content: assistantMessage.content || "",
+          toolCalls: toolCallsForDb,
+          metadata: {
+            tokens: llmResponse.usage?.total_tokens,
+            model: llmResponse.model,
+            latency: Date.now() - startTime,
+          },
+        });
 
         const executionContext: ToolExecutionContext = {
           userId: request.userId,
@@ -164,7 +211,12 @@ export class AgentOrchestrator {
         };
 
         for (const toolCall of assistantMessage.tool_calls) {
-          const args = JSON.parse(toolCall.function.arguments);
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(toolCall.function.arguments);
+          } catch {
+            args = { raw: toolCall.function.arguments };
+          }
           const result = await this.toolExecutor.executeTool(
             toolCall.function.name,
             args,
@@ -179,12 +231,20 @@ export class AgentOrchestrator {
             result: result.result,
           });
 
-          // Add tool result to conversation
+          // Add tool result to in-memory messages array
           messages.push({
             role: "tool",
             content: JSON.stringify(result.result),
             tool_call_id: toolCall.id,
           } as any);
+
+          // Save tool response to database for conversation history
+          await this.conversationManager.addMessage({
+            conversationId,
+            role: "tool",
+            content: JSON.stringify(result.result),
+            toolCallId: toolCall.id,
+          });
         }
 
         // Get final response after tool execution
@@ -206,12 +266,11 @@ export class AgentOrchestrator {
         responseContent = finalMessage.content as string;
       }
 
-      // Save assistant response to conversation
+      // Save the final assistant response to conversation
       await this.conversationManager.addMessage({
         conversationId,
         role: "assistant",
-        content: responseContent,
-        toolCalls: toolCallResults.length > 0 ? toolCallResults : undefined,
+        content: responseContent || "I apologize, but I was unable to generate a response.",
         metadata: {
           tokens: llmResponse.usage?.total_tokens,
           model: llmResponse.model,
