@@ -121,6 +121,11 @@ const normalizeContentPart = (
     return { type: "text", text: part };
   }
 
+  // Handle null/undefined
+  if (!part) {
+    return { type: "text", text: "" };
+  }
+
   if (part.type === "text") {
     return part;
   }
