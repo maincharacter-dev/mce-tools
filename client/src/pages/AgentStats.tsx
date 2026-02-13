@@ -1,5 +1,9 @@
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+
+// The agent router is created via a factory function from the npm package,
+// so tRPC can't infer its types statically. Cast to any for runtime access.
+const agentTrpc = (trpc as any).agent;
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +48,8 @@ const CONFIDENCE_CONFIG: Record<string, { color: string; bgColor: string }> = {
 export default function AgentStats() {
   const [, navigate] = useLocation();
 
-  const { data: stats, isLoading } = trpc.agent.getKnowledgeStats.useQuery();
-  const { data: learningStats } = trpc.agent.getLearningStats.useQuery();
+  const { data: stats, isLoading } = agentTrpc.getKnowledgeStats.useQuery();
+  const { data: learningStats } = agentTrpc.getLearningStats.useQuery();
 
   if (isLoading) {
     return (

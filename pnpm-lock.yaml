@@ -25,6 +25,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.64.0(react@19.2.1))
+      '@oe-ecosystem/ai-agent':
+        specifier: github:robachamilton-afk/oe-ai-agent
+        version: https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/5e87caa60d5454b6daa5b7e173e7096e9f354223(@trpc/server@11.6.0(typescript@5.9.3))(drizzle-orm@0.44.6(@tidbcloud/serverless@0.2.0)(mysql2@3.15.1))(mysql2@3.15.1)
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.1(@types/react@19.2.1))(@types/react@19.2.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -1259,6 +1262,15 @@ packages:
   '@napi-rs/canvas@0.1.88':
     resolution: {integrity: sha512-/p08f93LEbsL5mDZFQ3DBxcPv/I4QG9EDYRRq1WNlCOXVfAHBTHMSVMwxlqG/AtnSfUr9+vgfN7MKiyDo0+Weg==}
     engines: {node: '>= 10'}
+
+  '@oe-ecosystem/ai-agent@https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/5e87caa60d5454b6daa5b7e173e7096e9f354223':
+    resolution: {tarball: https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/5e87caa60d5454b6daa5b7e173e7096e9f354223}
+    version: 1.0.0
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@trpc/server': ^10.0.0
+      drizzle-orm: ^0.30.0
+      mysql2: ^3.0.0
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -4637,6 +4649,10 @@ packages:
     resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
     hasBin: true
 
+  uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    hasBin: true
+
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
@@ -4838,6 +4854,9 @@ packages:
 
   zod@4.1.12:
     resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -5882,6 +5901,15 @@ snapshots:
       '@napi-rs/canvas-win32-arm64-msvc': 0.1.88
       '@napi-rs/canvas-win32-x64-msvc': 0.1.88
     optional: true
+
+  '@oe-ecosystem/ai-agent@https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/5e87caa60d5454b6daa5b7e173e7096e9f354223(@trpc/server@11.6.0(typescript@5.9.3))(drizzle-orm@0.44.6(@tidbcloud/serverless@0.2.0)(mysql2@3.15.1))(mysql2@3.15.1)':
+    dependencies:
+      '@trpc/server': 11.6.0(typescript@5.9.3)
+      drizzle-orm: 0.44.6(@tidbcloud/serverless@0.2.0)(mysql2@3.15.1)
+      mysql2: 3.15.1
+      typescript: 5.9.3
+      uuid: 9.0.1
+      zod: 4.3.6
 
   '@radix-ui/number@1.1.1': {}
 
@@ -9778,6 +9806,8 @@ snapshots:
 
   uuid@13.0.0: {}
 
+  uuid@9.0.1: {}
+
   vary@1.1.2: {}
 
   vaul@1.1.2(@types/react-dom@19.2.1(@types/react@19.2.1))(@types/react@19.2.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1):
@@ -9974,5 +10004,7 @@ snapshots:
   zlibjs@0.3.1: {}
 
   zod@4.1.12: {}
+
+  zod@4.3.6: {}
 
   zwitch@2.0.4: {}

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+
+// The agent router is created via a factory function from the npm package,
+// so tRPC can't infer its types statically. Cast to any for runtime access.
+const agentTrpc = (trpc as any).agent;
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +91,7 @@ export default function KnowledgeBase() {
   });
 
   // Queries
-  const { data, isLoading, refetch } = trpc.agent.listKnowledge.useQuery({
+  const { data, isLoading, refetch } = agentTrpc.listKnowledge.useQuery({
     category: filterCategory !== "all" ? filterCategory : undefined,
     confidence: filterConfidence !== "all" ? filterConfidence : undefined,
     search: searchQuery || undefined,
@@ -96,42 +100,42 @@ export default function KnowledgeBase() {
   });
 
   // Mutations
-  const createMutation = trpc.agent.createKnowledge.useMutation({
+  const createMutation = agentTrpc.createKnowledge.useMutation({
     onSuccess: () => {
       toast.success("Knowledge entry created successfully");
       setIsCreateOpen(false);
       resetForm();
       refetch();
     },
-    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+    onError: (error: any) => toast.error(`Failed to create: ${error.message}`),
   });
 
-  const updateMutation = trpc.agent.updateKnowledge.useMutation({
+  const updateMutation = agentTrpc.updateKnowledge.useMutation({
     onSuccess: () => {
       toast.success("Knowledge entry updated successfully");
       setIsEditOpen(false);
       resetForm();
       refetch();
     },
-    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+    onError: (error: any) => toast.error(`Failed to update: ${error.message}`),
   });
 
-  const deleteMutation = trpc.agent.deleteKnowledge.useMutation({
+  const deleteMutation = agentTrpc.deleteKnowledge.useMutation({
     onSuccess: () => {
       toast.success("Knowledge entry deleted");
       setIsDeleteOpen(false);
       setSelectedEntry(null);
       refetch();
     },
-    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+    onError: (error: any) => toast.error(`Failed to delete: ${error.message}`),
   });
 
-  const seedMutation = trpc.agent.seedKnowledge.useMutation({
-    onSuccess: (result) => {
+  const seedMutation = agentTrpc.seedKnowledge.useMutation({
+    onSuccess: (result: any) => {
       toast.success(`Knowledge base seeded: ${result.added} added, ${result.skipped} skipped`);
       refetch();
     },
-    onError: (error) => toast.error(`Failed to seed: ${error.message}`),
+    onError: (error: any) => toast.error(`Failed to seed: ${error.message}`),
   });
 
   const resetForm = () => {
