@@ -193,7 +193,7 @@ export class AgentOrchestrator {
         await this.conversationManager.addMessage({
           conversationId,
           role: "assistant",
-          content: assistantMessage.content || "",
+          content: (typeof assistantMessage.content === 'string' ? assistantMessage.content : JSON.stringify(assistantMessage.content)) || "",
           toolCalls: toolCallsForDb,
           metadata: {
             tokens: llmResponse.usage?.total_tokens,
