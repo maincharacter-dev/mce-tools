@@ -377,16 +377,3 @@ export const sectionNarratives = mysqlTable("section_narratives", {
 
 export type SectionNarrative = typeof sectionNarratives.$inferSelect;
 export type InsertSectionNarrative = typeof sectionNarratives.$inferInsert;
-/**
- * AI Agent tables - imported from @oe-ecosystem/ai-agent package
- * These tables manage AI agent conversations, learning, and style adaptation
- */
-export {
-  agentConversations,
-  agentMessages,
-  agentActions,
-  agentStyleModels,
-  agentLearningSamples,
-  agentKnowledgeBase,
-  agentGeneratedContent,
-} from "@oe-ecosystem/ai-agent/dist/schema";

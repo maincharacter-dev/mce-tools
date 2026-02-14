@@ -9,13 +9,11 @@ import { z } from "zod";
 import { uploadDocument } from "./document-service";
 import { processDocument } from "./document-processor-v2";
 import { demoRouter } from "./demo-router";
-import { agentRouter } from "./agentRouter";
 import mysql from 'mysql2/promise';
 import { sql } from 'drizzle-orm';
 
 export const appRouter = router({
   system: systemRouter,
-  agent: agentRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
