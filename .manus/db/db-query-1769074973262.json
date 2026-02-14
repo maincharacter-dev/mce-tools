@@ -1,0 +1,66 @@
+{
+  "query": "SELECT `id`, `name`, `description`, `dbName`, `dbHost`, `dbPort`, `dbUser`, `dbPassword`, `status`, `createdByUserId`, `createdAt`, `updatedAt` FROM `projects` WHERE `createdByUserId` = 1 ORDER BY `createdAt`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT `id`, `name`, `description`, `dbName`, `dbHost`, `dbPort`, `dbUser`, `dbPassword`, `status`, `createdByUserId`, `createdAt`, `updatedAt` FROM `projects` WHERE `createdByUserId` = 1 ORDER BY `createdAt`;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Test Solar Project",
+      "description": "NULL",
+      "dbName": "proj_1_1769044099720",
+      "dbHost": "localhost",
+      "dbPort": "3306",
+      "dbUser": "NULL",
+      "dbPassword": "NULL",
+      "status": "Active",
+      "createdByUserId": "1",
+      "createdAt": "2026-01-22 01:08:19",
+      "updatedAt": "2026-01-22 01:08:19"
+    },
+    {
+      "id": "30001",
+      "name": "Test project 2",
+      "description": "NULL",
+      "dbName": "proj_1_1769057333409",
+      "dbHost": "localhost",
+      "dbPort": "3306",
+      "dbUser": "NULL",
+      "dbPassword": "NULL",
+      "status": "Active",
+      "createdByUserId": "1",
+      "createdAt": "2026-01-22 04:48:53",
+      "updatedAt": "2026-01-22 04:48:53"
+    },
+    {
+      "id": "30002",
+      "name": "Test Project 3",
+      "description": "NULL",
+      "dbName": "proj_1_1769057750227",
+      "dbHost": "localhost",
+      "dbPort": "3306",
+      "dbUser": "NULL",
+      "dbPassword": "NULL",
+      "status": "Active",
+      "createdByUserId": "1",
+      "createdAt": "2026-01-22 04:55:50",
+      "updatedAt": "2026-01-22 04:55:50"
+    },
+    {
+      "id": "60001",
+      "name": "Test project 4",
+      "description": "NULL",
+      "dbName": "proj_1_1769069300488",
+      "dbHost": "localhost",
+      "dbPort": "3306",
+      "dbUser": "NULL",
+      "dbPassword": "NULL",
+      "status": "Active",
+      "createdByUserId": "1",
+      "createdAt": "2026-01-22 08:08:20",
+      "updatedAt": "2026-01-22 08:08:20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tdbName\tdbHost\tdbPort\tdbUser\tdbPassword\tstatus\tcreatedByUserId\tcreatedAt\tupdatedAt\n1\tTest Solar Project\tNULL\tproj_1_1769044099720\tlocalhost\t3306\tNULL\tNULL\tActive\t1\t2026-01-22 01:08:19\t2026-01-22 01:08:19\n30001\tTest project 2\tNULL\tproj_1_1769057333409\tlocalhost\t3306\tNULL\tNULL\tActive\t1\t2026-01-22 04:48:53\t2026-01-22 04:48:53\n30002\tTest Project 3\tNULL\tproj_1_1769057750227\tlocalhost\t3306\tNULL\tNULL\tActive\t1\t2026-01-22 04:55:50\t2026-01-22 04:55:50\n60001\tTest project 4\tNULL\tproj_1_1769069300488\tlocalhost\t3306\tNULL\tNULL\tActive\t1\t2026-01-22 08:08:20\t2026-01-22 08:08:20\n",
+  "stderr": "",
+  "execution_time_ms": 1540
+}

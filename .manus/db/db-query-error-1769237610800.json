@@ -1,0 +1,8 @@
+{
+  "query": "\nUSE proj_1_1769237341414;\n\nCREATE TABLE IF NOT EXISTS section_narratives (\n  id VARCHAR(36) PRIMARY KEY,\n  project_id INT NOT NULL,\n  section_key VARCHAR(100) NOT NULL,\n  narrative TEXT NOT NULL,\n  confidence DECIMAL(3,2) DEFAULT 0.80,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  UNIQUE KEY unique_project_section (project_id, section_key)\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute \nUSE proj_1_1769237341414;\n\nCREATE TABLE IF NOT EXISTS section_narratives (\n  id VARCHAR(36) PRIMARY KEY,\n  project_id INT NOT NULL,\n  section_key VARCHAR(100) NOT NULL,\n  narrative TEXT NOT NULL,\n  confidence DECIMAL(3,2) DEFAULT 0.80,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  UNIQUE KEY unique_project_section (project_id, section_key)\n);\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1044 (42000) at line 2: Access denied for user '2R5G6YVYACRzXTL.b06ea9fdb291'@'%' to database 'proj_1_1769237341414'"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "query": "SELECT `key`, LEFT(value, 100) as value_preview FROM extracted_facts LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute SELECT `key`, LEFT(value, 100) as value_preview FROM extracted_facts LIMIT 10;",
+  "rows": [
+    {
+      "key": "Project Name",
+      "value_preview": "Clare Solar Farm"
+    },
+    {
+      "key": "Total Capacity (MW)",
+      "value_preview": "150"
+    },
+    {
+      "key": "Technology Type",
+      "value_preview": "Bifacial PV Modules"
+    },
+    {
+      "key": "Connection Point",
+      "value_preview": "Clare 132kV Substation"
+    },
+    {
+      "key": "Grid Capacity Constraint",
+      "value_preview": "Limited to 100MW during peak"
+    },
+    {
+      "key": "Expected COD",
+      "value_preview": "2026-Q3"
+    },
+    {
+      "key": "Estimated CAPEX",
+      "value_preview": "$225M AUD"
+    },
+    {
+      "key": "Soil Type",
+      "value_preview": "Clay with moderate bearing capacity"
+    },
+    {
+      "key": "Planning Approval Status",
+      "value_preview": "Pending - submitted Dec 2025"
+    },
+    {
+      "key": "Grid Curtailment Risk",
+      "value_preview": "High - 30% curtailment expected"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue_preview\nProject Name\tClare Solar Farm\nTotal Capacity (MW)\t150\nTechnology Type\tBifacial PV Modules\nConnection Point\tClare 132kV Substation\nGrid Capacity Constraint\tLimited to 100MW during peak\nExpected COD\t2026-Q3\nEstimated CAPEX\t$225M AUD\nSoil Type\tClay with moderate bearing capacity\nPlanning Approval Status\tPending - submitted Dec 2025\nGrid Curtailment Risk\tHigh - 30% curtailment expected\n",
+  "stderr": "",
+  "execution_time_ms": 1582
+}
