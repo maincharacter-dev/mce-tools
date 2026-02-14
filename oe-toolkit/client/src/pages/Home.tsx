@@ -91,6 +91,18 @@ export default function Home() {
               Tools
             </a>
             <a 
+              href="/knowledge-base"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
+            >
+              Knowledge Base
+            </a>
+            <a 
+              href="/agent-stats"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
+            >
+              Agent Stats
+            </a>
+            <a 
               href="https://www.linkedin.com/company/main-character-energy-consulting/"
               target="_blank"
               rel="noopener noreferrer"
@@ -123,6 +135,20 @@ export default function Home() {
                   className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
                 >
                   Tools
+                </a>
+                <a 
+                  href="/knowledge-base"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
+                >
+                  Knowledge Base
+                </a>
+                <a 
+                  href="/agent-stats"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
+                >
+                  Agent Stats
                 </a>
                 <a 
                   href="https://www.linkedin.com/company/main-character-energy-consulting/"

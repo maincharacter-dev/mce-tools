@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { accRouter } from "./accRouter";
+import { agentRouter } from "./agent-router";
 import { getDb } from "./db";
 import { projects, accCredentials } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -25,6 +26,9 @@ export const appRouter = router({
 
   // ACC integration router
   acc: accRouter,
+
+  // AI Agent router (from @oe-ecosystem/ai-agent)
+  agent: agentRouter,
 
   // Projects router
   projects: router({
