@@ -50,6 +50,13 @@
       "when": 1769241044596,
       "tag": "0006_nappy_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1771067881548,
+      "tag": "0007_fat_microchip",
+      "breakpoints": true
     }
   ]
 }
