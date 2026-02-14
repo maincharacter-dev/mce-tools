@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE weather_files ADD COLUMN monthly_irradiance JSON DEFAULT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute ALTER TABLE weather_files ADD COLUMN monthly_irradiance JSON DEFAULT NULL;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'monthly_irradiance'"
+  ]
+}

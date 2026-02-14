@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE projects \nADD COLUMN dbHost VARCHAR(255) DEFAULT NULL AFTER dbName,\nADD COLUMN dbPort INT DEFAULT NULL AFTER dbHost,\nADD COLUMN dbUser VARCHAR(255) DEFAULT NULL AFTER dbPort,\nADD COLUMN dbPassword VARCHAR(255) DEFAULT NULL AFTER dbUser;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.b06ea9fdb291 --database GZgYwiZhXgGduuvTzWkwoM --execute ALTER TABLE projects \nADD COLUMN dbHost VARCHAR(255) DEFAULT NULL AFTER dbName,\nADD COLUMN dbPort INT DEFAULT NULL AFTER dbHost,\nADD COLUMN dbUser VARCHAR(255) DEFAULT NULL AFTER dbPort,\nADD COLUMN dbPassword VARCHAR(255) DEFAULT NULL AFTER dbUser;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'dbHost'"
+  ]
+}
