@@ -1,216 +1,298 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { ArrowRight, Zap, BarChart3, Linkedin, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, Database, Brain, Shield, Linkedin, Menu } from "lucide-react";
-import { getLoginUrl } from "@/const";
-import { useLocation } from "wouter";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useState } from "react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+/**
+ * OE Toolkit Landing Page
+ * 
+ * Design Philosophy: MCE Style Guide - Bold & Authoritative
+ * - Dark mode-first with slate-900 background
+ * - Orange accents for energy and action
+ * - Premium consulting aesthetic
+ * - Gradient backgrounds and subtle depth
+ */
+
+interface ToolCard {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  url: string;
+  status: string;
+}
+
+const tools: ToolCard[] = [
+  {
+    id: "acc-extractor",
+    title: "ACC Asset Extractor",
+    description:
+      "Extract and manage assets from Autodesk Construction Cloud. Streamline your document processing and data extraction workflows with intelligent automation.",
+    icon: <Zap className="h-8 w-8" />,
+    color: "from-orange-500 to-orange-600",
+    url: "https://accextractor-wgbdueae.manus.space/",
+    status: "Active",
+  },
+  {
+    id: "solar-performance",
+    title: "Solar Farm Performance Analyser",
+    description:
+      "Analyze and optimize solar farm performance metrics. Track energy generation, efficiency, and system health in real-time with advanced analytics.",
+    icon: <BarChart3 className="h-8 w-8" />,
+    color: "from-amber-500 to-amber-600",
+    url: "https://solaranalys-v5zbfm3a.manus.space/",
+    status: "Active",
+  },
+];
 
 export default function Home() {
-  const { user, loading, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      {/* Header */}
-      <header className="border-b border-slate-800/50 backdrop-blur-xl bg-slate-900/50 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/HAmHkbcVjFebIudJ.png" alt="MCE" className="h-10 w-10" />
-              <div>
-                <h1 className="text-xl font-bold text-white">Project Intake</h1>
-                <p className="text-sm text-slate-400">TA/TDD Workflow · Stage 1</p>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Header - Matching MCE Website Style */}
+      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 md:py-6 flex items-center justify-between">
+          {/* Logo Section */}
+          <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img 
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/YkbsvFTFeEzIpOEy.png" 
+              alt="Main Character Energy" 
+              className="h-10 w-10 md:h-12 md:w-12" 
+            />
+            <div>
+              <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                MAIN CHARACTER ENERGY
+              </div>
+              <div className="text-xs md:text-sm text-slate-400 font-medium">
+                OE Toolkit
               </div>
             </div>
-            <div className="hidden md:flex items-center gap-4">
-              {isAuthenticated && (
-                <Button
-                  variant="outline"
-                  className="border-slate-700 hover:border-orange-500/50"
-                  onClick={() => setLocation("/projects")}
-                >
-                  My Projects
-                </Button>
-              )}
-              <a 
-                href="https://www.linkedin.com/company/main-character-energy-consulting/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-400 hover:text-[#0077b5] transition-colors"
-              >
-                <Linkedin className="h-5 w-5" />
-              </a>
-            </div>
-            {/* Mobile Menu */}
-            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-              <SheetTrigger asChild>
-                <button className="md:hidden text-slate-300 hover:text-white transition-colors p-2">
-                  <Menu className="h-6 w-6" />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] bg-slate-900 border-slate-700">
-                <div className="flex flex-col gap-8 mt-8">
-                  {isAuthenticated && (
-                    <Button
-                      variant="outline"
-                      className="border-slate-700"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setLocation("/projects");
-                      }}
-                    >
-                      My Projects
-                    </Button>
-                  )}
-                  <a 
-                    href="https://www.linkedin.com/company/main-character-energy-consulting/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xl font-semibold text-slate-300 hover:text-orange-400 transition-colors py-2 flex items-center gap-2"
-                  >
-                    <Linkedin className="h-5 w-5" />
-                    LinkedIn
-                  </a>
-                </div>
-              </SheetContent>
-            </Sheet>
+          </a>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            <a 
+              href="/projects"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
+            >
+              Projects
+            </a>
+            <a 
+              href="#tools"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
+            >
+              Tools
+            </a>
+            <a 
+              href="https://www.linkedin.com/company/main-character-energy-consulting/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-[#0077b5] transition-colors"
+              aria-label="Follow us on LinkedIn"
+            >
+              <Linkedin className="h-5 w-5" />
+            </a>
           </div>
+
+          {/* Mobile Menu */}
+          <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <SheetTrigger asChild>
+              <button className="md:hidden text-slate-300 hover:text-white transition-colors p-2">
+                <Menu className="h-6 w-6" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] bg-slate-900 border-slate-700">
+              <div className="flex flex-col gap-8 mt-8">
+                <a 
+                  href="/projects"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
+                >
+                  Projects
+                </a>
+                <a 
+                  href="#tools"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
+                >
+                  Tools
+                </a>
+                <a 
+                  href="https://www.linkedin.com/company/main-character-energy-consulting/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xl font-semibold text-slate-300 hover:text-orange-400 transition-colors py-2 flex items-center gap-2"
+                >
+                  <Linkedin className="h-5 w-5" />
+                  LinkedIn
+                </a>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-16">
-        <div className="max-w-4xl">
-          <div className="mb-4">
-            <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30 mb-2">
-              TA/TDD Workflow · Stage 1
-            </Badge>
-          </div>
-          <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
-            Project Intake
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
-              Document Intelligence
-            </span>
-          </h2>
-          <p className="text-xl text-slate-300 leading-relaxed mb-8">
-            First stage of the Technical Advisory workflow. Ingest project documents, extract structured insights, and build the foundational Project Intelligence Base for downstream analysis.
-          </p>
-          <p className="text-lg text-slate-400 leading-relaxed mb-8">
-            Process IMs, DD packs, concept designs, and grid studies using hybrid extraction (deterministic parsing + Ollama LLM). Maintain data sovereignty with per-project databases while contributing de-identified insights to the knowledge base.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4">
-            {isAuthenticated ? (
+      <section className="py-16 md:py-32 lg:py-40">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl">
+            {/* Main Title */}
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+              OE Toolkit
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-xl md:text-2xl text-slate-300 mb-6 leading-relaxed">
+              Specialized tools for consulting operations. From asset extraction to performance analysis, 
+              we provide the infrastructure for data-driven decision making.
+            </p>
+
+            {/* Description */}
+            <p className="text-lg text-slate-400 mb-12 leading-relaxed max-w-3xl">
+              Access a suite of optimized tools designed to streamline your consulting workflows. Each tool 
+              is built for specific use cases, enabling teams to extract insights, analyze performance, and 
+              make informed decisions faster.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button 
                 size="lg" 
                 className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                onClick={() => setLocation("/projects")}
+                onClick={() => document.getElementById('tools')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                Go to Projects
+                Explore Tools
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            ) : (
               <Button 
                 size="lg" 
-                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                onClick={() => window.location.href = getLoginUrl()}
+                variant="outline" 
+                className="border-slate-600 text-white hover:bg-slate-800 hover:text-white"
               >
-                Sign In to Start
+                Learn More
               </Button>
-            )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="container mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700 rounded-lg p-6">
-            <div className="p-3 rounded-lg bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30 w-fit mb-4">
-              <FileText className="h-6 w-6 text-orange-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Document Ingestion</h3>
-            <p className="text-sm text-slate-400">
-              Upload PDFs, DOCX, XLSX files. Drag-and-drop interface with automatic text extraction.
+      {/* Tools Section */}
+      <section id="tools" className="py-20 md:py-32 bg-slate-800/30">
+        <div className="container mx-auto px-4">
+          {/* Section Header */}
+          <div className="mb-16 md:mb-20">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Available Tools
+            </h2>
+            <p className="text-xl text-slate-300 max-w-3xl">
+              Each tool is optimized for specific consulting workflows. Click on a tool to access 
+              its dedicated interface and documentation.
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700 rounded-lg p-6">
-            <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 w-fit mb-4">
-              <Brain className="h-6 w-6 text-blue-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Hybrid Extraction</h3>
-            <p className="text-sm text-slate-400">
-              Deterministic patterns + Ollama LLM for comprehensive fact extraction with confidence scores.
-            </p>
-          </div>
+          {/* Tools Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl">
+            {tools.map((tool) => (
+              <a
+                key={tool.id}
+                href={tool.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block"
+              >
+                <div className="h-full flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-xl p-8 transition-all duration-300 hover:border-orange-500/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer">
+                  {/* Header with Icon and Status */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className={`p-4 rounded-lg bg-gradient-to-br ${tool.color} text-white`}>
+                      {tool.icon}
+                    </div>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                      {tool.status}
+                    </span>
+                  </div>
 
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700 rounded-lg p-6">
-            <div className="p-3 rounded-lg bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30 w-fit mb-4">
-              <Database className="h-6 w-6 text-green-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Project Fact Base</h3>
-            <p className="text-sm text-slate-400">
-              Structured storage of extracted insights with source tracking and verification workflow.
-            </p>
-          </div>
+                  {/* Title */}
+                  <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-orange-400 transition-colors duration-300">
+                    {tool.title}
+                  </h3>
 
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700 rounded-lg p-6">
-            <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 w-fit mb-4">
-              <Shield className="h-6 w-6 text-purple-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Data Sovereignty</h3>
-            <p className="text-sm text-slate-400">
-              Per-project databases ensure complete data isolation and control. Delete anytime.
-            </p>
+                  {/* Description */}
+                  <p className="text-slate-300 text-base leading-relaxed mb-8 flex-grow">
+                    {tool.description}
+                  </p>
+
+                  {/* Footer with Arrow */}
+                  <div className="flex items-center text-orange-400 font-semibold group-hover:gap-3 gap-2 transition-all duration-300">
+                    <span>Access Tool</span>
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                  </div>
+                </div>
+              </a>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Workflow Context */}
-      <section className="container mx-auto px-6 py-12">
-        <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-500/30 rounded-lg p-8">
-          <h3 className="text-2xl font-bold text-white mb-4">Part of the TA/TDD Workflow</h3>
-          <p className="text-slate-300 mb-6">
-            Project Intake is the first stage in the Technical Advisory & Due Diligence workflow. 
-            Once your Project Fact Base is established, it feeds into:
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
-              <div className="text-sm font-semibold text-orange-500 mb-1">Stage 2</div>
-              <div className="text-white font-bold mb-1">Rapid Assessment</div>
-              <div className="text-xs text-slate-400">Red-flag detection and gap analysis</div>
+      {/* Stats Section */}
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
+              <div className="text-3xl font-bold text-orange-400 mb-2">2</div>
+              <div className="text-sm text-slate-300">Active Tools</div>
             </div>
-            <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
-              <div className="text-sm font-semibold text-orange-500 mb-1">Stage 3</div>
-              <div className="text-white font-bold mb-1">Deep Dive</div>
-              <div className="text-xs text-slate-400">Technical evaluation and benchmarking</div>
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
+              <div className="text-3xl font-bold text-orange-400 mb-2">100%</div>
+              <div className="text-sm text-slate-300">Data-Driven Approach</div>
             </div>
-            <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
-              <div className="text-sm font-semibold text-orange-500 mb-1">Stage 4</div>
-              <div className="text-white font-bold mb-1">Investment Decision</div>
-              <div className="text-xs text-slate-400">PDR generation and FC readiness</div>
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
+              <div className="text-3xl font-bold text-orange-400 mb-2">24/7</div>
+              <div className="text-sm text-slate-300">Accessible Infrastructure</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/50 mt-12">
-        <div className="container mx-auto px-6 py-8">
-          <p className="text-sm text-slate-500 text-center">
-            © 2025 Main Character Energy. Part of the OE Toolkit v2.0
-          </p>
+      <footer className="border-t border-slate-700/50 bg-slate-900/50 py-12 md:py-16 mt-auto">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+            <div>
+              <p className="text-slate-400 text-sm">
+                © 2026 Main Character Energy. All rights reserved.
+              </p>
+              <p className="text-slate-500 text-xs mt-2">
+                OE Toolkit v1.0 — Premium Consulting Infrastructure
+              </p>
+            </div>
+            <div className="flex gap-6">
+              <a
+                href="#"
+                className="text-slate-400 hover:text-orange-400 transition-colors text-sm"
+              >
+                Documentation
+              </a>
+              <a
+                href="#"
+                className="text-slate-400 hover:text-orange-400 transition-colors text-sm"
+              >
+                Support
+              </a>
+              <a
+                href="#"
+                className="text-slate-400 hover:text-orange-400 transition-colors text-sm"
+              >
+                Status
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

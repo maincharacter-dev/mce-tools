@@ -1,84 +1,155 @@
+/**
+ * GOOGLE MAPS FRONTEND INTEGRATION - ESSENTIAL GUIDE
+ *
+ * USAGE FROM PARENT COMPONENT:
+ * ======
+ *
+ * const mapRef = useRef<google.maps.Map | null>(null);
+ *
+ * <MapView
+ *   initialCenter={{ lat: 40.7128, lng: -74.0060 }}
+ *   initialZoom={15}
+ *   onMapReady={(map) => {
+ *     mapRef.current = map; // Store to control map from parent anytime, google map itself is in charge of the re-rendering, not react state.
+ * </MapView>
+ *
+ * ======
+ * Available Libraries and Core Features:
+ * -------------------------------
+ * 📍 MARKER (from `marker` library)
+ * - Attaches to map using { map, position }
+ * new google.maps.marker.AdvancedMarkerElement({
+ *   map,
+ *   position: { lat: 37.7749, lng: -122.4194 },
+ *   title: "San Francisco",
+ * });
+ *
+ * -------------------------------
+ * 🏢 PLACES (from `places` library)
+ * - Does not attach directly to map; use data with your map manually.
+ * const place = new google.maps.places.Place({ id: PLACE_ID });
+ * await place.fetchFields({ fields: ["displayName", "location"] });
+ * map.setCenter(place.location);
+ * new google.maps.marker.AdvancedMarkerElement({ map, position: place.location });
+ *
+ * -------------------------------
+ * 🧭 GEOCODER (from `geocoding` library)
+ * - Standalone service; manually apply results to map.
+ * const geocoder = new google.maps.Geocoder();
+ * geocoder.geocode({ address: "New York" }, (results, status) => {
+ *   if (status === "OK" && results[0]) {
+ *     map.setCenter(results[0].geometry.location);
+ *     new google.maps.marker.AdvancedMarkerElement({
+ *       map,
+ *       position: results[0].geometry.location,
+ *     });
+ *   }
+ * });
+ *
+ * -------------------------------
+ * 📐 GEOMETRY (from `geometry` library)
+ * - Pure utility functions; not attached to map.
+ * const dist = google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
+ *
+ * -------------------------------
+ * 🛣️ ROUTES (from `routes` library)
+ * - Combines DirectionsService (standalone) + DirectionsRenderer (map-attached)
+ * const directionsService = new google.maps.DirectionsService();
+ * const directionsRenderer = new google.maps.DirectionsRenderer({ map });
+ * directionsService.route(
+ *   { origin, destination, travelMode: "DRIVING" },
+ *   (res, status) => status === "OK" && directionsRenderer.setDirections(res)
+ * );
+ *
+ * -------------------------------
+ * 🌦️ MAP LAYERS (attach directly to map)
+ * - new google.maps.TrafficLayer().setMap(map);
+ * - new google.maps.TransitLayer().setMap(map);
+ * - new google.maps.BicyclingLayer().setMap(map);
+ *
+ * -------------------------------
+ * ✅ SUMMARY
+ * - “map-attached” → AdvancedMarkerElement, DirectionsRenderer, Layers.
+ * - “standalone” → Geocoder, DirectionsService, DistanceMatrixService, ElevationService.
+ * - “data-only” → Place, Geometry utilities.
+ */
+
+/// <reference types="@types/google.maps" />
+
 import { useEffect, useRef } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { usePersistFn } from "@/hooks/usePersistFn";
+import { cn } from "@/lib/utils";
+
+declare global {
+  interface Window {
+    google?: typeof google;
+  }
+}
+
+const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+const FORGE_BASE_URL =
+  import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
+  "https://forge.butterfly-effect.dev";
+const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+
+function loadMapScript() {
+  return new Promise(resolve => {
+    const script = document.createElement("script");
+    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      resolve(null);
+      script.remove(); // Clean up immediately
+    };
+    script.onerror = () => {
+      console.error("Failed to load Google Maps script");
+    };
+    document.head.appendChild(script);
+  });
+}
 
 interface MapViewProps {
-  initialCenter?: { lat: number; lng: number };
+  className?: string;
+  initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
-  onMapReady?: (map: mapboxgl.Map) => void;
+  onMapReady?: (map: google.maps.Map) => void;
 }
 
 export function MapView({
-  initialCenter = { lat: 0, lng: 0 },
-  initialZoom = 10,
+  className,
+  initialCenter = { lat: 37.7749, lng: -122.4194 },
+  initialZoom = 12,
   onMapReady,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const marker = useRef<mapboxgl.Marker | null>(null);
+  const map = useRef<google.maps.Map | null>(null);
 
-  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
-    if (map.current) return; // Initialize map only once
-
-    mapboxgl.accessToken = mapboxToken;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: [initialCenter.lng, initialCenter.lat],
+  const init = usePersistFn(async () => {
+    await loadMapScript();
+    if (!mapContainer.current) {
+      console.error("Map container not found");
+      return;
+    }
+    map.current = new window.google.maps.Map(mapContainer.current, {
       zoom: initialZoom,
+      center: initialCenter,
+      mapTypeControl: true,
+      fullscreenControl: true,
+      zoomControl: true,
+      streetViewControl: true,
+      mapId: "DEMO_MAP_ID",
     });
+    if (onMapReady) {
+      onMapReady(map.current);
+    }
+  });
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    // Notify parent when map is ready
-    map.current.on("load", () => {
-      if (onMapReady && map.current) {
-        onMapReady(map.current);
-      }
-    });
-
-    // Cleanup
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
-  }, [mapboxToken]); // Only run once on mount
-
-  // Update map center and marker when initialCenter changes
   useEffect(() => {
-    if (!map.current) return;
+    init();
+  }, [init]);
 
-    // Update center
-    map.current.setCenter([initialCenter.lng, initialCenter.lat]);
-
-    // Remove old marker
-    if (marker.current) {
-      marker.current.remove();
-      marker.current = null;
-    }
-
-    // Add new marker if not at 0,0 (default/invalid location)
-    if (initialCenter.lat !== 0 || initialCenter.lng !== 0) {
-      marker.current = new mapboxgl.Marker({ color: "#ef4444" }) // red marker
-        .setLngLat([initialCenter.lng, initialCenter.lat])
-        .addTo(map.current);
-    }
-  }, [initialCenter.lat, initialCenter.lng]);
-
-  if (!mapboxToken) {
-    return (
-      <div className="flex items-center justify-center h-full bg-muted">
-        <p className="text-muted-foreground">Mapbox token not configured</p>
-      </div>
-    );
-  }
-
-  return <div ref={mapContainer} className="w-full h-full" />;
+  return (
+    <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />
+  );
 }
