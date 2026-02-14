@@ -1,0 +1,9 @@
+{
+  "query": "DROP TABLE IF EXISTS `agentConversations`; DROP TABLE IF EXISTS `agentMessages`; DROP TABLE IF EXISTS `agentActions`; DROP TABLE IF EXISTS `agentStyleModels`; DROP TABLE IF EXISTS `agentLearningSamples`; DROP TABLE IF EXISTS `agentKnowledgeBase`; DROP TABLE IF EXISTS `agentGeneratedContent`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.405138ace671 --database nTnpyunD5XzV7piz4sZYaw --execute DROP TABLE IF EXISTS `agentConversations`; DROP TABLE IF EXISTS `agentMessages`; DROP TABLE IF EXISTS `agentActions`; DROP TABLE IF EXISTS `agentStyleModels`; DROP TABLE IF EXISTS `agentLearningSamples`; DROP TABLE IF EXISTS `agentKnowledgeBase`; DROP TABLE IF EXISTS `agentGeneratedContent`;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4922
+}

@@ -1,4 +1,4 @@
-import { ArrowRight, Zap, BarChart3, Linkedin, Menu } from "lucide-react";
+import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState } from "react";
@@ -43,6 +43,16 @@ const tools: ToolCard[] = [
     icon: <BarChart3 className="h-8 w-8" />,
     color: "from-amber-500 to-amber-600",
     url: "https://solaranalys-v5zbfm3a.manus.space/",
+    status: "Active",
+  },
+  {
+    id: "ai-agent",
+    title: "OE AI Agent",
+    description:
+      "Intelligent assistant powered by your project knowledge base. Query extracted facts, generate reports, and get insights across all your TA/TDD and OE projects.",
+    icon: <Bot className="h-8 w-8" />,
+    color: "from-violet-500 to-violet-600",
+    url: "/agent",
     status: "Active",
   },
 ];
@@ -91,6 +101,12 @@ export default function Home() {
               Tools
             </a>
             <a 
+              href="/agent"
+              className="text-white hover:text-orange-400 transition-colors font-semibold text-lg"
+            >
+              AI Agent
+            </a>
+            <a 
               href="https://www.linkedin.com/company/main-character-energy-consulting/"
               target="_blank"
               rel="noopener noreferrer"
@@ -123,6 +139,13 @@ export default function Home() {
                   className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
                 >
                   Tools
+                </a>
+                <a 
+                  href="/agent"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
+                >
+                  AI Agent
                 </a>
                 <a 
                   href="https://www.linkedin.com/company/main-character-energy-consulting/"
@@ -203,8 +226,7 @@ export default function Home() {
               <a
                 key={tool.id}
                 href={tool.url}
-                target="_blank"
-                rel="noopener noreferrer"
+                {...(tool.url.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 className="group block"
               >
                 <div className="h-full flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-xl p-8 transition-all duration-300 hover:border-orange-500/50 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer">
@@ -245,7 +267,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
-              <div className="text-3xl font-bold text-orange-400 mb-2">2</div>
+              <div className="text-3xl font-bold text-orange-400 mb-2">3</div>
               <div className="text-sm text-slate-300">Active Tools</div>
             </div>
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">

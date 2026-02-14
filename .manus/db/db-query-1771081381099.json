@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `agentLearningSamples` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `userId` int NOT NULL,\n  `projectId` int NOT NULL,\n  `contentType` varchar(50) NOT NULL,\n  `draftContent` text NOT NULL,\n  `finalContent` text NOT NULL,\n  `extractedPatterns` json,\n  `editDistance` int,\n  `applied` tinyint DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.405138ace671 --database nTnpyunD5XzV7piz4sZYaw --execute CREATE TABLE IF NOT EXISTS `agentLearningSamples` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `userId` int NOT NULL,\n  `projectId` int NOT NULL,\n  `contentType` varchar(50) NOT NULL,\n  `draftContent` text NOT NULL,\n  `finalContent` text NOT NULL,\n  `extractedPatterns` json,\n  `editDistance` int,\n  `applied` tinyint DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1519
+}

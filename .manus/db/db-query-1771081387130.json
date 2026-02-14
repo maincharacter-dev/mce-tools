@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `agentKnowledgeBase` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `category` varchar(100) NOT NULL,\n  `topic` varchar(255) NOT NULL,\n  `content` text NOT NULL,\n  `confidence` varchar(20) DEFAULT 'medium',\n  `sourceCount` int DEFAULT 1,\n  `metadata` json,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.405138ace671 --database nTnpyunD5XzV7piz4sZYaw --execute CREATE TABLE IF NOT EXISTS `agentKnowledgeBase` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `category` varchar(100) NOT NULL,\n  `topic` varchar(255) NOT NULL,\n  `content` text NOT NULL,\n  `confidence` varchar(20) DEFAULT 'medium',\n  `sourceCount` int DEFAULT 1,\n  `metadata` json,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1540
+}

@@ -1,0 +1,31 @@
+{
+  "query": "SHOW TABLES LIKE 'agent%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2R5G6YVYACRzXTL.405138ace671 --database nTnpyunD5XzV7piz4sZYaw --execute SHOW TABLES LIKE 'agent%';",
+  "rows": [
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentActions"
+    },
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentConversations"
+    },
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentGeneratedContent"
+    },
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentKnowledgeBase"
+    },
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentLearningSamples"
+    },
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentMessages"
+    },
+    {
+      "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)": "agentStyleModels"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_nTnpyunD5XzV7piz4sZYaw (agent%)\nagentActions\nagentConversations\nagentGeneratedContent\nagentKnowledgeBase\nagentLearningSamples\nagentMessages\nagentStyleModels\n",
+  "stderr": "",
+  "execution_time_ms": 1532
+}

@@ -237,15 +237,19 @@
 - [ ] Test creating new project after archiving
 
 ## AI Agent Integration (Clean Redo)
-- [ ] Save safety checkpoint before any changes
-- [ ] Install @oe-ecosystem/ai-agent from GitHub
-- [ ] Verify existing site still works after install
-- [ ] Add agent database tables to drizzle schema
-- [ ] Push database migration
-- [ ] Create agentRouter.ts wrapper
-- [ ] Mount agent router in routers.ts
-- [ ] Create Knowledge Base page
-- [ ] Create Agent Stats page
-- [ ] Add routes in App.tsx
-- [ ] Add navigation links
-- [ ] Test full integration
+- [x] Save safety checkpoint before any changes (06f183e1)
+- [x] Install @oe-ecosystem/ai-agent from GitHub
+- [x] Verify existing site still works after install
+- [x] Verified agent tables already exist in TA/TDD database (no migration needed)
+- [x] Dropped mistaken agent tables from Manus DB
+- [x] Create agentRouter.ts wrapper (server/routers/agent.ts) connecting to TA/TDD DB
+- [x] Mount agent router in routers.ts
+- [x] Create agent-trpc.ts typed helper for frontend
+- [x] Create Knowledge Base page (CRUD, search, filter, seed)
+- [x] Create Agent Chat page (conversation sidebar, message history, project context)
+- [x] Create Agent Stats page (knowledge stats, conversation stats, tools list)
+- [x] Add routes in App.tsx (/agent, /agent/knowledge, /agent/stats)
+- [x] Add navigation links (header nav, mobile menu, tools grid)
+- [x] Add AI Agent tool card on home page
+- [x] Write agent integration tests (3 passing)
+- [x] Test full integration
