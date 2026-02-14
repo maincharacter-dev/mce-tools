@@ -1,11 +1,11 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "5d3bca0e-9d00-46ca-a779-068d4a5d4e6e",
-  "prevId": "2916dd7d-3765-4bfd-a9be-b374ccf939d0",
+  "id": "4532703a-4a10-4868-ba75-4127f92875e2",
+  "prevId": "1fe9801e-c06b-4089-99c1-a3b6f1c8a6d1",
   "tables": {
-    "knowledgeBaseConfig": {
-      "name": "knowledgeBaseConfig",
+    "accCredentials": {
+      "name": "accCredentials",
       "columns": {
         "id": {
           "name": "id",
@@ -14,137 +14,33 @@
           "notNull": true,
           "autoincrement": true
         },
-        "dbName": {
-          "name": "dbName",
-          "type": "varchar(255)",
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "dbHost": {
-          "name": "dbHost",
-          "type": "varchar(255)",
+        "accessToken": {
+          "name": "accessToken",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'localhost'"
+          "notNull": true,
+          "autoincrement": false
         },
-        "dbPort": {
-          "name": "dbPort",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 3306
-        },
-        "dbUser": {
-          "name": "dbUser",
-          "type": "varchar(255)",
+        "refreshToken": {
+          "name": "refreshToken",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "dbPassword": {
-          "name": "dbPassword",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('Active','Inactive')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Active'"
-        },
-        "createdAt": {
-          "name": "createdAt",
+        "expiresAt": {
+          "name": "expiresAt",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "knowledgeBaseConfig_id": {
-          "name": "knowledgeBaseConfig_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "knowledgeBaseConfig_dbName_unique": {
-          "name": "knowledgeBaseConfig_dbName_unique",
-          "columns": [
-            "dbName"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
-    "ollamaConfig": {
-      "name": "ollamaConfig",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "baseUrl": {
-          "name": "baseUrl",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'http://localhost:11434'"
-        },
-        "model": {
-          "name": "model",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'llama2'"
-        },
-        "temperature": {
-          "name": "temperature",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'0.3'"
-        },
-        "topP": {
-          "name": "topP",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'0.9'"
-        },
-        "timeoutSeconds": {
-          "name": "timeoutSeconds",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 60
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 1
+          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
@@ -167,8 +63,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "ollamaConfig_id": {
-          "name": "ollamaConfig_id",
+        "accCredentials_id": {
+          "name": "accCredentials_id",
           "columns": [
             "id"
           ]
@@ -187,64 +83,48 @@
           "notNull": true,
           "autoincrement": true
         },
-        "name": {
-          "name": "name",
+        "projectName": {
+          "name": "projectName",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "dbName": {
-          "name": "dbName",
-          "type": "varchar(255)",
+        "projectCode": {
+          "name": "projectCode",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "dbHost": {
-          "name": "dbHost",
-          "type": "varchar(255)",
+        "projectType": {
+          "name": "projectType",
+          "type": "enum('TA_TDD','OE')",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'localhost'"
+          "notNull": true,
+          "autoincrement": false
         },
-        "dbPort": {
-          "name": "dbPort",
-          "type": "int",
+        "phase": {
+          "name": "phase",
+          "type": "varchar(64)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false,
-          "default": 3306
+          "default": "'Initiation'"
         },
-        "dbUser": {
-          "name": "dbUser",
+        "accProjectId": {
+          "name": "accProjectId",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "dbPassword": {
-          "name": "dbPassword",
+        "accHubId": {
+          "name": "accHubId",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('Active','Archived','Deleted')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Active'"
         },
         "createdByUserId": {
           "name": "createdByUserId",
@@ -282,10 +162,10 @@
         }
       },
       "uniqueConstraints": {
-        "projects_dbName_unique": {
-          "name": "projects_dbName_unique",
+        "projects_projectCode_unique": {
+          "name": "projects_projectCode_unique",
           "columns": [
-            "dbName"
+            "projectCode"
           ]
         }
       },
