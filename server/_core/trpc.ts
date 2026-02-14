@@ -13,25 +13,14 @@ export const publicProcedure = t.procedure;
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
 
-  // For local development: use mock user if no user in context
-  const mockUser = {
-    id: 1,
-    openId: "92XmCsbgC8bCEwx6Suc2Rh",
-    name: "Rob Hamilton",
-    email: "rob.ac.hamilton@gmail.com",
-    loginMethod: "google" as const,
-    role: "admin" as const,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
-  };
-
-  const user = ctx.user || mockUser;
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
 
   return next({
     ctx: {
       ...ctx,
-      user,
+      user: ctx.user,
     },
   });
 });

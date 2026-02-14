@@ -13,26 +13,10 @@ export function useAuth(options?: UseAuthOptions) {
     options ?? {};
   const utils = trpc.useUtils();
 
-  // For local development: bypass auth and use mock user
-  const mockUser = {
-    id: 1,
-    openId: "92XmCsbgC8bCEwx6Suc2Rh",
-    name: "Rob Hamilton",
-    email: "rob.ac.hamilton@gmail.com",
-    loginMethod: "google" as const,
-    role: "admin" as const,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
-  };
-
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });
-
-  // Override with mock user for local dev
-  const userData = meQuery.data ?? mockUser;
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -60,16 +44,16 @@ export function useAuth(options?: UseAuthOptions) {
   const state = useMemo(() => {
     localStorage.setItem(
       "manus-runtime-user-info",
-      JSON.stringify(userData)
+      JSON.stringify(meQuery.data)
     );
     return {
-      user: userData,
+      user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(userData),
+      isAuthenticated: Boolean(meQuery.data),
     };
   }, [
-    userData,
+    meQuery.data,
     meQuery.error,
     meQuery.isLoading,
     logoutMutation.error,
