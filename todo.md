@@ -235,3 +235,17 @@
 - [x] Fix schema or project creation logic to handle archived projects
 - [x] Removed unique constraint from projectCode
 - [ ] Test creating new project after archiving
+
+## AI Agent Integration (Clean Redo)
+- [ ] Save safety checkpoint before any changes
+- [ ] Install @oe-ecosystem/ai-agent from GitHub
+- [ ] Verify existing site still works after install
+- [ ] Add agent database tables to drizzle schema
+- [ ] Push database migration
+- [ ] Create agentRouter.ts wrapper
+- [ ] Mount agent router in routers.ts
+- [ ] Create Knowledge Base page
+- [ ] Create Agent Stats page
+- [ ] Add routes in App.tsx
+- [ ] Add navigation links
+- [ ] Test full integration
