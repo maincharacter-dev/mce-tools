@@ -279,3 +279,8 @@
 - [x] Clean install with fresh node_modules
 - [x] Verified fix in conversation-manager.js: `projectId: params.projectId ?? null`
 - [x] Server restarted and running cleanly
+
+## Fix Agent Database Schema - projectId NULL Constraint
+- [x] Discovered root cause: agentConversations.projectId was NOT NULL at database level
+- [x] Ran ALTER TABLE migration to allow NULL: `ALTER TABLE agentConversations MODIFY COLUMN projectId INT(11) NULL`
+- [x] Verified schema change: projectId now allows NULL values
