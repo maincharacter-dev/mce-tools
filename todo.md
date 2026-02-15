@@ -272,3 +272,10 @@
 - [x] Reported issue to ai-agent dev team (projectId undefined becomes empty string instead of NULL)
 - [x] Updated @oe-ecosystem/ai-agent to commit 15ff04f (fixes null handling)
 - [x] Tested agent chat without project selection (conversation creation works)
+
+## Fix Agent Conversation Creation - Second Attempt
+- [x] Updated @oe-ecosystem/ai-agent to commit d750259 (verified projectId ?? null in code)
+- [x] Removed obsolete wouter patch from package.json
+- [x] Clean install with fresh node_modules
+- [x] Verified fix in conversation-manager.js: `projectId: params.projectId ?? null`
+- [x] Server restarted and running cleanly
