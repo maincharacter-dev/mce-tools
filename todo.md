@@ -284,3 +284,9 @@
 - [x] Discovered root cause: agentConversations.projectId was NOT NULL at database level
 - [x] Ran ALTER TABLE migration to allow NULL: `ALTER TABLE agentConversations MODIFY COLUMN projectId INT(11) NULL`
 - [x] Verified schema change: projectId now allows NULL values
+
+## Configure OpenAI API Key
+- [x] Requested OPENAI_API_KEY secret from user
+- [x] Created openai.integration.test.ts to validate API key
+- [x] Test passed: OpenAI API integration working correctly
+- [x] Agent LLM is now configured and ready to use
