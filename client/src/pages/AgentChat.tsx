@@ -19,6 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { agentTrpc } from "@/lib/agent-trpc";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -30,6 +31,9 @@ export default function AgentChat() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [messages, setMessages] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch projects list
+  const { data: projectsData } = trpc.projects.list.useQuery();
 
   // Fetch conversations list
   const { data: conversationsData, refetch: refetchConversations } =
@@ -120,11 +124,23 @@ export default function AgentChat() {
     ]);
 
     // Send to agent
-    chatMutation.mutate({
+    const mutationInput: {
+      message: string;
+      conversationId?: string;
+      projectId?: number;
+    } = {
       message: userMessage,
-      conversationId: conversationId || undefined,
-      projectId: projectId !== "none" ? parseInt(projectId) : undefined,
-    });
+    };
+    
+    if (conversationId) {
+      mutationInput.conversationId = conversationId;
+    }
+    
+    if (projectId !== "none") {
+      mutationInput.projectId = parseInt(projectId);
+    }
+    
+    chatMutation.mutate(mutationInput);
   };
 
   const handleNewConversation = () => {
@@ -141,6 +157,9 @@ export default function AgentChat() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const conversations: any[] =
     (conversationsData as any)?.conversations || [];
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projects: any[] = projectsData || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -244,6 +263,11 @@ export default function AgentChat() {
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-600">
                   <SelectItem value="none">No project context</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.projectName} ({project.projectCode})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

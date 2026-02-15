@@ -253,3 +253,9 @@
 - [x] Add AI Agent tool card on home page
 - [x] Write agent integration tests (3 passing)
 - [x] Test full integration
+
+## Fix Agent Chat Project Selection
+- [x] Fix chat mutation to properly omit projectId when "none" is selected
+- [x] Populate project dropdown with real projects from database
+- [x] Test agent chat works without project selection
+- [x] Test agent chat works with project selection
