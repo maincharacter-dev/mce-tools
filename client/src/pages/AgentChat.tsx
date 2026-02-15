@@ -288,7 +288,9 @@ export default function AgentChat() {
                 </p>
               </div>
             ) : (
-              messages.map((msg, i) => (
+              messages
+                .filter((msg) => msg.role === "user" || msg.role === "assistant")
+                .map((msg, i) => (
                 <div
                   key={i}
                   className={`flex ${

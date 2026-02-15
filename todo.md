@@ -290,3 +290,8 @@
 - [x] Created openai.integration.test.ts to validate API key
 - [x] Test passed: OpenAI API integration working correctly
 - [x] Agent LLM is now configured and ready to use
+
+## Fix Agent Chat Tool Message Display
+- [x] Filter out tool role messages from chat display (internal execution steps)
+- [x] Only show user and assistant messages to end users
+- [x] Added .filter() to message rendering to exclude tool messages
