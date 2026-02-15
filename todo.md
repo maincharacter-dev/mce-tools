@@ -295,3 +295,8 @@
 - [x] Filter out tool role messages from chat display (internal execution steps)
 - [x] Only show user and assistant messages to end users
 - [x] Added .filter() to message rendering to exclude tool messages
+
+## Fix Agent Conversation Sidebar UI
+- [x] Make conversation history scrollable (changed min-h-screen to h-screen)
+- [x] Display meaningful conversation names ("Chat [date]" + timestamp)
+- [x] Show conversation timestamps for better context

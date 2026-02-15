@@ -163,7 +163,7 @@ export default function AgentChat() {
   const projects: any[] = projectsData || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+    <div className="h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       {/* Header */}
       <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm shrink-0">
         <div className="container mx-auto px-4 py-4">
@@ -234,9 +234,16 @@ export default function AgentChat() {
                   onClick={() => setConversationId(conv.id)}
                 >
                   <MessageSquare className="h-4 w-4 shrink-0" />
-                  <span className="text-sm truncate flex-1">
-                    {conv.title || "Untitled"}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm truncate">
+                      {conv.title && conv.title !== "Untitled" && !conv.title.startsWith("Conversation ")
+                        ? conv.title
+                        : "Chat " + new Date(conv.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
                   <button
                     className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all"
                     onClick={(e) => {
