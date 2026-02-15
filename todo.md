@@ -267,3 +267,8 @@
 - [x] Update AgentChat dropdown to query TA/TDD projects instead of local projects
 - [x] Test agent chat without project selection (no validation error)
 - [x] Test agent chat with TA/TDD project selection
+
+## Fix Agent Conversation Creation with Null ProjectId
+- [x] Reported issue to ai-agent dev team (projectId undefined becomes empty string instead of NULL)
+- [x] Updated @oe-ecosystem/ai-agent to commit 15ff04f (fixes null handling)
+- [x] Tested agent chat without project selection (conversation creation works)
