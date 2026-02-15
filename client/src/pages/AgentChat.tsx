@@ -32,8 +32,9 @@ export default function AgentChat() {
   const [messages, setMessages] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch projects list
-  const { data: projectsData } = trpc.projects.list.useQuery();
+  // Fetch projects list from TA/TDD database
+  // @ts-ignore - taTddProjects router exists at runtime but TS hasn't picked up the type yet
+  const { data: projectsData } = trpc.taTddProjects.list.useQuery();
 
   // Fetch conversations list
   const { data: conversationsData, refetch: refetchConversations } =
@@ -265,7 +266,7 @@ export default function AgentChat() {
                   <SelectItem value="none">No project context</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id.toString()}>
-                      {project.projectName} ({project.projectCode})
+                      {project.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

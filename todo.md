@@ -259,3 +259,11 @@
 - [x] Populate project dropdown with real projects from database
 - [x] Test agent chat works without project selection
 - [x] Test agent chat works with project selection
+
+## Fix Agent Chat ProjectId Validation and TA/TDD Projects
+- [x] Check agent router input schema and make projectId truly optional (fixed in ai-agent commit cfd45ea)
+- [x] Updated @oe-ecosystem/ai-agent package to commit cfd45ea
+- [x] Create tRPC endpoint to fetch projects from TA/TDD shared database (taTddProjects.list)
+- [x] Update AgentChat dropdown to query TA/TDD projects instead of local projects
+- [x] Test agent chat without project selection (no validation error)
+- [x] Test agent chat with TA/TDD project selection

@@ -10,6 +10,7 @@ import { listProjectFolders, createFolder } from "./aps";
 import { z } from "zod";
 import { createTaTddProject } from "./taTddIntegration";
 import { agentRouter } from "./routers/agent";
+import { taTddProjectsRouter } from "./routers/taTddProjects";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -29,6 +30,8 @@ export const appRouter = router({
   acc: accRouter,
   // AI Agent router (connected to TA/TDD database)
   agent: agentRouter,
+  // TA/TDD Projects router (queries shared TA/TDD database)
+  taTddProjects: taTddProjectsRouter,
 
   // Projects router
   projects: router({

@@ -26,8 +26,8 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.64.0(react@19.2.1))
       '@oe-ecosystem/ai-agent':
-        specifier: github:robachamilton-afk/oe-ai-agent
-        version: https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/71d0c060817addb0f240fea3da8d265c93a2593b(@trpc/server@11.9.0(typescript@5.9.3))(drizzle-orm@0.44.7(mysql2@3.16.3))(mysql2@3.16.3)
+        specifier: github:robachamilton-afk/oe-ai-agent#cfd45ea
+        version: https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/cfd45ea(@trpc/server@11.9.0(typescript@5.9.3))(drizzle-orm@0.44.7(mysql2@3.16.3))(mysql2@3.16.3)
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.1(@types/react@19.2.1))(@types/react@19.2.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -1082,8 +1082,8 @@ packages:
   '@mermaid-js/parser@0.6.3':
     resolution: {integrity: sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA==}
 
-  '@oe-ecosystem/ai-agent@https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/71d0c060817addb0f240fea3da8d265c93a2593b':
-    resolution: {tarball: https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/71d0c060817addb0f240fea3da8d265c93a2593b}
+  '@oe-ecosystem/ai-agent@https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/cfd45ea':
+    resolution: {tarball: https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/cfd45ea}
     version: 1.0.0
     engines: {node: '>=18.0.0'}
     peerDependencies:
@@ -5444,7 +5444,7 @@ snapshots:
     dependencies:
       langium: 3.3.1
 
-  '@oe-ecosystem/ai-agent@https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/71d0c060817addb0f240fea3da8d265c93a2593b(@trpc/server@11.9.0(typescript@5.9.3))(drizzle-orm@0.44.7(mysql2@3.16.3))(mysql2@3.16.3)':
+  '@oe-ecosystem/ai-agent@https://codeload.github.com/robachamilton-afk/oe-ai-agent/tar.gz/cfd45ea(@trpc/server@11.9.0(typescript@5.9.3))(drizzle-orm@0.44.7(mysql2@3.16.3))(mysql2@3.16.3)':
     dependencies:
       '@trpc/server': 11.9.0(typescript@5.9.3)
       drizzle-orm: 0.44.7(mysql2@3.16.3)
