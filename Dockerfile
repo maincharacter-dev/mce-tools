@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     dos2unix \
     netcat-openbsd \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
 # Install drizzle-kit globally for migrations

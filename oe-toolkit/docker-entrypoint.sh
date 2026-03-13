@@ -5,10 +5,13 @@ echo "============================================"
 echo "  OE Toolkit — Docker Entrypoint"
 echo "============================================"
 
-# ---- Parse MySQL host/port from DATABASE_URL ----
+# ---- Parse MySQL connection details from DATABASE_URL ----
 # DATABASE_URL format: mysql://user:pass@host:port/dbname
+DB_USER=$(echo "$DATABASE_URL" | sed -E 's|mysql://([^:]+):.*|\1|')
+DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^:]+:([^@]+)@.*|\1|')
 DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+)[:/].*|\1|')
 DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*@[^:]+:([0-9]+)/.*|\1|')
+DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|.*/([^?]+).*|\1|')
 DB_PORT=${DB_PORT:-3306}
 
 echo "[Entrypoint] Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
@@ -24,6 +27,12 @@ until nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; do
   sleep 2
 done
 echo "[Entrypoint] MySQL is ready!"
+
+# ---- Create database if it doesn't exist ----
+echo "[Entrypoint] Ensuring database '${DB_NAME}' exists..."
+mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
+  -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null \
+  || echo "[Entrypoint] WARNING: Could not create database (may already exist or insufficient privileges)"
 
 # ---- Run database migrations ----
 echo "[Entrypoint] Running database migrations..."
