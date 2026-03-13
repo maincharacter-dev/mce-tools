@@ -39,13 +39,10 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
-  const secure = isSecureRequest(req);
   return {
     httpOnly: true,
     path: "/",
-    // sameSite:"none" requires Secure=true (HTTPS). For HTTP (local Docker),
-    // use "lax" so the browser actually stores the cookie.
-    sameSite: secure ? "none" : "lax",
-    secure,
+    sameSite: "none",
+    secure: isSecureRequest(req),
   };
 }

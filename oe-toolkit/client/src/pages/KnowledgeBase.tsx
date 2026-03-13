@@ -1,14 +1,22 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
-
-// The agent router is created via a factory function from the npm package,
-// so tRPC can't infer its types statically. Cast to any for runtime access.
-const agentTrpc = (trpc as any).agent;
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -18,672 +26,575 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Brain,
-  Search,
-  Plus,
-  Pencil,
-  Trash2,
   BookOpen,
-  Lightbulb,
-  TrendingUp,
-  Globe,
-  Scale,
-  Wrench,
-  GraduationCap,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
+  Plus,
+  Search,
+  Trash2,
+  Edit,
+  ArrowLeft,
   Loader2,
   Database,
-  Sparkles,
+  Filter,
+  RefreshCw,
 } from "lucide-react";
+import { agentTrpc } from "@/lib/agent-trpc";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const CATEGORIES = [
-  { value: "domain_knowledge", label: "Domain Knowledge", icon: BookOpen, color: "text-blue-400" },
-  { value: "best_practice", label: "Best Practice", icon: Lightbulb, color: "text-yellow-400" },
-  { value: "pattern", label: "Pattern", icon: TrendingUp, color: "text-green-400" },
-  { value: "benchmark", label: "Benchmark", icon: BarChart3, color: "text-purple-400" },
-  { value: "lesson_learned", label: "Lesson Learned", icon: GraduationCap, color: "text-orange-400" },
-  { value: "regional_insight", label: "Regional Insight", icon: Globe, color: "text-cyan-400" },
-  { value: "regulatory", label: "Regulatory", icon: Scale, color: "text-red-400" },
-  { value: "technical_standard", label: "Technical Standard", icon: Wrench, color: "text-slate-400" },
+  "domain_knowledge",
+  "best_practice",
+  "pattern",
+  "standard",
+  "regulation",
+  "methodology",
 ];
 
-const CONFIDENCE_LEVELS = [
-  { value: "high", label: "High", color: "bg-green-500/20 text-green-400 border-green-500/30" },
-  { value: "medium", label: "Medium", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
-  { value: "low", label: "Low", color: "bg-red-500/20 text-red-400 border-red-500/30" },
-];
+const CONFIDENCE_LEVELS = ["low", "medium", "high"];
 
-const PAGE_SIZE = 20;
+const confidenceColor: Record<string, string> = {
+  low: "bg-red-500/20 text-red-300 border-red-500/30",
+  medium: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  high: "bg-green-500/20 text-green-300 border-green-500/30",
+};
+
+const categoryColor: Record<string, string> = {
+  domain_knowledge: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  best_practice: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  pattern: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+  standard: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  regulation: "bg-red-500/20 text-red-300 border-red-500/30",
+  methodology: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+};
 
 export default function KnowledgeBase() {
-  const [, navigate] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [filterConfidence, setFilterConfidence] = useState<string>("all");
-  const [page, setPage] = useState(0);
-
-  // Dialog states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [confidenceFilter, setConfidenceFilter] = useState<string>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [editingEntry, setEditingEntry] = useState<any>(null);
 
   // Form state
-  const [formData, setFormData] = useState({
-    category: "domain_knowledge",
-    topic: "",
-    content: "",
-    confidence: "medium",
-    tags: "",
-    relatedTopics: "",
-    applicability: "",
+  const [formCategory, setFormCategory] = useState("domain_knowledge");
+  const [formTopic, setFormTopic] = useState("");
+  const [formContent, setFormContent] = useState("");
+  const [formConfidence, setFormConfidence] = useState("medium");
+
+  const { data: knowledgeData, isLoading, refetch } = agentTrpc.listKnowledge.useQuery({
+    category: categoryFilter !== "all" ? categoryFilter : undefined,
+    search: searchTerm || undefined,
+    limit: 100,
   });
 
-  // Queries
-  const { data, isLoading, refetch } = agentTrpc.listKnowledge.useQuery({
-    category: filterCategory !== "all" ? filterCategory : undefined,
-    confidence: filterConfidence !== "all" ? filterConfidence : undefined,
-    search: searchQuery || undefined,
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
-  });
-
-  // Mutations
-  const createMutation = agentTrpc.createKnowledge.useMutation({
+  const createKnowledge = agentTrpc.createKnowledge.useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSuccess: () => {
-      toast.success("Knowledge entry created successfully");
+      toast.success("Knowledge entry created");
+      refetch();
+      resetForm();
       setIsCreateOpen(false);
-      resetForm();
-      refetch();
     },
-    onError: (error: any) => toast.error(`Failed to create: ${error.message}`),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (error: any) => {
+      toast.error(`Failed to create: ${error.message}`);
+    },
   });
 
-  const updateMutation = agentTrpc.updateKnowledge.useMutation({
+  const updateKnowledge = agentTrpc.updateKnowledge.useMutation({
     onSuccess: () => {
-      toast.success("Knowledge entry updated successfully");
-      setIsEditOpen(false);
-      resetForm();
+      toast.success("Knowledge entry updated");
       refetch();
+      setEditingEntry(null);
+      resetForm();
     },
-    onError: (error: any) => toast.error(`Failed to update: ${error.message}`),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (error: any) => {
+      toast.error(`Failed to update: ${error.message}`);
+    },
   });
 
-  const deleteMutation = agentTrpc.deleteKnowledge.useMutation({
+  const deleteKnowledge = agentTrpc.deleteKnowledge.useMutation({
     onSuccess: () => {
       toast.success("Knowledge entry deleted");
-      setIsDeleteOpen(false);
-      setSelectedEntry(null);
       refetch();
     },
-    onError: (error: any) => toast.error(`Failed to delete: ${error.message}`),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (error: any) => {
+      toast.error(`Failed to delete: ${error.message}`);
+    },
   });
 
-  const seedMutation = agentTrpc.seedKnowledge.useMutation({
+  const seedKnowledge = agentTrpc.seedKnowledge.useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSuccess: (result: any) => {
-      toast.success(`Knowledge base seeded: ${result.added} added, ${result.skipped} skipped`);
+      toast.success(`Knowledge base seeded: ${result.inserted} entries added, ${result.skipped} skipped`);
       refetch();
     },
-    onError: (error: any) => toast.error(`Failed to seed: ${error.message}`),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (error: any) => {
+      toast.error(`Failed to seed: ${error.message}`);
+    },
   });
 
   const resetForm = () => {
-    setFormData({
-      category: "domain_knowledge",
-      topic: "",
-      content: "",
-      confidence: "medium",
-      tags: "",
-      relatedTopics: "",
-      applicability: "",
-    });
-  };
-
-  const openEdit = (entry: any) => {
-    setSelectedEntry(entry);
-    setFormData({
-      category: entry.category,
-      topic: entry.topic,
-      content: entry.content,
-      confidence: entry.confidence || "medium",
-      tags: entry.metadata?.tags?.join(", ") || "",
-      relatedTopics: entry.metadata?.relatedTopics?.join(", ") || "",
-      applicability: entry.metadata?.applicability?.join(", ") || "",
-    });
-    setIsEditOpen(true);
-  };
-
-  const openDelete = (entry: any) => {
-    setSelectedEntry(entry);
-    setIsDeleteOpen(true);
+    setFormCategory("domain_knowledge");
+    setFormTopic("");
+    setFormContent("");
+    setFormConfidence("medium");
   };
 
   const handleCreate = () => {
-    createMutation.mutate({
-      category: formData.category,
-      topic: formData.topic,
-      content: formData.content,
-      confidence: formData.confidence,
-      tags: formData.tags ? formData.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
-      relatedTopics: formData.relatedTopics ? formData.relatedTopics.split(",").map(t => t.trim()).filter(Boolean) : [],
-      applicability: formData.applicability ? formData.applicability.split(",").map(t => t.trim()).filter(Boolean) : [],
+    if (!formTopic || !formContent) {
+      toast.error("Please fill in topic and content");
+      return;
+    }
+    createKnowledge.mutate({
+      category: formCategory,
+      topic: formTopic,
+      content: formContent,
+      confidence: formConfidence,
     });
   };
 
   const handleUpdate = () => {
-    if (!selectedEntry) return;
-    updateMutation.mutate({
-      id: selectedEntry.id,
-      category: formData.category,
-      topic: formData.topic,
-      content: formData.content,
-      confidence: formData.confidence,
-      tags: formData.tags ? formData.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
-      relatedTopics: formData.relatedTopics ? formData.relatedTopics.split(",").map(t => t.trim()).filter(Boolean) : [],
-      applicability: formData.applicability ? formData.applicability.split(",").map(t => t.trim()).filter(Boolean) : [],
+    if (!editingEntry || !formTopic || !formContent) {
+      toast.error("Please fill in topic and content");
+      return;
+    }
+    updateKnowledge.mutate({
+      id: editingEntry.id,
+      category: formCategory,
+      topic: formTopic,
+      content: formContent,
+      confidence: formConfidence,
     });
   };
 
-  const handleDelete = () => {
-    if (!selectedEntry) return;
-    deleteMutation.mutate({ id: selectedEntry.id });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleEdit = (entry: any) => {
+    setEditingEntry(entry);
+    setFormCategory(entry.category);
+    setFormTopic(entry.topic);
+    setFormContent(entry.content);
+    setFormConfidence(entry.confidence || "medium");
   };
 
-  const getCategoryInfo = (category: string) => {
-    return CATEGORIES.find(c => c.value === category) || CATEGORIES[0];
+  const handleDelete = (id: string, topic: string) => {
+    if (confirm(`Delete knowledge entry "${topic}"?`)) {
+      deleteKnowledge.mutate({ id });
+    }
   };
 
-  const getConfidenceBadge = (confidence: string) => {
-    const level = CONFIDENCE_LEVELS.find(c => c.value === confidence);
-    return <Badge className={level?.color || "bg-slate-500/20 text-slate-400"}>{level?.label || confidence}</Badge>;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const entries: any[] = (knowledgeData as any)?.entries || [];
 
-  const totalPages = Math.ceil((data?.total || 0) / PAGE_SIZE);
+  const filteredEntries = useMemo(() => {
+    let filtered = entries;
+    if (confidenceFilter !== "all") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      filtered = filtered.filter(
+        (e: any) => e.confidence === confidenceFilter
+      );
+    }
+    return filtered;
+  }, [entries, confidenceFilter]);
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Brain className="h-8 w-8 text-purple-400" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <a
+                href="/"
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </a>
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1">Knowledge Base</h1>
-                <p className="text-slate-400">
-                  The agent's persistent memory — insights accumulated across all projects
+                <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                  <BookOpen className="h-8 w-8 text-orange-400" />
+                  Knowledge Base
+                </h1>
+                <p className="text-slate-400 mt-1">
+                  Manage shared knowledge entries for the AI agent
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Button
-                onClick={() => seedMutation.mutate()}
                 variant="outline"
-                className="border-slate-700 hover:bg-slate-800"
-                disabled={seedMutation.isPending}
+                className="border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700"
+                onClick={() => seedKnowledge.mutate()}
+                disabled={seedKnowledge.isPending}
               >
-                {seedMutation.isPending ? (
+                {seedKnowledge.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Database className="h-4 w-4 mr-2" />
                 )}
                 Seed Knowledge
               </Button>
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsCreateOpen(true);
-                }}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Knowledge
-              </Button>
-              <Button
-                onClick={() => navigate("/agent-stats")}
-                variant="outline"
-                className="border-slate-700 hover:bg-slate-800"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Learning Stats
-              </Button>
+              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    className="bg-orange-500 hover:bg-orange-600"
+                    onClick={() => {
+                      resetForm();
+                      setEditingEntry(null);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Entry
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-slate-900 border-slate-700 max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">
+                      Add Knowledge Entry
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                      Add a new entry to the shared knowledge base
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-slate-300">Category</Label>
+                      <Select
+                        value={formCategory}
+                        onValueChange={setFormCategory}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600">
+                          {CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat.replace(/_/g, " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-slate-300">Topic</Label>
+                      <Input
+                        value={formTopic}
+                        onChange={(e) => setFormTopic(e.target.value)}
+                        placeholder="e.g., Solar Panel Degradation Rates"
+                        className="bg-slate-800 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-slate-300">Content</Label>
+                      <Textarea
+                        value={formContent}
+                        onChange={(e) => setFormContent(e.target.value)}
+                        placeholder="Detailed knowledge content..."
+                        rows={6}
+                        className="bg-slate-800 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-slate-300">Confidence</Label>
+                      <Select
+                        value={formConfidence}
+                        onValueChange={setFormConfidence}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600">
+                          {CONFIDENCE_LEVELS.map((level) => (
+                            <SelectItem key={level} value={level}>
+                              {level.charAt(0).toUpperCase() + level.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsCreateOpen(false)}
+                      className="border-slate-600 text-slate-300"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreate}
+                      className="bg-orange-500 hover:bg-orange-600"
+                      disabled={createKnowledge.isPending}
+                    >
+                      {createKnowledge.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : null}
+                      Create
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Stats Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card className="p-4 bg-slate-900/50 border-slate-800">
-            <div className="flex items-center gap-3">
-              <Brain className="h-8 w-8 text-purple-400" />
-              <div>
-                <p className="text-2xl font-bold text-white">{data?.total || 0}</p>
-                <p className="text-sm text-slate-400">Total Entries</p>
-              </div>
-            </div>
-          </Card>
-          {CATEGORIES.slice(0, 3).map(cat => {
-            const catCount = data?.entries?.filter((e: any) => e.category === cat.value).length || 0;
-            const Icon = cat.icon;
-            return (
-              <Card key={cat.value} className="p-4 bg-slate-900/50 border-slate-800">
-                <div className="flex items-center gap-3">
-                  <Icon className={`h-8 w-8 ${cat.color}`} />
-                  <div>
-                    <p className="text-2xl font-bold text-white">{catCount}</p>
-                    <p className="text-sm text-slate-400">{cat.label}</p>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Filters */}
-        <Card className="p-4 bg-slate-900/50 border-slate-800 mb-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search topics and content..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setPage(0);
-                  }}
-                  className="pl-10 bg-slate-800/50 border-slate-700"
-                />
-              </div>
-            </div>
-            <Select value={filterCategory} onValueChange={(v) => { setFilterCategory(v); setPage(0); }}>
-              <SelectTrigger className="w-[180px] bg-slate-800/50 border-slate-700">
+      {/* Filters */}
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search knowledge..."
+              className="pl-10 bg-slate-800 border-slate-600 text-white"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-400" />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[180px] bg-slate-800 border-slate-600 text-white">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-800 border-slate-600">
                 <SelectItem value="all">All Categories</SelectItem>
-                {CATEGORIES.map(cat => (
-                  <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat.replace(/_/g, " ")}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterConfidence} onValueChange={(v) => { setFilterConfidence(v); setPage(0); }}>
-              <SelectTrigger className="w-[150px] bg-slate-800/50 border-slate-700">
+            <Select
+              value={confidenceFilter}
+              onValueChange={setConfidenceFilter}
+            >
+              <SelectTrigger className="w-[150px] bg-slate-800 border-slate-600 text-white">
                 <SelectValue placeholder="Confidence" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-800 border-slate-600">
                 <SelectItem value="all">All Levels</SelectItem>
-                {CONFIDENCE_LEVELS.map(level => (
-                  <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
+                {CONFIDENCE_LEVELS.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        </Card>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => refetch()}
+            className="text-slate-400 hover:text-white"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
-        {/* Knowledge Entries */}
+      {/* Content */}
+      <div className="container mx-auto px-4 pb-12">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-orange-400" />
           </div>
-        ) : data?.entries?.length === 0 ? (
-          <Card className="p-12 bg-slate-900/50 border-slate-800 text-center">
-            <Brain className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No Knowledge Entries Found</h3>
-            <p className="text-slate-400 mb-6">
-              {searchQuery || filterCategory !== "all" || filterConfidence !== "all"
-                ? "Try adjusting your filters or search query."
-                : "The knowledge base is empty. Seed it with foundational knowledge or add entries manually."}
+        ) : filteredEntries.length === 0 ? (
+          <div className="text-center py-20">
+            <BookOpen className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-slate-300 mb-2">
+              No knowledge entries found
+            </h3>
+            <p className="text-slate-500 mb-6">
+              {searchTerm || categoryFilter !== "all"
+                ? "Try adjusting your filters"
+                : "Get started by seeding the knowledge base or adding entries manually"}
             </p>
-            {!searchQuery && filterCategory === "all" && (
+            {!searchTerm && categoryFilter === "all" && (
               <Button
-                onClick={() => seedMutation.mutate()}
-                className="bg-purple-600 hover:bg-purple-700"
-                disabled={seedMutation.isPending}
+                className="bg-orange-500 hover:bg-orange-600"
+                onClick={() => seedKnowledge.mutate()}
+                disabled={seedKnowledge.isPending}
               >
                 <Database className="h-4 w-4 mr-2" />
-                Seed with Solar DD Knowledge
+                Seed Knowledge Base
               </Button>
             )}
-          </Card>
+          </div>
         ) : (
-          <div className="space-y-4">
-            {data?.entries?.map((entry: any) => {
-              const catInfo = getCategoryInfo(entry.category);
-              const CatIcon = catInfo.icon;
-              const metadata = entry.metadata as any;
-
-              return (
-                <Card
-                  key={entry.id}
-                  className="p-6 bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="mt-1">
-                        <CatIcon className={`h-5 w-5 ${catInfo.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white truncate">
-                            {entry.topic}
-                          </h3>
-                          {getConfidenceBadge(entry.confidence || "medium")}
-                          <Badge variant="outline" className="border-slate-700 text-slate-400">
-                            {catInfo.label}
+          <div className="grid gap-4">
+            <p className="text-sm text-slate-400">
+              {filteredEntries.length} entries found
+            </p>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {filteredEntries.map((entry: any) => (
+              <Card
+                key={entry.id}
+                className="bg-slate-900/50 border-slate-700/50 hover:border-slate-600/50 transition-colors"
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-white text-lg">
+                        {entry.topic}
+                      </CardTitle>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge
+                          variant="outline"
+                          className={
+                            categoryColor[entry.category] ||
+                            "bg-slate-500/20 text-slate-300"
+                          }
+                        >
+                          {entry.category?.replace(/_/g, " ")}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={
+                            confidenceColor[entry.confidence || "medium"]
+                          }
+                        >
+                          {entry.confidence || "medium"}
+                        </Badge>
+                        {entry.sourceCount > 1 && (
+                          <Badge
+                            variant="outline"
+                            className="bg-slate-500/20 text-slate-300 border-slate-500/30"
+                          >
+                            {entry.sourceCount} sources
                           </Badge>
-                          {(entry.sourceCount || 1) > 1 && (
-                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-                              {entry.sourceCount} sources
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-slate-300 text-sm leading-relaxed line-clamp-3">
-                          {entry.content}
-                        </p>
-                        {metadata?.tags?.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-3">
-                            {metadata.tags.map((tag: string) => (
-                              <Badge
-                                key={tag}
-                                variant="outline"
-                                className="text-xs border-slate-700 text-slate-500"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => openEdit(entry)}
-                        className="h-8 w-8 text-slate-400 hover:text-white"
+                        className="text-slate-400 hover:text-white h-8 w-8"
+                        onClick={() => handleEdit(entry)}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => openDelete(entry)}
-                        className="h-8 w-8 text-slate-400 hover:text-red-400"
+                        className="text-slate-400 hover:text-red-400 h-8 w-8"
+                        onClick={() => handleDelete(entry.id, entry.topic)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </Card>
-              );
-            })}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-slate-400">
-                  Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, data?.total || 0)} of {data?.total || 0}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="border-slate-700"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-slate-400">
-                    Page {page + 1} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="border-slate-700"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-300 text-sm whitespace-pre-wrap line-clamp-4">
+                    {entry.content}
+                  </p>
+                  {entry.updatedAt && (
+                    <p className="text-xs text-slate-500 mt-3">
+                      Updated:{" "}
+                      {new Date(entry.updatedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-white">Add Knowledge Entry</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Add a new insight, best practice, or benchmark to the agent's knowledge base.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Category</label>
-                <Select value={formData.category} onValueChange={(v) => setFormData(f => ({ ...f, category: v }))}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Confidence</label>
-                <Select value={formData.confidence} onValueChange={(v) => setFormData(f => ({ ...f, confidence: v }))}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONFIDENCE_LEVELS.map(level => (
-                      <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Topic</label>
-              <Input
-                placeholder="e.g., Solar DC/AC Ratio Best Practice"
-                value={formData.topic}
-                onChange={(e) => setFormData(f => ({ ...f, topic: e.target.value }))}
-                className="bg-slate-800/50 border-slate-700"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Content</label>
-              <Textarea
-                placeholder="Detailed knowledge content..."
-                value={formData.content}
-                onChange={(e) => setFormData(f => ({ ...f, content: e.target.value }))}
-                className="bg-slate-800/50 border-slate-700 min-h-[150px]"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Tags (comma-separated)</label>
-              <Input
-                placeholder="e.g., solar, oman, grid, regulatory"
-                value={formData.tags}
-                onChange={(e) => setFormData(f => ({ ...f, tags: e.target.value }))}
-                className="bg-slate-800/50 border-slate-700"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Related Topics</label>
-                <Input
-                  placeholder="e.g., grid connection, OETC"
-                  value={formData.relatedTopics}
-                  onChange={(e) => setFormData(f => ({ ...f, relatedTopics: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Applicability</label>
-                <Input
-                  placeholder="e.g., solar, MENA, utility-scale"
-                  value={formData.applicability}
-                  onChange={(e) => setFormData(f => ({ ...f, applicability: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="border-slate-700">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={!formData.topic || !formData.content || createMutation.isPending}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl">
+      <Dialog
+        open={!!editingEntry}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingEntry(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="bg-slate-900 border-slate-700 max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">Edit Knowledge Entry</DialogTitle>
+            <DialogTitle className="text-white">
+              Edit Knowledge Entry
+            </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Update the knowledge entry details.
+              Update this knowledge base entry
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Category</label>
-                <Select value={formData.category} onValueChange={(v) => setFormData(f => ({ ...f, category: v }))}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Confidence</label>
-                <Select value={formData.confidence} onValueChange={(v) => setFormData(f => ({ ...f, confidence: v }))}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONFIDENCE_LEVELS.map(level => (
-                      <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-slate-300">Category</Label>
+              <Select value={formCategory} onValueChange={setFormCategory}>
+                <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-600">
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Topic</label>
+              <Label className="text-slate-300">Topic</Label>
               <Input
-                value={formData.topic}
-                onChange={(e) => setFormData(f => ({ ...f, topic: e.target.value }))}
-                className="bg-slate-800/50 border-slate-700"
+                value={formTopic}
+                onChange={(e) => setFormTopic(e.target.value)}
+                className="bg-slate-800 border-slate-600 text-white"
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Content</label>
+              <Label className="text-slate-300">Content</Label>
               <Textarea
-                value={formData.content}
-                onChange={(e) => setFormData(f => ({ ...f, content: e.target.value }))}
-                className="bg-slate-800/50 border-slate-700 min-h-[150px]"
+                value={formContent}
+                onChange={(e) => setFormContent(e.target.value)}
+                rows={6}
+                className="bg-slate-800 border-slate-600 text-white"
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1.5 block">Tags (comma-separated)</label>
-              <Input
-                value={formData.tags}
-                onChange={(e) => setFormData(f => ({ ...f, tags: e.target.value }))}
-                className="bg-slate-800/50 border-slate-700"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Related Topics</label>
-                <Input
-                  value={formData.relatedTopics}
-                  onChange={(e) => setFormData(f => ({ ...f, relatedTopics: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-slate-400 mb-1.5 block">Applicability</label>
-                <Input
-                  value={formData.applicability}
-                  onChange={(e) => setFormData(f => ({ ...f, applicability: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700"
-                />
-              </div>
+              <Label className="text-slate-300">Confidence</Label>
+              <Select value={formConfidence} onValueChange={setFormConfidence}>
+                <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-600">
+                  {CONFIDENCE_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="border-slate-700">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingEntry(null);
+                resetForm();
+              }}
+              className="border-slate-600 text-slate-300"
+            >
               Cancel
             </Button>
             <Button
               onClick={handleUpdate}
-              disabled={!formData.topic || !formData.content || updateMutation.isPending}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-orange-500 hover:bg-orange-600"
+              disabled={updateKnowledge.isPending}
             >
-              {updateMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Pencil className="h-4 w-4 mr-2" />}
+              {updateKnowledge.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
               Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Delete Knowledge Entry</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Are you sure you want to delete "{selectedEntry?.topic}"? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="border-slate-700">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              variant="destructive"
-            >
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

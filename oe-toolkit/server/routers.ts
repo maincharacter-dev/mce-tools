@@ -3,12 +3,14 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { accRouter } from "./accRouter";
-import { agentRouter } from "./agent-router";
 import { getDb } from "./db";
 import { projects, accCredentials } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { listProjectFolders, createFolder } from "./aps";
 import { z } from "zod";
+import { createTaTddProject } from "./taTddIntegration";
+import { agentRouter } from "./routers/agent";
+import { taTddProjectsRouter } from "./routers/taTddProjects";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -26,9 +28,10 @@ export const appRouter = router({
 
   // ACC integration router
   acc: accRouter,
-
-  // AI Agent router (from @oe-ecosystem/ai-agent)
+  // AI Agent router (connected to TA/TDD database)
   agent: agentRouter,
+  // TA/TDD Projects router (queries shared TA/TDD database)
+  taTddProjects: taTddProjectsRouter,
 
   // Projects router
   projects: router({
@@ -67,25 +70,44 @@ export const appRouter = router({
           projectName: z.string().min(1),
           projectCode: z.string().min(1),
           projectType: z.enum(["TA_TDD", "OE"]),
+          description: z.string().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         
+        console.log(`[Project Creation] Creating project: ${input.projectName}`);
+        
+        // Step 1: Create TA/TDD engine project
+        const { id: taTddProjectId, dbName: taTddDbName } = await createTaTddProject({
+          name: input.projectName,
+          description: input.description,
+          createdByUserId: ctx.user.id, // Use the authenticated user's ID
+        });
+        
+        console.log(`[Project Creation] Created TA/TDD project ${taTddProjectId} with DB ${taTddDbName}`);
+        
+        // Step 2: Create OE Toolkit project with link to TA/TDD project
         const [result] = await db.insert(projects).values({
           projectName: input.projectName,
           projectCode: input.projectCode,
           projectType: input.projectType,
           phase: "Initiation",
+          taTddProjectId: taTddProjectId,
+          taTddDbName: taTddDbName,
           createdByUserId: ctx.user.id,
         }).$returningId();
+        
+        console.log(`[Project Creation] Created OE Toolkit project ${result.id}`);
         
         return {
           id: result.id,
           projectName: input.projectName,
           projectCode: input.projectCode,
           projectType: input.projectType,
+          taTddProjectId: taTddProjectId,
+          taTddDbName: taTddDbName,
         };
       }),
 
@@ -184,6 +206,57 @@ export const appRouter = router({
             phase: "Design Review",
           })
           .where(eq(projects.id, input.id));
+        
+        return { success: true };
+      }),
+
+    // Archive project
+    archive: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        
+        // Get project
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, input.id))
+          .limit(1);
+        
+        if (!project) {
+          throw new Error("Project not found");
+        }
+        
+        console.log(`[Archive] Archiving project ${project.id}: ${project.projectName}`);
+        console.log(`[Archive] Note: ACC projects must be manually renamed and archived in ACC`);
+        
+        // Step 1: Archive in OE Toolkit database
+        await db
+          .update(projects)
+          .set({ 
+            status: 'Archived',
+            archivedAt: new Date(),
+          })
+          .where(eq(projects.id, input.id));
+        
+        console.log(`[Archive] ✓ Archived project in OE Toolkit`);
+        
+        // Step 2: Archive in TA/TDD database (if linked)
+        if (project.taTddProjectId) {
+          try {
+            const { archiveTaTddProject } = await import('./taTddIntegration');
+            await archiveTaTddProject(project.taTddProjectId);
+            console.log(`[Archive] ✓ Archived project in TA/TDD engine`);
+          } catch (error) {
+            console.error('[Archive] Failed to archive TA/TDD project:', error);
+            // Continue even if TA/TDD archive fails
+          }
+        }
         
         return { success: true };
       }),

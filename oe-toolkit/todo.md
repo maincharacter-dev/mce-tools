@@ -174,3 +174,161 @@
 - [ ] Check if database update is failing after folder creation
 - [ ] Add try-catch around database update with better error handling
 - [ ] Test that UI shows success message when project is created
+
+
+## Integrate with TA/TDD Engine
+
+- [x] Add ACC integration fields to OE Toolkit projects table (taTddProjectId, taTddDbName)
+- [x] Create TA/TDD database connection helper (taTddIntegration.ts)
+- [x] Update OE Toolkit project creation to also create TA/TDD engine project
+- [x] Link OE Toolkit project ID with TA/TDD engine project ID
+- [x] Store ACC mapping in TA/TDD per-project database
+- [x] Store ACC credentials in TA/TDD per-project database
+- [ ] Test end-to-end project creation (OE Toolkit → TA/TDD → ACC)
+- [ ] Verify TA/TDD engine can sync documents to ACC using stored credentials
+
+
+## Configure TA/TDD Database Access
+
+- [x] Add TA_TDD_DATABASE_URL environment variable
+- [x] Update taTddIntegration.ts to use TA_TDD_DATABASE_URL instead of hardcoded connection
+- [ ] Test project creation with shared database access (blocked by sandbox file descriptor limit)
+- [x] Document database credentials setup in README
+
+
+## Disable File Watching to Fix Dev Server
+
+- [x] Update package.json dev script to use tsx without --watch flag
+- [x] Restart dev server and verify it starts successfully
+- [x] Document that manual restart is needed after code changes
+
+
+## Fix TA/TDD Integration - Use Table Prefix Architecture
+
+- [ ] Read TA/TDD table-prefix-helper.ts and project-table-provisioner.ts
+- [ ] Understand how TA/TDD creates per-project tables with prefixes
+- [ ] Rewrite taTddIntegration.ts to create prefixed tables instead of databases
+- [ ] Update createTaTddProject to use table provisioning logic
+- [ ] Test project creation with table prefix architecture
+
+## Archive Feature
+- [x] Add archive button to project list and detail pages
+- [x] Implement ACC project rename API call (add "[Archived]" suffix)
+- [x] Implement ACC project archive API call
+- [x] Create archiveProject tRPC mutation
+- [x] Update project status to "Archived" in OE Toolkit database
+- [x] Update project status to "Archived" in TA/TDD database
+- [x] Add confirmation dialog before archiving
+- [ ] Test archive workflow end-to-end
+
+## Fix ACC Archive + Add Tabs
+- [x] Add debug logging to archive mutation to see why ACC operations skipped
+- [x] Research correct ACC API endpoints for updating project name and status
+- [x] Confirmed ACC API doesn't support updating project properties
+- [x] Remove ACC rename/archive operations from archive mutation
+- [x] Add All/Active/Archived filter tabs to Projects page
+- [x] Filter projects based on selected tab
+
+## Fix Duplicate Key Error on Project Creation
+- [x] Investigate why taTddProjectId constraint is failing
+- [x] Check if taTddProjectId should be unique or allow duplicates
+- [x] Fix schema or project creation logic to handle archived projects
+- [x] Removed unique constraint from projectCode
+- [ ] Test creating new project after archiving
+
+## AI Agent Integration (Clean Redo)
+- [x] Save safety checkpoint before any changes (06f183e1)
+- [x] Install @oe-ecosystem/ai-agent from GitHub
+- [x] Verify existing site still works after install
+- [x] Verified agent tables already exist in TA/TDD database (no migration needed)
+- [x] Dropped mistaken agent tables from Manus DB
+- [x] Create agentRouter.ts wrapper (server/routers/agent.ts) connecting to TA/TDD DB
+- [x] Mount agent router in routers.ts
+- [x] Create agent-trpc.ts typed helper for frontend
+- [x] Create Knowledge Base page (CRUD, search, filter, seed)
+- [x] Create Agent Chat page (conversation sidebar, message history, project context)
+- [x] Create Agent Stats page (knowledge stats, conversation stats, tools list)
+- [x] Add routes in App.tsx (/agent, /agent/knowledge, /agent/stats)
+- [x] Add navigation links (header nav, mobile menu, tools grid)
+- [x] Add AI Agent tool card on home page
+- [x] Write agent integration tests (3 passing)
+- [x] Test full integration
+
+## Fix Agent Chat Project Selection
+- [x] Fix chat mutation to properly omit projectId when "none" is selected
+- [x] Populate project dropdown with real projects from database
+- [x] Test agent chat works without project selection
+- [x] Test agent chat works with project selection
+
+## Fix Agent Chat ProjectId Validation and TA/TDD Projects
+- [x] Check agent router input schema and make projectId truly optional (fixed in ai-agent commit cfd45ea)
+- [x] Updated @oe-ecosystem/ai-agent package to commit cfd45ea
+- [x] Create tRPC endpoint to fetch projects from TA/TDD shared database (taTddProjects.list)
+- [x] Update AgentChat dropdown to query TA/TDD projects instead of local projects
+- [x] Test agent chat without project selection (no validation error)
+- [x] Test agent chat with TA/TDD project selection
+
+## Fix Agent Conversation Creation with Null ProjectId
+- [x] Reported issue to ai-agent dev team (projectId undefined becomes empty string instead of NULL)
+- [x] Updated @oe-ecosystem/ai-agent to commit 15ff04f (fixes null handling)
+- [x] Tested agent chat without project selection (conversation creation works)
+
+## Fix Agent Conversation Creation - Second Attempt
+- [x] Updated @oe-ecosystem/ai-agent to commit d750259 (verified projectId ?? null in code)
+- [x] Removed obsolete wouter patch from package.json
+- [x] Clean install with fresh node_modules
+- [x] Verified fix in conversation-manager.js: `projectId: params.projectId ?? null`
+- [x] Server restarted and running cleanly
+
+## Fix Agent Database Schema - projectId NULL Constraint
+- [x] Discovered root cause: agentConversations.projectId was NOT NULL at database level
+- [x] Ran ALTER TABLE migration to allow NULL: `ALTER TABLE agentConversations MODIFY COLUMN projectId INT(11) NULL`
+- [x] Verified schema change: projectId now allows NULL values
+
+## Configure OpenAI API Key
+- [x] Requested OPENAI_API_KEY secret from user
+- [x] Created openai.integration.test.ts to validate API key
+- [x] Test passed: OpenAI API integration working correctly
+- [x] Agent LLM is now configured and ready to use
+
+## Fix Agent Chat Tool Message Display
+- [x] Filter out tool role messages from chat display (internal execution steps)
+- [x] Only show user and assistant messages to end users
+- [x] Added .filter() to message rendering to exclude tool messages
+
+## Fix Agent Conversation Sidebar UI
+- [x] Make conversation history scrollable (changed min-h-screen to h-screen)
+- [x] Display meaningful conversation names ("Chat [date]" + timestamp)
+- [x] Show conversation timestamps for better context
+
+## Sprocket (oe-ai-agent-2) Integration
+- [x] Add SPROCKET_URL, SPROCKET_USERNAME, SPROCKET_PASSWORD as secrets
+- [x] Create Sprocket API client service (server/sprocket-client.ts)
+- [x] Replace agent tRPC router with Sprocket proxy procedures
+- [x] Update AgentChat UI for Sprocket API (conversations, projects)
+- [x] Add TA/TDD project context injection (facts + red flags) when project is selected
+- [x] Write integration tests (4 passing)
+- [ ] Remove @oe-ecosystem/ai-agent dependency (deferred — keep for now)
+
+## Sprocket SSE Streaming + Branding
+- [x] Create SSE proxy endpoint on OE Toolkit backend (/api/agent/stream)
+- [x] Rewrite AgentChat to consume SSE stream with live status indicators
+- [x] Show tool call visibility (which tools Sprocket is using)
+- [x] Show phase status updates (Planning, Searching KG, Executing...)
+- [x] Apply Sprocket branding (logo, name, colours) to agent chat page
+- [ ] Test end-to-end streaming with complex queries (requires live Sprocket)
+
+## Fix SSE Streaming "fetch failed" Error
+- [x] Fix Sprocket session cookie name (manus_session → app_session_id)
+- [x] Fix Sprocket event name mapping (token → content_chunk, conversation → conversationId extraction)
+- [ ] Test end-to-end in browser
+
+## Fix SSE Background Task Response Not Showing
+- [x] Investigate Sprocket background task event structure (background tasks are async, not in SSE stream)
+- [x] Add background task polling procedures to agent router (getBackgroundTasks, getBackgroundTask)
+- [x] Detect start_background_task tool call in SSE stream
+- [x] Show placeholder message while background task is running
+- [x] Poll Sprocket every 5s for completed background tasks
+- [x] Replace placeholder with actual result when task completes
+- [x] Disable input while background task is polling
+- [ ] Test with a query that triggers background tasks in browser

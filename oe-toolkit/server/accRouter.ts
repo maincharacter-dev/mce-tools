@@ -22,6 +22,7 @@ import {
 import { getDb } from "./db";
 import { accCredentials, projects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { storeAccMapping, storeAccCredentials } from "./taTddIntegration";
 
 export const accRouter = router({
   /**
@@ -332,6 +333,40 @@ export const accRouter = router({
           accHubId: input.hubId,
         })
         .where(eq(projects.id, input.projectId));
+      
+      // Get the updated project to access TA/TDD fields
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, input.projectId))
+        .limit(1);
+      
+      // If this project has a linked TA/TDD project, store ACC mapping in per-project DB
+      if (project && project.taTddDbName && project.taTddProjectId) {
+        console.log(`[TA/TDD Integration] Storing ACC mapping in ${project.taTddDbName}`);
+        
+        // Get hub name from listHubs (we only have hubId)
+        const hubs = await listHubs(creds[0].accessToken);
+        const hub = hubs.find((h: any) => h.id === input.hubId);
+        const hubName = (hub as any)?.attributes?.name || 'Unknown Hub';
+        
+        // Store ACC project mapping
+        await storeAccMapping(project.taTddProjectId, {
+          accHubId: input.hubId,
+          accHubName: hubName,
+          accProjectId: accProject.id,
+          accProjectName: accProject.name,
+        });
+        
+        // Store ACC credentials in per-project DB
+        await storeAccCredentials(project.taTddProjectId, {
+          accessToken: creds[0].accessToken,
+          refreshToken: creds[0].refreshToken || undefined,
+          expiresAt: new Date(creds[0].expiresAt),
+        });
+        
+        console.log(`[TA/TDD Integration] ACC integration complete for ${project.taTddDbName}`);
+      }
       
       return {
         accProjectId: accProject.id,

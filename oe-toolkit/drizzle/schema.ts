@@ -32,11 +32,17 @@ export type InsertUser = typeof users.$inferInsert;
 export const projects = mysqlTable("projects", {
   id: int("id").autoincrement().primaryKey(),
   projectName: varchar("projectName", { length: 255 }).notNull(),
-  projectCode: varchar("projectCode", { length: 64 }).notNull().unique(),
+  projectCode: varchar("projectCode", { length: 64 }).notNull(),
   projectType: mysqlEnum("projectType", ["TA_TDD", "OE"]).notNull(),
   phase: varchar("phase", { length: 64 }).notNull().default("Initiation"),
   accProjectId: varchar("accProjectId", { length: 255 }),
   accHubId: varchar("accHubId", { length: 255 }),
+  // TA/TDD Engine integration
+  taTddProjectId: int("taTddProjectId"), // Link to TA/TDD engine project
+  taTddDbName: varchar("taTddDbName", { length: 255 }), // Per-project DB name in TA/TDD engine
+  // Archive tracking
+  status: mysqlEnum("status", ["Active", "Archived"]).notNull().default("Active"),
+  archivedAt: timestamp("archivedAt"),
   createdByUserId: int("createdByUserId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

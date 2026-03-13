@@ -1,0 +1,1 @@
+ALTER TABLE `projects` DROP INDEX `projects_projectCode_unique`;
