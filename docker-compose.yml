@@ -180,7 +180,7 @@ services:
     container_name: mce-oe-toolkit
     restart: unless-stopped
     ports:
-      - "${OE_TOOLKIT_PORT:-3000}:3000"
+      - "${OE_TOOLKIT_PORT:-3002}:3000"
     environment:
       PORT: 3000
       NODE_ENV: production
