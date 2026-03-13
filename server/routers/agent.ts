@@ -1,85 +1,79 @@
 /**
- * Agent Router Wrapper
+ * Sprocket Agent Router
  *
- * Thin wrapper that integrates @oe-ecosystem/ai-agent's createAgentRouter
- * with the OE Toolkit's tRPC setup, connecting to the TA/TDD engine database
- * where all agent tables live.
+ * tRPC procedures that proxy to the Sprocket (oe-ai-agent-2) REST API.
+ * Sprocket runs at SPROCKET_URL with LOCAL_AUTH=true.
+ *
+ * All agent intelligence, memory, knowledge graph, and conversation history
+ * live in Sprocket's own database — OE Toolkit is a thin UI client.
  */
-import { createAgentRouter, ProjectDbPool } from "@oe-ecosystem/ai-agent";
+import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
-import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import {
+  getSprocketHealth,
+  getSprocketConversations,
+  getSprocketMessages,
+  deleteSprocketConversation,
+  sprocketChat,
+  getSprocketProjects,
+  createSprocketProject,
+} from "../sprocket-client";
 
-// Map Manus platform env vars to what the agent package expects
-// The agent's llm.js reads FORGE_API_URL / FORGE_API_KEY / OPENAI_API_KEY
-if (process.env.BUILT_IN_FORGE_API_URL && !process.env.FORGE_API_URL) {
-  process.env.FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
-}
-if (process.env.BUILT_IN_FORGE_API_KEY && !process.env.FORGE_API_KEY) {
-  process.env.FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
-}
+export const agentRouter = router({
+  /** Health check — verify Sprocket is reachable */
+  health: protectedProcedure.query(async () => {
+    return getSprocketHealth();
+  }),
 
-// TA/TDD database connection pool (lazy-initialized, reused)
-let _taTddPool: mysql.Pool | null = null;
-let _taTddDrizzle: MySql2Database<any> | null = null;
+  /** List all conversations (from Sprocket) */
+  getConversations: protectedProcedure.query(async () => {
+    return getSprocketConversations(1);
+  }),
 
-function parseTaTddUrl() {
-  const dbUrl = process.env.TA_TDD_DATABASE_URL;
-  if (!dbUrl) {
-    throw new Error("TA_TDD_DATABASE_URL environment variable not set");
-  }
-  const url = new URL(dbUrl);
-  return {
-    host: url.hostname,
-    port: parseInt(url.port) || 3306,
-    user: url.username,
-    password: url.password,
-    database: url.pathname.slice(1), // Remove leading /
-    ssl: { rejectUnauthorized: true },
-  };
-}
+  /** Get messages for a specific conversation */
+  getMessages: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .query(async ({ input }) => {
+      return getSprocketMessages(input.conversationId);
+    }),
 
-function getTaTddPool(): mysql.Pool {
-  if (!_taTddPool) {
-    const config = parseTaTddUrl();
-    _taTddPool = mysql.createPool({
-      ...config,
-      waitForConnections: true,
-      connectionLimit: 5,
-      queueLimit: 0,
-    });
-  }
-  return _taTddPool;
-}
+  /** Delete a conversation */
+  deleteConversation: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .mutation(async ({ input }) => {
+      return deleteSprocketConversation(input.conversationId);
+    }),
 
-/**
- * Get a Drizzle ORM instance connected to the TA/TDD database
- * This is what createAgentRouter's getDb() expects
- */
-async function getTaTddDb(): Promise<MySql2Database<any>> {
-  if (!_taTddDrizzle) {
-    const pool = getTaTddPool();
-    _taTddDrizzle = drizzle(pool) as unknown as MySql2Database<any>;
-  }
-  return _taTddDrizzle;
-}
+  /**
+   * Send a chat message to Sprocket (non-streaming).
+   * Optionally injects TA/TDD project context as a system prefix.
+   */
+  chat: protectedProcedure
+    .input(
+      z.object({
+        message: z.string().min(1),
+        conversationId: z.string().optional(),
+        systemContext: z.string().optional(), // TA/TDD project context injected by frontend
+      })
+    )
+    .mutation(async ({ input }) => {
+      return sprocketChat({
+        message: input.message,
+        conversationId: input.conversationId,
+        systemContext: input.systemContext,
+        userId: 1,
+      });
+    }),
 
-/**
- * Create a project-specific database connection wrapper
- * Uses ProjectDbPool from the agent package for table-prefix support
- */
-async function createProjectDbConnection(projectId: number): Promise<ProjectDbPool> {
-  const pool = getTaTddPool();
-  return new ProjectDbPool(pool, projectId);
-}
+  /** List Sprocket projects */
+  getProjects: protectedProcedure.query(async () => {
+    return getSprocketProjects(1);
+  }),
 
-/**
- * The agent router - created using the factory from @oe-ecosystem/ai-agent
- * Connected to the TA/TDD engine database where agent tables live
- */
-export const agentRouter = createAgentRouter({
-  router,
-  protectedProcedure,
-  getDb: getTaTddDb,
-  createProjectDbConnection,
+  /** Create a Sprocket project */
+  createProject: protectedProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      return createSprocketProject(input.name, 1);
+    }),
 });

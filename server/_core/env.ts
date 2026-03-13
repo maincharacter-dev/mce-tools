@@ -9,4 +9,7 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   APS_CLIENT_ID: process.env.APS_CLIENT_ID ?? "",
   APS_CLIENT_SECRET: process.env.APS_CLIENT_SECRET ?? "",
+  sprocketUrl: process.env.SPROCKET_URL ?? "",
+  sprocketUsername: process.env.SPROCKET_USERNAME ?? "",
+  sprocketPassword: process.env.SPROCKET_PASSWORD ?? "",
 };

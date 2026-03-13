@@ -300,3 +300,12 @@
 - [x] Make conversation history scrollable (changed min-h-screen to h-screen)
 - [x] Display meaningful conversation names ("Chat [date]" + timestamp)
 - [x] Show conversation timestamps for better context
+
+## Sprocket (oe-ai-agent-2) Integration
+- [x] Add SPROCKET_URL, SPROCKET_USERNAME, SPROCKET_PASSWORD as secrets
+- [x] Create Sprocket API client service (server/sprocket-client.ts)
+- [x] Replace agent tRPC router with Sprocket proxy procedures
+- [x] Update AgentChat UI for Sprocket API (conversations, projects)
+- [x] Add TA/TDD project context injection (facts + red flags) when project is selected
+- [x] Write integration tests (4 passing)
+- [ ] Remove @oe-ecosystem/ai-agent dependency (deferred — keep for now)

@@ -16,100 +16,103 @@ import {
   MessageSquare,
   Plus,
   Trash2,
-  BarChart3,
 } from "lucide-react";
-import { agentTrpc } from "@/lib/agent-trpc";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
 
 export default function AgentChat() {
   const [message, setMessage] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string>("none");
   const [isProcessing, setIsProcessing] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch projects list from TA/TDD database
-  // @ts-ignore - taTddProjects router exists at runtime but TS hasn't picked up the type yet
-  const { data: projectsData } = trpc.taTddProjects.list.useQuery();
+  // Fetch Sprocket projects
+  const { data: sprocketProjects } = trpc.agent.getProjects.useQuery();
 
-  // Fetch conversations list
-  const { data: conversationsData, refetch: refetchConversations } =
-    agentTrpc.getConversations.useQuery({});
+  // Fetch TA/TDD projects for the project selector
+  // @ts-ignore - taTddProjects router exists at runtime
+  const { data: taTddProjects } = trpc.taTddProjects.list.useQuery();
 
-  // Fetch current conversation
-  const { data: conversationData, refetch: refetchConversation } =
-    agentTrpc.getConversation.useQuery(
-      { conversationId: conversationId || "" },
-      { enabled: !!conversationId }
-    );
+  // Fetch TA/TDD project context when a project is selected
+  // @ts-ignore - taTddProjects router exists at runtime
+  const { data: taTddContext } = trpc.taTddProjects.getProjectContext.useQuery(
+    { projectId: parseInt(projectId) },
+    { enabled: projectId !== "none" && !isNaN(parseInt(projectId)) }
+  );
 
-  // Chat mutation
-  const chatMutation = agentTrpc.chat.useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onSuccess: (result: any) => {
-      if (result.conversationId && !conversationId) {
-        setConversationId(result.conversationId);
+  // Fetch conversations from Sprocket
+  const { data: conversations, refetch: refetchConversations } =
+    trpc.agent.getConversations.useQuery();
+
+  // Fetch messages when a conversation is selected
+  const { data: conversationMessages } = trpc.agent.getMessages.useQuery(
+    { conversationId: conversationId! },
+    { enabled: !!conversationId }
+  );
+
+  // Load messages when switching conversations
+  useEffect(() => {
+    if (conversationMessages && conversationId) {
+      const filtered = (conversationMessages as { role: string; content: string; createdAt: string }[])
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          timestamp: new Date(m.createdAt),
+        }));
+      setMessages(filtered);
+    }
+  }, [conversationMessages, conversationId]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Chat mutation — proxied to Sprocket
+  const chatMutation = trpc.agent.chat.useMutation({
+    onSuccess: (result) => {
+      const res = result as { message: string; conversationId: string };
+      if (res.conversationId && !conversationId) {
+        setConversationId(res.conversationId);
       }
-      // Add assistant response
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: result.response,
-          toolsUsed: result.toolsUsed,
+          content: res.message,
           timestamp: new Date(),
         },
       ]);
       setIsProcessing(false);
       refetchConversations();
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error(`Agent error: ${error.message}`);
       setIsProcessing(false);
     },
   });
 
-  const deleteConversation = agentTrpc.deleteConversation.useMutation({
+  const deleteConversationMutation = trpc.agent.deleteConversation.useMutation({
     onSuccess: () => {
       toast.success("Conversation deleted");
       setConversationId(null);
       setMessages([]);
       refetchConversations();
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
     },
   });
-
-  // Load conversation messages when switching
-  useEffect(() => {
-    if (conversationData && conversationId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const conv = conversationData as any;
-      if (conv.messages) {
-        setMessages(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          conv.messages.map((m: any) => ({
-            role: m.role,
-            content: m.content,
-            toolsUsed: m.toolsUsed,
-            timestamp: m.createdAt ? new Date(m.createdAt) : new Date(),
-          }))
-        );
-      }
-    }
-  }, [conversationData, conversationId]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const handleSend = () => {
     if (!message.trim() || isProcessing) return;
@@ -124,24 +127,22 @@ export default function AgentChat() {
       { role: "user", content: userMessage, timestamp: new Date() },
     ]);
 
-    // Send to agent
-    const mutationInput: {
+    // Build the mutation input — only include conversationId if we have one
+    const input: {
       message: string;
       conversationId?: string;
-      projectId?: number;
-    } = {
-      message: userMessage,
-    };
-    
-    if (conversationId) {
-      mutationInput.conversationId = conversationId;
+      systemContext?: string;
+    } = { message: userMessage };
+
+    if (conversationId) input.conversationId = conversationId;
+
+    // If a TA/TDD project is selected, inject its rich context into the message
+    if (projectId !== "none" && taTddContext) {
+      const ctx = taTddContext as { projectName: string; context: string };
+      input.systemContext = `You are an expert OE/TA/TDD consultant. The user is asking about the following project:\n\n${ctx.context}\n\nPlease use this project context to inform your response.`;
     }
-    
-    if (projectId !== "none") {
-      mutationInput.projectId = parseInt(projectId);
-    }
-    
-    chatMutation.mutate(mutationInput);
+
+    chatMutation.mutate(input);
   };
 
   const handleNewConversation = () => {
@@ -149,18 +150,20 @@ export default function AgentChat() {
     setMessages([]);
   };
 
+  const handleSelectConversation = (id: string) => {
+    if (id === conversationId) return;
+    setConversationId(id);
+    setMessages([]);
+  };
+
   const handleDeleteConversation = (id: string) => {
     if (confirm("Delete this conversation?")) {
-      deleteConversation.mutate({ conversationId: id });
+      deleteConversationMutation.mutate({ conversationId: id });
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conversations: any[] =
-    (conversationsData as any)?.conversations || [];
-  
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const projects: any[] = projectsData || [];
+  const convList = (conversations as { id: string; title: string | null; createdAt: string; updatedAt: string }[] | undefined) ?? [];
+  const projectList = (taTddProjects as { id: number; name: string }[] | undefined) ?? [];
 
   return (
     <div className="h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -169,10 +172,7 @@ export default function AgentChat() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <a
-                href="/"
-                className="text-slate-400 hover:text-white transition-colors"
-              >
+              <a href="/" className="text-slate-400 hover:text-white transition-colors">
                 <ArrowLeft className="h-5 w-5" />
               </a>
               <div>
@@ -181,30 +181,16 @@ export default function AgentChat() {
                   OE AI Agent
                 </h1>
                 <p className="text-slate-400 text-sm">
-                  Ask questions about your projects and knowledge base
+                  Powered by Sprocket — ask questions about your projects and knowledge base
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <a
-                href="/agent/knowledge"
-                className="text-slate-400 hover:text-orange-400 transition-colors text-sm font-medium"
-              >
-                Knowledge Base
-              </a>
-              <a
-                href="/agent/stats"
-                className="text-slate-400 hover:text-orange-400 transition-colors"
-              >
-                <BarChart3 className="h-5 w-5" />
-              </a>
             </div>
           </div>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Conversations */}
+        {/* Sidebar — Conversations */}
         <div className="w-64 border-r border-slate-700/50 bg-slate-900/50 flex flex-col shrink-0 hidden md:flex">
           <div className="p-3 border-b border-slate-700/50">
             <Button
@@ -217,13 +203,12 @@ export default function AgentChat() {
             </Button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {conversations.length === 0 ? (
+            {convList.length === 0 ? (
               <p className="text-slate-500 text-xs text-center py-4">
                 No conversations yet
               </p>
             ) : (
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              conversations.map((conv: any) => (
+              convList.map((conv) => (
                 <div
                   key={conv.id}
                   className={`group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
@@ -231,7 +216,7 @@ export default function AgentChat() {
                       ? "bg-slate-700/50 text-white"
                       : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-300"
                   }`}
-                  onClick={() => setConversationId(conv.id)}
+                  onClick={() => handleSelectConversation(conv.id)}
                 >
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -241,7 +226,10 @@ export default function AgentChat() {
                         : "Chat " + new Date(conv.createdAt).toLocaleDateString()}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(conv.updatedAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                   <button
@@ -266,12 +254,12 @@ export default function AgentChat() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">Project context:</span>
               <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger className="w-[200px] h-8 text-xs bg-slate-800 border-slate-600 text-white">
+                <SelectTrigger className="w-[220px] h-8 text-xs bg-slate-800 border-slate-600 text-white">
                   <SelectValue placeholder="No project" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-600">
                   <SelectItem value="none">No project context</SelectItem>
-                  {projects.map((project) => (
+                  {projectList.map((project) => (
                     <SelectItem key={project.id} value={project.id.toString()}>
                       {project.name}
                     </SelectItem>
@@ -290,19 +278,15 @@ export default function AgentChat() {
                   OE AI Agent
                 </h3>
                 <p className="text-slate-500 max-w-md">
-                  Ask questions about your projects, query the knowledge base,
-                  or get help with TA/TDD and OE workflows.
+                  Ask questions about your projects, query the knowledge base, or get help
+                  with TA/TDD and OE workflows.
                 </p>
               </div>
             ) : (
-              messages
-                .filter((msg) => msg.role === "user" || msg.role === "assistant")
-                .map((msg, i) => (
+              messages.map((msg, i) => (
                 <div
                   key={i}
-                  className={`flex ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
                     className={`max-w-[80%] rounded-xl px-4 py-3 ${
@@ -317,18 +301,6 @@ export default function AgentChat() {
                       </div>
                     ) : (
                       <p className="text-sm">{msg.content}</p>
-                    )}
-                    {msg.toolsUsed && msg.toolsUsed.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {msg.toolsUsed.map((tool: string, j: number) => (
-                          <span
-                            key={j}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400"
-                          >
-                            {tool}
-                          </span>
-                        ))}
-                      </div>
                     )}
                   </div>
                 </div>
