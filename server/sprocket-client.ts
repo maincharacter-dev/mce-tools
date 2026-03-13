@@ -10,7 +10,7 @@
 
 import { ENV } from "./_core/env";
 
-const COOKIE_NAME = "manus_session"; // Sprocket uses this cookie name
+const COOKIE_NAME = "app_session_id"; // Sprocket's actual session cookie name
 
 let cachedSessionCookie: string | null = null;
 let sessionExpiresAt: number = 0;

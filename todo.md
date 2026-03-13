@@ -317,3 +317,8 @@
 - [x] Show phase status updates (Planning, Searching KG, Executing...)
 - [x] Apply Sprocket branding (logo, name, colours) to agent chat page
 - [ ] Test end-to-end streaming with complex queries (requires live Sprocket)
+
+## Fix SSE Streaming "fetch failed" Error
+- [x] Fix Sprocket session cookie name (manus_session → app_session_id)
+- [x] Fix Sprocket event name mapping (token → content_chunk, conversation → conversationId extraction)
+- [ ] Test end-to-end in browser

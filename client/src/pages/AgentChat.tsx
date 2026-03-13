@@ -267,12 +267,21 @@ export default function AgentChat() {
           } else if (eventType === "tool_call" || eventType === "tool_result") {
             setStreamingEvents((prev) => [...prev, event]);
           } else if (eventType === "content_chunk") {
+            // Legacy event name (kept for compatibility)
             finalContent += (data as { chunk: string }).chunk;
             setStreamingContent(finalContent);
+          } else if (eventType === "token") {
+            // Sprocket's actual streaming token event
+            finalContent += (data as { content: string }).content;
+            setStreamingContent(finalContent);
+          } else if (eventType === "conversation") {
+            // Sprocket sends conversation ID in a separate event
+            finalConversationId = (data as { id: string }).id;
           } else if (eventType === "done") {
-            const done = data as { message: string; conversationId: string };
-            finalContent = done.message || finalContent;
-            finalConversationId = done.conversationId;
+            // Sprocket's done event — content already accumulated via token events
+            const done = data as { message?: string; conversationId?: string };
+            if (done.message) finalContent = done.message;
+            if (done.conversationId) finalConversationId = done.conversationId;
             setStreamingContent(finalContent);
           } else if (eventType === "error") {
             throw new Error((data as { message: string }).message);
