@@ -5,18 +5,16 @@ echo "============================================"
 echo "  MCE Ingestion Engine — Docker Entrypoint"
 echo "============================================"
 
-# ---- Wait for MySQL to be ready ----
-echo "[Entrypoint] Waiting for MySQL..."
+# ---- Parse MySQL host/port from DATABASE_URL ----
+# DATABASE_URL format: mysql://user:pass@host:port/dbname
+DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+)[:/].*|\1|')
+DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*@[^:]+:([0-9]+)/.*|\1|')
+DB_PORT=${DB_PORT:-3306}
+
+echo "[Entrypoint] Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
 MAX_RETRIES=30
 RETRY_COUNT=0
-until node -e "
-  const mysql = require('mysql2/promise');
-  const url = process.env.DATABASE_URL;
-  if (!url) { process.exit(1); }
-  mysql.createConnection(url)
-    .then(c => { c.end(); process.exit(0); })
-    .catch(() => process.exit(1));
-" 2>/dev/null; do
+until nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then
     echo "[Entrypoint] ERROR: MySQL not reachable after ${MAX_RETRIES} attempts"
