@@ -48,7 +48,7 @@ services:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d  # init scripts create all schemas
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d  # init scripts create all schemas on FIRST boot only
     command: >
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
@@ -208,14 +208,26 @@ services:
 # ============================================================
 # Volumes
 # ============================================================
+#
+# mysql-data and neo4j-* are declared as EXTERNAL so that Docker
+# attaches to the existing oe-ai-agent-2 volumes that contain
+# Sprocket's live database and knowledge graph data.
+#
+# All other volumes are managed by this compose file.
+# ============================================================
 volumes:
+  # Existing Sprocket data — DO NOT recreate
   mysql-data:
-    driver: local
-  postgres-data:
-    driver: local
+    external: true
+    name: oe-ai-agent-2_mysql-data
   neo4j-data:
-    driver: local
+    external: true
+    name: oe-ai-agent-2_neo4j-data
   neo4j-logs:
+    external: true
+    name: oe-ai-agent-2_neo4j-logs
+  # New suite volumes
+  postgres-data:
     driver: local
   redis-data:
     driver: local
