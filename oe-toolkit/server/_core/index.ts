@@ -4,6 +4,8 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerLocalAuthRoutes } from "./local-auth";
+import { isLocalAuth } from "./env";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -33,8 +35,18 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
+  // Auth mode endpoint — tells the client whether to use local login or OAuth
+  app.get("/api/auth/mode", (_req, res) => {
+    res.json({ mode: isLocalAuth() ? "local" : "oauth" });
+  });
+
+  if (isLocalAuth()) {
+    console.log("[Server] Running in LOCAL_AUTH mode — using .env credentials");
+    registerLocalAuthRoutes(app);
+  } else {
+    // OAuth callback under /api/oauth/callback
+    registerOAuthRoutes(app);
+  }
   // tRPC API
   app.use(
     "/api/trpc",

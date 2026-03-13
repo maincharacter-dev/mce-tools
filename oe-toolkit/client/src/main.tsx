@@ -10,15 +10,37 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
+// Cache the auth mode so we don't fetch it on every error
+let _authMode: "local" | "oauth" | null = null;
+async function getAuthMode(): Promise<"local" | "oauth"> {
+  if (_authMode) return _authMode;
+  try {
+    const res = await fetch("/api/auth/mode");
+    const data = await res.json();
+    _authMode = data.mode === "local" ? "local" : "oauth";
+  } catch {
+    _authMode = "oauth";
+  }
+  return _authMode;
+}
+
+const redirectToLoginIfUnauthorized = async (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  const mode = await getAuthMode();
+  if (mode === "local") {
+    // Local auth: redirect to our built-in login page
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  } else {
+    // Manus OAuth: redirect to external OAuth portal
+    window.location.href = getLoginUrl();
+  }
 };
 
 queryClient.getQueryCache().subscribe(event => {

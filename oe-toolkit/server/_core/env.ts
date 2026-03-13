@@ -12,4 +12,10 @@ export const ENV = {
   sprocketUrl: process.env.SPROCKET_URL ?? "",
   sprocketUsername: process.env.SPROCKET_USERNAME ?? "",
   sprocketPassword: process.env.SPROCKET_PASSWORD ?? "",
+  // Local auth (username/password mode — no Manus OAuth required)
+  localAuth: process.env.LOCAL_AUTH === "true",
+  localUsername: process.env.LOCAL_USERNAME ?? "",
+  localPassword: process.env.LOCAL_PASSWORD ?? "",
 };
+
+export const isLocalAuth = () => ENV.localAuth;
