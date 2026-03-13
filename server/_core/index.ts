@@ -43,6 +43,80 @@ async function startServer() {
       createContext,
     })
   );
+  // ─── Sprocket SSE streaming proxy ───────────────────────────────────────────
+  // This route proxies the Sprocket SSE stream directly to the browser client.
+  // tRPC cannot handle SSE, so this is a plain Express route.
+  app.post("/api/agent/stream", async (req, res) => {
+    try {
+      const { sprocketChatStream } = await import("../sprocket-client");
+      const { message, conversationId, systemContext } = req.body as {
+        message: string;
+        conversationId?: string;
+        systemContext?: string;
+      };
+
+      if (!message) {
+        res.status(400).json({ error: "message is required" });
+        return;
+      }
+
+      const upstream = await sprocketChatStream({
+        message,
+        conversationId,
+        systemContext,
+        userId: 1,
+      });
+
+      if (!upstream.ok || !upstream.body) {
+        const body = await upstream.text();
+        res.status(upstream.status).json({ error: body });
+        return;
+      }
+
+      // Forward SSE headers
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+
+      // Pipe the upstream SSE stream to the client
+      const reader = upstream.body.getReader();
+      const decoder = new TextDecoder();
+
+      const pump = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              res.end();
+              break;
+            }
+            res.write(decoder.decode(value, { stream: true }));
+            // Flush immediately for SSE
+            if ((res as any).flush) (res as any).flush();
+          }
+        } catch (err) {
+          console.error("[SSE proxy] Stream error:", err);
+          res.end();
+        }
+      };
+
+      // Handle client disconnect
+      req.on("close", () => {
+        reader.cancel().catch(() => {});
+      });
+
+      pump();
+    } catch (err: any) {
+      console.error("[SSE proxy] Error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

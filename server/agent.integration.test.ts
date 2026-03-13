@@ -45,42 +45,17 @@ describe("agent router integration", () => {
     expect(caller.agent).toBeDefined();
   });
 
-  it("agent router has expected procedure namespaces", () => {
+  it("agent router has expected Sprocket proxy procedures", () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
-    
-    // Check that key agent procedures exist
-    // These are the main procedure groups from createAgentRouter
-    expect(typeof caller.agent.chat).toBe("function");
-    expect(typeof caller.agent.listKnowledge).toBe("function");
-    expect(typeof caller.agent.createKnowledge).toBe("function");
-    expect(typeof caller.agent.deleteKnowledge).toBe("function");
-    expect(typeof caller.agent.getConversations).toBe("function");
-    expect(typeof caller.agent.getTools).toBe("function");
-    expect(typeof caller.agent.seedKnowledge).toBe("function");
-    expect(typeof caller.agent.getKnowledgeStats).toBe("function");
-  });
 
-  it("getTools returns available tools list", async () => {
-    const { ctx } = createAuthContext();
-    const caller = appRouter.createCaller(ctx);
-    
-    // getTools should return an array of tool definitions
-    // This doesn't require database access - it returns static tool registry
-    const tools = await caller.agent.getTools();
-    
-    expect(Array.isArray(tools)).toBe(true);
-    expect(tools.length).toBeGreaterThan(0);
-    
-    // Tools are returned in OpenAI function-calling format: { type, function: { name, description, parameters } }
-    for (const tool of tools) {
-      expect(tool).toHaveProperty("type");
-      expect(tool.type).toBe("function");
-      expect(tool).toHaveProperty("function");
-      expect(tool.function).toHaveProperty("name");
-      expect(tool.function).toHaveProperty("description");
-      expect(typeof tool.function.name).toBe("string");
-      expect(typeof tool.function.description).toBe("string");
-    }
+    // Core Sprocket proxy procedures (replaced @oe-ecosystem/ai-agent)
+    expect(typeof caller.agent.chat).toBe("function");
+    expect(typeof caller.agent.getConversations).toBe("function");
+    expect(typeof caller.agent.getMessages).toBe("function");
+    expect(typeof caller.agent.deleteConversation).toBe("function");
+    expect(typeof caller.agent.getProjects).toBe("function");
+    expect(typeof caller.agent.createProject).toBe("function");
+    expect(typeof caller.agent.health).toBe("function");
   });
 });

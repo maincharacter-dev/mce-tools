@@ -309,3 +309,11 @@
 - [x] Add TA/TDD project context injection (facts + red flags) when project is selected
 - [x] Write integration tests (4 passing)
 - [ ] Remove @oe-ecosystem/ai-agent dependency (deferred — keep for now)
+
+## Sprocket SSE Streaming + Branding
+- [x] Create SSE proxy endpoint on OE Toolkit backend (/api/agent/stream)
+- [x] Rewrite AgentChat to consume SSE stream with live status indicators
+- [x] Show tool call visibility (which tools Sprocket is using)
+- [x] Show phase status updates (Planning, Searching KG, Executing...)
+- [x] Apply Sprocket branding (logo, name, colours) to agent chat page
+- [ ] Test end-to-end streaming with complex queries (requires live Sprocket)
