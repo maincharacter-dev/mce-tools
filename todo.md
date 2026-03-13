@@ -322,3 +322,13 @@
 - [x] Fix Sprocket session cookie name (manus_session → app_session_id)
 - [x] Fix Sprocket event name mapping (token → content_chunk, conversation → conversationId extraction)
 - [ ] Test end-to-end in browser
+
+## Fix SSE Background Task Response Not Showing
+- [x] Investigate Sprocket background task event structure (background tasks are async, not in SSE stream)
+- [x] Add background task polling procedures to agent router (getBackgroundTasks, getBackgroundTask)
+- [x] Detect start_background_task tool call in SSE stream
+- [x] Show placeholder message while background task is running
+- [x] Poll Sprocket every 5s for completed background tasks
+- [x] Replace placeholder with actual result when task completes
+- [x] Disable input while background task is polling
+- [ ] Test with a query that triggers background tasks in browser

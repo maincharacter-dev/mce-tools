@@ -116,9 +116,32 @@ export default function AgentChat() {
   const [streamingStatus, setStreamingStatus] = useState<StatusEvent | null>(null);
   const [streamingEvents, setStreamingEvents] = useState<AgentEvent[]>([]);
   const [streamingContent, setStreamingContent] = useState("");
+  // Background task state
+  const [backgroundTaskId, setBackgroundTaskId] = useState<string | null>(null);
+  const [isPollingBgTask, setIsPollingBgTask] = useState(false);
+  const bgPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // ─── Background task polling ─────────────────────────────────────────────────
+  const bgTasksQuery = trpc.agent.getBackgroundTasks.useQuery(
+    { conversationId: conversationId! },
+    {
+      enabled: isPollingBgTask && !!conversationId,
+      refetchInterval: isPollingBgTask ? 5_000 : false,
+    }
+  );
+
+  // Background task completion is handled in a useEffect below (after conversationsQuery is declared)
+  const bgTasksData = bgTasksQuery.data;
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (bgPollIntervalRef.current) clearInterval(bgPollIntervalRef.current);
+    };
+  }, []);
 
   // ─── Queries ─────────────────────────────────────────────────────────────────
   const conversationsQuery = trpc.agent.getConversations.useQuery(undefined, {
@@ -151,6 +174,34 @@ export default function AgentChat() {
     },
     onError: (err) => toast.error(`Failed to delete: ${err.message}`),
   });
+
+  // ─── Background task completion handler ────────────────────────────────
+  useEffect(() => {
+    if (!isPollingBgTask || !bgTasksData) return;
+    const tasks = bgTasksData as any[];
+    const completed = tasks.find(
+      (t: any) => (t.status === "completed" || t.status === "failed") &&
+        (!backgroundTaskId || t.id === backgroundTaskId)
+    );
+    if (completed) {
+      setIsPollingBgTask(false);
+      setBackgroundTaskId(null);
+      const content = completed.status === "completed"
+        ? (completed.resultContent || "Task completed with no output.")
+        : `Background task failed: ${completed.errorMessage || "Unknown error"}`;
+      const assistantMsg: ChatMessage = {
+        id: `bg-result-${Date.now()}`,
+        role: "assistant",
+        content,
+        createdAt: completed.completedAt || new Date().toISOString(),
+      };
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.id !== "bg-working-placeholder");
+        return [...filtered, assistantMsg];
+      });
+      conversationsQuery.refetch();
+    }
+  }, [bgTasksData, isPollingBgTask, backgroundTaskId, conversationsQuery]);
 
   // ─── Load messages when conversation changes ──────────────────────────────
   useEffect(() => {
@@ -254,6 +305,7 @@ export default function AgentChat() {
       const sessionEvents: AgentEvent[] = [];
       let finalContent = "";
       let finalConversationId: string | null = null;
+      let detectedBgTaskId: string | null = null;
 
       const processEvent = (eventType: string, dataStr: string) => {
         try {
@@ -264,8 +316,21 @@ export default function AgentChat() {
           if (eventType === "status") {
             setStreamingStatus(data as StatusEvent);
             setStreamingEvents((prev) => [...prev, event]);
-          } else if (eventType === "tool_call" || eventType === "tool_result") {
+          } else if (eventType === "tool_call") {
             setStreamingEvents((prev) => [...prev, event]);
+            // Detect background task tool calls
+            const toolData = data as ToolCallEvent;
+            if (toolData.name === "start_background_task") {
+              // Background task queued — we'll poll for the result
+              setStreamingStatus({ phase: "background", text: "Working in background..." });
+            }
+          } else if (eventType === "tool_result") {
+            setStreamingEvents((prev) => [...prev, event]);
+            // Check if this is the result of start_background_task (contains taskId)
+            const resultData = data as any;
+            if (resultData?.result?.taskId || resultData?.taskId) {
+              detectedBgTaskId = resultData?.result?.taskId || resultData?.taskId;
+            }
           } else if (eventType === "content_chunk") {
             // Legacy event name (kept for compatibility)
             finalContent += (data as { chunk: string }).chunk;
@@ -312,6 +377,12 @@ export default function AgentChat() {
         }
       }
 
+      // Update conversation ID first (needed for background task polling)
+      const effectiveConvId = finalConversationId || conversationId;
+      if (finalConversationId && !conversationId) {
+        setConversationId(finalConversationId);
+      }
+
       // Commit final assistant message
       if (finalContent) {
         const assistantMsg: ChatMessage = {
@@ -322,12 +393,28 @@ export default function AgentChat() {
           events: sessionEvents,
         };
         setMessages((prev) => [...prev, assistantMsg]);
-      }
-
-      if (finalConversationId && !conversationId) {
-        setConversationId(finalConversationId);
         conversationsQuery.refetch();
-      } else if (conversationId) {
+      } else if (detectedBgTaskId || sessionEvents.some((e) => e.type === "tool_call" && (e.data as ToolCallEvent).name === "start_background_task")) {
+        // Background task was queued — show placeholder and start polling
+        const bgDescription = (() => {
+          const bgCall = sessionEvents.find(
+            (e) => e.type === "tool_call" && (e.data as ToolCallEvent).name === "start_background_task"
+          );
+          return bgCall ? String((bgCall.data as ToolCallEvent).args?.description || "complex task").slice(0, 80) : "complex task";
+        })();
+        const placeholderMsg: ChatMessage = {
+          id: "bg-working-placeholder",
+          role: "assistant",
+          content: `⏳ Working in background on: *${bgDescription}*\n\nThis may take a few minutes. The result will appear here automatically when ready.`,
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, placeholderMsg]);
+        if (detectedBgTaskId) setBackgroundTaskId(detectedBgTaskId);
+        if (effectiveConvId) {
+          setIsPollingBgTask(true);
+        }
+        conversationsQuery.refetch();
+      } else {
         conversationsQuery.refetch();
       }
     } catch (err: any) {
@@ -618,6 +705,21 @@ export default function AgentChat() {
                   </div>
                 ))}
 
+                {/* ─── Background task polling indicator ───────────────── */}
+                {isPollingBgTask && !isStreaming && (
+                  <div className="flex justify-start">
+                    <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0 mr-2 mt-1">
+                      <img src={SPROCKET_LOGO} alt="Sprocket" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="max-w-[80%] bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-slate-100">
+                      <div className="flex items-center gap-2 text-xs text-amber-400">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Background task running — checking every 5s for results...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* ─── Streaming response ─────────────────────────────────── */}
                 {isStreaming && (
                   <div className="flex justify-start">
@@ -689,7 +791,7 @@ export default function AgentChat() {
                       : "Ask Sprocket anything... (Enter to send, Shift+Enter for new line)"
                   }
                   className="flex-1 min-h-[44px] max-h-32 resize-none bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 text-sm focus:border-orange-500/50"
-                  disabled={isStreaming}
+                  disabled={isStreaming || isPollingBgTask}
                   rows={1}
                 />
                 <Button

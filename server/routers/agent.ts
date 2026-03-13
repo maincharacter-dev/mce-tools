@@ -17,6 +17,8 @@ import {
   sprocketChat,
   getSprocketProjects,
   createSprocketProject,
+  getSprocketBackgroundTasks,
+  getSprocketBackgroundTask,
 } from "../sprocket-client";
 
 export const agentRouter = router({
@@ -75,5 +77,19 @@ export const agentRouter = router({
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ input }) => {
       return createSprocketProject(input.name, 1);
+    }),
+
+  /** Get background tasks for a conversation (for polling) */
+  getBackgroundTasks: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .query(async ({ input }) => {
+      return getSprocketBackgroundTasks(input.conversationId);
+    }),
+
+  /** Get a single background task by ID */
+  getBackgroundTask: protectedProcedure
+    .input(z.object({ taskId: z.string() }))
+    .query(async ({ input }) => {
+      return getSprocketBackgroundTask(input.taskId);
     }),
 });

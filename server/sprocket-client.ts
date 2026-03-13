@@ -244,3 +244,34 @@ export async function getSprocketProjects(userId: number = 1): Promise<SprocketP
 export async function createSprocketProject(name: string, userId: number = 1): Promise<SprocketProject> {
   return sprocketPost<SprocketProject>("/api/projects", { name, userId });
 }
+
+// ─────────────────────────────────────────────
+// Background task polling
+// ─────────────────────────────────────────────
+
+export interface SprocketBackgroundTask {
+  id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  description: string;
+  resultContent: string | null;
+  artifactsJson: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/** Get background tasks for a conversation */
+export async function getSprocketBackgroundTasks(
+  conversationId: string
+): Promise<SprocketBackgroundTask[]> {
+  return sprocketGet<SprocketBackgroundTask[]>(
+    `/api/background-tasks/conversation/${conversationId}`
+  );
+}
+
+/** Get a single background task by ID */
+export async function getSprocketBackgroundTask(
+  taskId: string
+): Promise<SprocketBackgroundTask> {
+  return sprocketGet<SprocketBackgroundTask>(`/api/background-tasks/${taskId}`);
+}
