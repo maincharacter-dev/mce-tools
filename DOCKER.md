@@ -155,3 +155,5 @@ docker compose down
 # Stop everything AND delete all data (full reset)
 docker compose down -v
 ```
+
+<- DOCKER.md — full setup guide, service map, build phase tracker, CI/CD CI/CD runner test -->
