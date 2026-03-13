@@ -82,7 +82,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d  # init scripts create all schemas
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mce_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mce_user} -d postgres"]
       interval: 10s
       timeout: 5s
       start_period: 20s
@@ -252,7 +252,7 @@ services:
       - "${KNOWLEDGE_ENGINE_PORT:-8000}:8000"
     environment:
       PORT: 8000
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${KNOWLEDGE_ENGINE_DATABASE:-knowledge_engine}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mce_user}:${POSTGRES_PASSWORD}@postgres:5432/${KNOWLEDGE_ENGINE_DATABASE:-knowledge_engine}
       OPENAI_API_KEY: ${KNOWLEDGE_ENGINE_OPENAI_API_KEY:-}
       PINECONE_API_KEY: ${KNOWLEDGE_ENGINE_PINECONE_API_KEY:-}
       PINECONE_INDEX: ${KNOWLEDGE_ENGINE_PINECONE_INDEX:-mce-knowledge}
