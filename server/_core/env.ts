@@ -10,4 +10,10 @@ export const ENV = {
   // APS (Autodesk Platform Services) credentials for ACC integration
   APS_CLIENT_ID: process.env.APS_CLIENT_ID ?? "",
   APS_CLIENT_SECRET: process.env.APS_CLIENT_SECRET ?? "",
+  // Local auth mode: bypass Manus OAuth with simple username/password
+  localAuth: process.env.LOCAL_AUTH === "true",
+  localUsername: process.env.LOCAL_USERNAME ?? "",
+  localPassword: process.env.LOCAL_PASSWORD ?? "",
+  // Multi-user mode: JSON array of {username, password, name, role} objects
+  localUsers: process.env.LOCAL_USERS ?? "",
 };

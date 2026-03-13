@@ -4,6 +4,7 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { isLocalAuth, registerLocalAuthRoutes, authenticateLocalRequest } from "./local-auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { runStartupTasks } from "./startup";
@@ -35,8 +36,19 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads (250MB for base64 encoded files)
   app.use(express.json({ limit: "250mb" }));
   app.use(express.urlencoded({ limit: "250mb", extended: true }));
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
+  // Auth routes: local mode or Manus OAuth
+  if (isLocalAuth()) {
+    console.log("[Server] Running in LOCAL_AUTH mode — using .env credentials");
+    registerLocalAuthRoutes(app);
+  } else {
+    // OAuth callback under /api/oauth/callback
+    registerOAuthRoutes(app);
+  }
+
+  // Auth mode endpoint (always available so frontend can detect mode)
+  app.get("/api/auth/mode", (_req, res) => {
+    res.json({ mode: isLocalAuth() ? "local" : "oauth" });
+  });
 
   // tRPC API
   app.use(
@@ -62,7 +74,9 @@ async function startServer() {
 
   server.listen(port, async () => {
     console.log(`Server running on http://localhost:${port}/`);
-    
+    if (isLocalAuth()) {
+      console.log(`[LocalAuth] Login at http://localhost:${port}/login`);
+    }
     // Run startup initialization tasks
     await runStartupTasks();
   });

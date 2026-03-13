@@ -4,20 +4,27 @@
 -- Creates all required databases for the suite.
 -- ============================================================
 
--- OE Toolkit + MCE Ingestion Engine
-CREATE DATABASE IF NOT EXISTS `mce_main`
+-- OE Toolkit (oe-toolkit)
+CREATE DATABASE IF NOT EXISTS `oe_toolkit`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
--- Sprocket AI Agent
+-- MCE Ingestion Engine (mce-tools root app)
+CREATE DATABASE IF NOT EXISTS `mce_ingestion`
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+-- Sprocket AI Agent (oe-ai-agent-2)
 CREATE DATABASE IF NOT EXISTS `agent_chat`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
--- ACC Asset Extractor webapp
+-- ACC Asset Extractor webapp (acc-tools) — Phase 4
 CREATE DATABASE IF NOT EXISTS `acc_webapp`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
--- Grant the root user access to all (already has it, but explicit for clarity)
--- Individual app users can be added here as the suite grows.
+-- Legacy mce_main database (kept for backward compatibility)
+CREATE DATABASE IF NOT EXISTS `mce_main`
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;

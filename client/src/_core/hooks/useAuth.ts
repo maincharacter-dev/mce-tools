@@ -13,26 +13,12 @@ export function useAuth(options?: UseAuthOptions) {
     options ?? {};
   const utils = trpc.useUtils();
 
-  // For local development: bypass auth and use mock user
-  const mockUser = {
-    id: 1,
-    openId: "92XmCsbgC8bCEwx6Suc2Rh",
-    name: "Rob Hamilton",
-    email: "rob.ac.hamilton@gmail.com",
-    loginMethod: "google" as const,
-    role: "admin" as const,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
-  };
-
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  // Override with mock user for local dev
-  const userData = meQuery.data ?? mockUser;
+  const userData = meQuery.data ?? null;
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -69,7 +55,7 @@ export function useAuth(options?: UseAuthOptions) {
       isAuthenticated: Boolean(userData),
     };
   }, [
-    userData,
+    meQuery.data,
     meQuery.error,
     meQuery.isLoading,
     logoutMutation.error,

@@ -19,6 +19,7 @@ import PerformanceValidation from "./pages/PerformanceValidation";
 import { PerformanceParameters } from "./pages/PerformanceParameters";
 import { FinancialData } from "./pages/FinancialData";
 import ACCCallback from "./pages/ACCCallback";
+import Login from "./pages/Login";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/ollama-config" component={OllamaConfig} />
       <Route path="/processing-status" component={ProcessingStatus} />
       <Route path="/api/acc/oauth/callback" component={ACCCallback} />
+      <Route path="/login" component={Login} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
