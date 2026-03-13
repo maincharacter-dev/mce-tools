@@ -175,7 +175,7 @@ async def _ingest_risk_matrix(
             probability_estimated=risk_data.get("probability"),
             impact_estimated=risk_data.get("impact"),
             mitigation_strategy=risk_data.get("mitigation"),
-            metadata=risk_data.get("metadata"),
+            extra_metadata=risk_data.get("metadata"),
         )
         db.add(risk)
         records_created += 1
@@ -209,7 +209,7 @@ async def _ingest_design_standards(
             deviation_from_standard=std_data.get("deviation", False),
             deviation_reason=std_data.get("deviation_reason"),
             deviation_approved=std_data.get("deviation_approved", False),
-            metadata=std_data.get("metadata"),
+            extra_metadata=std_data.get("metadata"),
         )
         db.add(standard)
         records_created += 1
@@ -240,7 +240,7 @@ async def _ingest_site_conditions(
             severity=cond_data.get("severity", "medium"),
             issues_encountered=cond_data.get("issues"),
             mitigations_applied=cond_data.get("mitigations"),
-            metadata=cond_data.get("metadata"),
+            extra_metadata=cond_data.get("metadata"),
         )
         db.add(condition)
         records_created += 1
@@ -274,7 +274,7 @@ async def _ingest_equipment_data(
             reliability_issues_description=equip_data.get("issues_description"),
             failures_count=equip_data.get("failures"),
             failure_modes=equip_data.get("failure_modes"),
-            metadata=equip_data.get("metadata"),
+            extra_metadata=equip_data.get("metadata"),
         )
         db.add(equipment)
         records_created += 1
@@ -311,7 +311,7 @@ async def _ingest_project_outcomes(
         key_learnings=data.get("key_learnings"),
         what_worked_well=data.get("what_worked_well"),
         what_could_improve=data.get("what_could_improve"),
-        metadata=data.get("metadata"),
+        extra_metadata=data.get("metadata"),
     )
     db.add(outcome)
 

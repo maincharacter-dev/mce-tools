@@ -50,7 +50,7 @@ class KnowledgeProject(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
     # Flexible metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # Relationships
@@ -104,7 +104,7 @@ class KnowledgeRisk(Base):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 0-1
     
     # Metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -152,7 +152,7 @@ class KnowledgeSiteCondition(Base):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
     # Metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -201,7 +201,7 @@ class KnowledgeProjectOutcome(Base):
     
     # Data quality
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -241,7 +241,7 @@ class KnowledgeDesignStandard(Base):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
     # Metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -287,7 +287,7 @@ class KnowledgeEquipmentPerformance(Base):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
     # Metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -333,5 +333,5 @@ class KnowledgeBenchmark(Base):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
     # Metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

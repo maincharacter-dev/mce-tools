@@ -27,6 +27,7 @@ RUN pnpm build
 FROM node:22-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
 # Install drizzle-kit globally for migrations
@@ -48,9 +49,9 @@ COPY --from=build /app/server ./server
 COPY --from=build /app/shared ./shared
 COPY --from=build /app/tsconfig.json ./tsconfig.json
 
-# Copy entrypoint script
+# Copy entrypoint script and fix CRLF line endings (Windows checkout)
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+RUN dos2unix /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 
 # Environment defaults
 ENV NODE_ENV=production
