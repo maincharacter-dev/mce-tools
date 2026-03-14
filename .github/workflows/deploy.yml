@@ -16,6 +16,6 @@ jobs:
       - name: Rebuild and restart MCE containers
         run: |
           cd C:\MCE\GitHub\mce-tools
-          docker compose build oe-toolkit mce-tools knowledge-engine
+          docker compose build --no-cache oe-toolkit mce-tools knowledge-engine
           docker compose up -d --no-deps oe-toolkit mce-tools knowledge-engine
           echo "Deploy complete"
