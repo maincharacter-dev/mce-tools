@@ -1,4 +1,4 @@
-import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot } from "lucide-react";
+import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState } from "react";
@@ -43,6 +43,16 @@ const tools: ToolCard[] = [
     icon: <BarChart3 className="h-8 w-8" />,
     color: "from-amber-500 to-amber-600",
     url: "https://solaranalys-v5zbfm3a.manus.space/",
+    status: "Active",
+  },
+  {
+    id: "ta-tdd",
+    title: "TA/TDD Engine",
+    description:
+      "Manage Technical Assessment and Technical Due Diligence projects end-to-end. Track phases, link ACC projects, manage deliverables, and transition seamlessly into OE engagements.",
+    icon: <ClipboardList className="h-8 w-8" />,
+    color: "from-blue-500 to-blue-600",
+    url: "http://localhost:3001",
     status: "Active",
   },
   {
@@ -267,7 +277,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
-              <div className="text-3xl font-bold text-orange-400 mb-2">3</div>
+              <div className="text-3xl font-bold text-orange-400 mb-2">4</div>
               <div className="text-sm text-slate-300">Active Tools</div>
             </div>
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
