@@ -24,7 +24,7 @@ import Login from "./pages/Login";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
-    <Switch>
+    <Switch base="/ta-tdd">
       <Route path="/" component={Home} />
       <Route path="/projects" component={ProjectDashboard} />
       <Route path="/project-dashboard" component={ProjectDetailDashboard} />
