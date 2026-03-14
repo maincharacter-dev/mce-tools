@@ -14,6 +14,8 @@ jobs:
         run: git -C "C:\MCE\GitHub\mce-tools" pull origin master
 
       - name: Rebuild and restart MCE containers
+        env:
+          DOCKER_CONTEXT: desktop-linux
         run: |
           cd C:\MCE\GitHub\mce-tools
           docker compose build --no-cache oe-toolkit mce-tools knowledge-engine
