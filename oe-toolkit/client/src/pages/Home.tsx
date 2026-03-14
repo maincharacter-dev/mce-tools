@@ -52,7 +52,7 @@ const tools: ToolCard[] = [
       "Manage Technical Assessment and Technical Due Diligence projects end-to-end. Track phases, link ACC projects, manage deliverables, and transition seamlessly into OE engagements.",
     icon: <ClipboardList className="h-8 w-8" />,
     color: "from-blue-500 to-blue-600",
-    url: "http://localhost:3001",
+    url: "/ta-tdd/",
     status: "Active",
   },
   {
