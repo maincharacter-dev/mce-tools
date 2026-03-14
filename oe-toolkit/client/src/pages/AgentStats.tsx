@@ -1,3 +1,4 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +18,7 @@ import {
 import { agentTrpc } from "@/lib/agent-trpc";
 
 export default function AgentStats() {
+  useAuth({ redirectOnUnauthenticated: true });
   const { data: knowledgeStats, isLoading: loadingKnowledge } =
     agentTrpc.getKnowledgeStats.useQuery({});
 

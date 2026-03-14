@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -107,6 +108,7 @@ function ToolCallAccordion({ events }: { events: AgentEvent[] }) {
 }
 
 export default function AgentChat() {
+  useAuth({ redirectOnUnauthenticated: true });
   // ─── State ──────────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
