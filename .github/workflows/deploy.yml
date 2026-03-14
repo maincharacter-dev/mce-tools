@@ -13,9 +13,10 @@ jobs:
       - name: Pull latest code
         run: git -C "C:\MCE\GitHub\mce-tools" pull origin master
 
+      - name: Switch to desktop-linux Docker context
+        run: docker context use desktop-linux
+
       - name: Rebuild and restart MCE containers
-        env:
-          DOCKER_CONTEXT: desktop-linux
         run: |
           cd C:\MCE\GitHub\mce-tools
           docker compose build --no-cache oe-toolkit mce-tools knowledge-engine
