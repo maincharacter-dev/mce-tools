@@ -153,7 +153,7 @@ function vitePluginManusDebugCollector(): Plugin {
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
 export default defineConfig({
-  base: '/ta-tdd/',
+  base: process.env.VITE_BASE_PATH ? `${process.env.VITE_BASE_PATH}/` : '/',
   plugins,
   resolve: {
     alias: {
