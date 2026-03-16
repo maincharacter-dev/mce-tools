@@ -22,9 +22,12 @@ import ACCCallback from "./pages/ACCCallback";
 import Login from "./pages/Login";
 
 function Router() {
+  // Base path for subpath routing behind nginx (e.g. /ta-tdd)
+  // Falls back to empty string for direct local access
+  const base = import.meta.env.VITE_BASE_PATH || "";
   // make sure to consider if you need authentication for certain routes
   return (
-    <WouterRouter base="/ta-tdd">
+    <WouterRouter base={base}>
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/projects" component={ProjectDashboard} />

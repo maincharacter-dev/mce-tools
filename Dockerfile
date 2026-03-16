@@ -20,6 +20,9 @@ RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Allow subpath base to be injected at build time (e.g. /ta-tdd for nginx routing)
+ARG VITE_BASE_PATH=/ta-tdd
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 # Build client (Vite → dist/public/) + server (esbuild → dist/index.js)
 RUN pnpm build
 
