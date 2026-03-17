@@ -231,6 +231,7 @@ services:
       LOCAL_PASSWORD: ${LOCAL_PASSWORD}
       APS_CLIENT_ID: ${APS_CLIENT_ID:-}
       APS_CLIENT_SECRET: ${APS_CLIENT_SECRET:-}
+      BASE_PATH: /ta-tdd
     depends_on:
       mysql:
         condition: service_healthy
