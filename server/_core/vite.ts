@@ -60,21 +60,22 @@ export function serveStatic(app: Express) {
 
   const basePath = process.env.BASE_PATH || '';
 
-  // Always serve static files at root (for direct local access at localhost:3001)
-  app.use(express.static(distPath));
-
   if (basePath) {
-    // Also serve static assets under the base path (e.g. /ta-tdd/assets/...)
-    // This handles requests forwarded by nginx with the prefix preserved
+    // Serve static assets under the base path (e.g. /ta-tdd/assets/...)
     app.use(basePath, express.static(distPath));
     // SPA fallback under base path
     app.use(`${basePath}/*`, (_req, res) => {
       res.sendFile(path.resolve(distPath, "index.html"));
     });
+    // Redirect root to base path for direct local access (e.g. localhost:3001 → localhost:3001/ta-tdd/)
+    app.use("/", (_req, res) => {
+      res.redirect(basePath + "/");
+    });
+  } else {
+    app.use(express.static(distPath));
+    // fall through to index.html if the file doesn't exist
+    app.use("*", (_req, res) => {
+      res.sendFile(path.resolve(distPath, "index.html"));
+    });
   }
-
-  // Root SPA fallback (local direct access)
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
 }
