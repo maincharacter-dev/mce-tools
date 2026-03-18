@@ -9,6 +9,7 @@ import { isLocalAuth } from "./env";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -128,6 +129,22 @@ async function startServer() {
       }
     }
   });
+
+  // ─── TA/TDD Engine proxy ─────────────────────────────────────────────────
+  // Forward /ta-tdd/* to mce-ingestion so toolkit.maincharacter.wtf/ta-tdd/ works
+  const ingestionUrl = process.env.MCE_INGESTION_URL || "http://mce-ingestion:3000";
+  app.use("/ta-tdd", createProxyMiddleware({
+    target: ingestionUrl,
+    changeOrigin: true,
+    on: {
+      error: (err: any, _req: any, res: any) => {
+        console.error("[TA/TDD proxy] Error:", err.message);
+        if (!res.headersSent) {
+          (res as any).status(502).json({ error: "TA/TDD Engine unavailable" });
+        }
+      },
+    },
+  }));
 
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
