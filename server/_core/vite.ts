@@ -68,7 +68,8 @@ export function serveStatic(app: Express) {
       res.sendFile(path.resolve(distPath, "index.html"));
     });
     // Redirect root to base path for direct local access (e.g. localhost:3001 → localhost:3001/ta-tdd/)
-    app.use("/", (_req, res) => {
+    // Only redirect exact "/" — do NOT use app.use("/") as it matches all paths and causes redirect loops
+    app.get("/", (_req, res) => {
       res.redirect(basePath + "/");
     });
   } else {
