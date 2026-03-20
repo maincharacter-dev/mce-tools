@@ -136,6 +136,7 @@ async function startServer() {
   app.use("/workspace", createProxyMiddleware({
     target: workspaceUrl,
     changeOrigin: true,
+    pathRewrite: { '^/workspace': '' },
     on: {
       error: (err: any, _req: any, res: any) => {
         console.error("[Workspace proxy] Error:", err.message);
