@@ -16,7 +16,7 @@ jobs:
       - name: Rebuild and restart MCE containers
         run: |
           cd C:\MCE\GitHub\mce-tools
-          docker stop mce-ingestion 2>$null; docker rm mce-ingestion 2>$null; echo "Cleaned up old mce-ingestion container"
+          try { docker stop mce-ingestion; docker rm mce-ingestion } catch { Write-Host "mce-ingestion not running, skipping" }
           docker compose build --no-cache oe-toolkit mce-workspace knowledge-engine
           docker compose up -d --force-recreate --no-deps oe-toolkit mce-workspace knowledge-engine nginx
           echo "Deploy complete"
