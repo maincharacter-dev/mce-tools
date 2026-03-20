@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
-import { createProject, getProjectsByUser, getProjectById, getDb } from "./db";
+import { getDb, getOllamaConfig, updateOllamaConfig } from "./db";
 import { ollamaConfig } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -1053,92 +1053,41 @@ export const appRouter = router({
   demo: demoRouter,
 
   projects: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await getProjectsByUser(ctx.user.id);
-    }),
-    get: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
-      .query(async ({ input }) => {
-        return await getProjectById(parseInt(input.projectId));
+    /**
+     * Projects are managed by oe-toolkit (the single registry).
+     * mce-workspace provisions its own proj_{id}_ tables on first access.
+     */
+
+    // Provision tables for a project (called by oe-toolkit after project creation)
+    provision: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { provisionProjectTables, getTableProvisionConfig } = await import('./project-table-provisioner');
+        const config = getTableProvisionConfig(input.projectId);
+        await provisionProjectTables(config);
+        console.log(`[Projects] ✓ Tables provisioned for project ${input.projectId}`);
+        return { success: true };
       }),
-    create: protectedProcedure
-      .input(
-        z.object({
-          name: z.string().min(1, "Project name is required"),
-          description: z.string().optional(),
-        })
-      )
-      .mutation(async ({ input, ctx }) => {
-        const dbName = `proj_${ctx.user.id}_${Date.now()}`;
-        return await createProject(
-          input.name,
-          input.description || null,
-          dbName,
-          ctx.user.id
-        );
+
+    // Delete all tables for a project (called by oe-toolkit when project is deleted)
+    deleteProjectData: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteProjectTables } = await import('./project-table-provisioner');
+        await deleteProjectTables(input.projectId);
+        console.log(`[Projects] ✓ Tables deleted for project ${input.projectId}`);
+        return { success: true };
       }),
-    resetDatabase: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const project = await getProjectById(parseInt(input.projectId));
-        if (!project || project.createdByUserId !== ctx.user.id) {
-          throw new Error("Project not found or access denied");
-        }
-        
-        const { provisionProjectDatabase, deleteProjectDatabase } = await import("./project-db-provisioner");
-        
-        // Parse DATABASE_URL to get connection details
-        const { getProjectDbProvisionConfig } = await import("./db-connection");
-        const config = getProjectDbProvisionConfig(project.dbName);
-        
-        // Delete and recreate the project database with updated schema
-        await deleteProjectDatabase(config);
-        await provisionProjectDatabase(config);
-        
-        return { success: true, message: "Project database reset successfully" };
-      }),
-    delete: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const projectIdNum = parseInt(input.projectId);
-        const project = await getProjectById(projectIdNum);
-        if (!project || project.createdByUserId !== ctx.user.id) {
-          throw new Error("Project not found or access denied");
-        }
-        
-        const { deleteProjectTables } = await import("./project-db-provisioner");
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        
-        // Delete all project tables (proj_{id}_*)
-        await deleteProjectTables(projectIdNum);
-        
-        // Delete project record from main database
-        await db.execute(
-          `DELETE FROM projects WHERE id = ${projectIdNum}`
-        );
-        
-        // Delete associated narratives
-        await db.execute(
-          "DELETE FROM section_narratives WHERE project_db_name = '" + project.dbName + "'"
-        );
-        
-        return { success: true, message: "Project deleted successfully" };
-      }),
+
     // Start or continue consolidation - processes one step at a time
     // Frontend should call this repeatedly until done=true
     consolidate: protectedProcedure
       .input(z.object({ projectId: z.string() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         console.log('[Consolidate] Processing step for project', input.projectId);
         
         try {
           const projectIdNum = parseInt(input.projectId);
-          const project = await getProjectById(projectIdNum);
-          
-          if (!project || project.createdByUserId !== ctx.user.id) {
-            throw new Error("Project not found or access denied");
-          }
 
           const { createOrGetJob, processNextStep } = await import('./consolidation-job-service');
           
@@ -1170,12 +1119,8 @@ export const appRouter = router({
     // Get consolidation job status
     getConsolidationStatus: protectedProcedure
       .input(z.object({ projectId: z.string() }))
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input }) => {
         const projectIdNum = parseInt(input.projectId);
-        const project = await getProjectById(projectIdNum);
-        if (!project || project.createdByUserId !== ctx.user.id) {
-          throw new Error("Project not found or access denied");
-        }
 
         const { getJobStatus } = await import('./consolidation-job-service');
         const job = await getJobStatus(projectIdNum);

@@ -1,5 +1,5 @@
 # ============================================================
-# Multi-stage Dockerfile for MCE Ingestion Engine (mce-tools)
+# Multi-stage Dockerfile for MCE Workspace (mce-workspace)
 # ============================================================
 # Stage 1: Install dependencies
 # Stage 2: Build the application (Vite + esbuild)
@@ -20,8 +20,8 @@ RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Allow subpath base to be injected at build time (e.g. /ta-tdd for nginx routing)
-ARG VITE_BASE_PATH=/ta-tdd
+# Allow subpath base to be injected at build time (e.g. /workspace for nginx routing)
+ARG VITE_BASE_PATH=/workspace
 ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 # Build client (Vite → dist/public/) + server (esbuild → dist/index.js)
 RUN pnpm build

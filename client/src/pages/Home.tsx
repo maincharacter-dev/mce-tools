@@ -29,7 +29,7 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png" alt="MCE" className="h-10 w-10" />
               <div>
-                <h1 className="text-xl font-bold text-white">Technical Advisory Engine</h1>
+                <h1 className="text-xl font-bold text-white">MCE Workspace</h1>
                 <p className="text-sm text-slate-400">TA/TDD Workflow Platform</p>
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function Home() {
         <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-500/30 rounded-lg p-8">
           <h3 className="text-2xl font-bold text-white mb-4">Part of the TA/TDD Workflow</h3>
           <p className="text-slate-300 mb-6">
-            The Technical Advisory Engine supports the full TA/TDD workflow. 
+            The MCE Workspace supports the full TA/TDD workflow. 
             Start with document ingestion and progress through the stages:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

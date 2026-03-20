@@ -61,7 +61,7 @@ export function serveStatic(app: Express) {
   const basePath = process.env.BASE_PATH || '';
 
   // Serve static assets at root — Vite builds all asset paths as absolute URLs
-  // (e.g. /ta-tdd/assets/index.js) so they resolve correctly regardless of mount path.
+  // (e.g. /workspace/assets/index.js) so they resolve correctly regardless of mount path.
   // Do NOT use app.use(basePath, express.static()) — that causes express.static to
   // issue a 302 redirect to itself when it sees a directory request, creating an
   // infinite redirect loop when proxied from another service.
@@ -72,7 +72,7 @@ export function serveStatic(app: Express) {
     app.use(`${basePath}/*`, (_req, res) => {
       res.sendFile(path.resolve(distPath, "index.html"));
     });
-    // Redirect bare root to base path for direct local access (e.g. localhost:3001 → localhost:3001/ta-tdd/)
+    // Redirect bare root to base path for direct local access (e.g. localhost:3001 → localhost:3001/workspace/)
     app.get("/", (_req, res) => {
       res.redirect(basePath + "/");
     });

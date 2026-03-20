@@ -396,7 +396,7 @@ export default function DocumentUpload() {
                 MAIN CHARACTER ENERGY
               </div>
               <div className="text-xs md:text-sm text-slate-400 font-medium">
-                Technical Advisory Engine
+                MCE Workspace
               </div>
             </div>
           </a>

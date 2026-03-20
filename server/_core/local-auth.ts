@@ -1,29 +1,17 @@
 /**
- * Local Authentication — Simple username/password auth for self-hosting.
+ * Local Authentication for mce-workspace
  *
- * When LOCAL_AUTH=true, this replaces Manus OAuth entirely:
- *   - Login page at /login (served by the frontend)
- *   - POST /api/auth/login validates credentials against .env
- *   - Session is a signed JWT cookie (same as Manus OAuth flow)
- *   - No external OAuth server needed
+ * mce-workspace does NOT have its own user database.
+ * Users are authenticated by oe-toolkit which issues a JWT.
+ * This module validates that JWT and extracts the user context from it.
  *
- * Single user (legacy):
- *   LOCAL_AUTH=true
- *   LOCAL_USERNAME=admin
- *   LOCAL_PASSWORD=your-secure-password
- *
- * Multiple users:
- *   LOCAL_AUTH=true
- *   LOCAL_USERS=[{"username":"rob","password":"pass1","name":"Rob","role":"admin"},{"username":"alice","password":"pass2","name":"Alice","role":"user"}]
- *
- * When LOCAL_USERS is set it takes precedence over LOCAL_USERNAME/LOCAL_PASSWORD.
- * Each user gets their own isolated DB record and conversation history.
+ * The JWT is shared between oe-toolkit and mce-workspace via SHARED_JWT_SECRET.
+ * When LOCAL_AUTH=true, both services use the same local credentials and secret.
  */
 import type { Express, Request, Response } from "express";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
-import * as db from "../db";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 
@@ -39,7 +27,6 @@ interface LocalUserConfig {
 }
 
 function getLocalUsers(): LocalUserConfig[] {
-  // Multi-user mode: LOCAL_USERS JSON array takes precedence
   if (ENV.localUsers) {
     try {
       const parsed = JSON.parse(ENV.localUsers);
@@ -56,7 +43,6 @@ function getLocalUsers(): LocalUserConfig[] {
     }
   }
 
-  // Single-user legacy fallback
   if (ENV.localUsername && ENV.localPassword) {
     return [
       {
@@ -71,33 +57,19 @@ function getLocalUsers(): LocalUserConfig[] {
   return [];
 }
 
-/** Deterministic openId per username so the same user always maps to the same DB row */
-function openIdForUsername(username: string): string {
-  return `local-user-${username.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
+/** Deterministic numeric user ID from username (consistent across restarts) */
+function userIdForUsername(username: string): number {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = ((hash << 5) - hash) + username.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) || 1;
 }
 
-// ============================================================
-// DB USER PROVISIONING
-// ============================================================
-
-/** Ensure all configured local users exist in the database */
-async function ensureLocalUsers(): Promise<void> {
-  const users = getLocalUsers();
-  for (const u of users) {
-    try {
-      await db.upsertUser({
-        openId: openIdForUsername(u.username),
-        name: u.name,
-        email: null,
-        loginMethod: "local",
-        role: u.role,
-        lastSignedIn: new Date(),
-      });
-    } catch (err) {
-      console.error(`[LocalAuth] Failed to ensure user '${u.username}':`, err);
-    }
-  }
-  console.log(`[LocalAuth] ${users.length} local user(s) provisioned`);
+/** Deterministic openId per username */
+function openIdForUsername(username: string): string {
+  return `local-user-${username.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
 }
 
 // ============================================================
@@ -116,6 +88,8 @@ async function createSessionForUser(user: LocalUserConfig): Promise<string> {
     openId: openIdForUsername(user.username),
     appId: ENV.appId || "local-app",
     name: user.name,
+    role: user.role,
+    userId: userIdForUsername(user.username),
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setExpirationTime(expirationSeconds)
@@ -124,25 +98,35 @@ async function createSessionForUser(user: LocalUserConfig): Promise<string> {
 
 export async function verifyLocalSession(
   cookieValue: string | undefined | null
-): Promise<{ openId: string; appId: string; name: string } | null> {
+): Promise<{ openId: string; appId: string; name: string; role?: string; userId?: number } | null> {
   if (!cookieValue) return null;
 
   try {
     const { payload } = await jwtVerify(cookieValue, getSecret(), {
       algorithms: ["HS256"],
     });
-    const { openId, appId, name } = payload as Record<string, unknown>;
+    const { openId, appId, name, role, userId } = payload as Record<string, unknown>;
 
     if (typeof openId !== "string" || typeof appId !== "string" || typeof name !== "string") {
       return null;
     }
 
-    return { openId, appId, name };
+    return {
+      openId,
+      appId,
+      name,
+      role: typeof role === "string" ? role : "user",
+      userId: typeof userId === "number" ? userId : undefined,
+    };
   } catch {
     return null;
   }
 }
 
+/**
+ * Authenticate a request and return a User object from the JWT payload.
+ * mce-workspace does NOT look up users in a database — the JWT is the source of truth.
+ */
 export async function authenticateLocalRequest(req: Request): Promise<User | null> {
   const cookieHeader = req.headers.cookie;
   if (!cookieHeader) return null;
@@ -154,11 +138,18 @@ export async function authenticateLocalRequest(req: Request): Promise<User | nul
   const session = await verifyLocalSession(sessionCookie);
   if (!session) return null;
 
-  const user = await db.getUserByOpenId(session.openId);
-  if (user) {
-    await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
-  }
-  return user ?? null;
+  const now = new Date();
+  return {
+    id: session.userId ?? userIdForUsername(session.openId),
+    openId: session.openId,
+    name: session.name,
+    email: null,
+    loginMethod: "local",
+    role: (session.role === "admin" ? "admin" : "user") as "admin" | "user",
+    createdAt: now,
+    updatedAt: now,
+    lastSignedIn: now,
+  };
 }
 
 // ============================================================
@@ -168,22 +159,21 @@ export async function authenticateLocalRequest(req: Request): Promise<User | nul
 export function registerLocalAuthRoutes(app: Express): void {
   console.log("[LocalAuth] Registering local auth routes (LOCAL_AUTH=true)");
 
-  // Provision all users on startup
-  ensureLocalUsers();
+  const users = getLocalUsers();
+  console.log(`[LocalAuth] ${users.length} local user(s) configured`);
 
   // POST /api/auth/login — validate credentials, set session cookie
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     const { username, password } = req.body || {};
 
-    const users = getLocalUsers();
-    if (users.length === 0) {
+    const localUsers = getLocalUsers();
+    if (localUsers.length === 0) {
       return res.status(500).json({
-        error:
-          "No users configured. Set LOCAL_USERS or LOCAL_USERNAME/LOCAL_PASSWORD in environment.",
+        error: "No users configured. Set LOCAL_USERS or LOCAL_USERNAME/LOCAL_PASSWORD in environment.",
       });
     }
 
-    const matchedUser = users.find(
+    const matchedUser = localUsers.find(
       (u) => u.username === username && u.password === password
     );
 
@@ -192,16 +182,6 @@ export function registerLocalAuthRoutes(app: Express): void {
     }
 
     try {
-      // Ensure this user exists in DB (idempotent)
-      await db.upsertUser({
-        openId: openIdForUsername(matchedUser.username),
-        name: matchedUser.name,
-        email: null,
-        loginMethod: "local",
-        role: matchedUser.role,
-        lastSignedIn: new Date(),
-      });
-
       const sessionToken = await createSessionForUser(matchedUser);
       const cookieOptions = getSessionCookieOptions(req);
 

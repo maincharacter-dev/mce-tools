@@ -22,7 +22,7 @@ import {
 import { getDb } from "./db";
 import { accCredentials, projects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { storeAccMapping, storeAccCredentials } from "./taTddIntegration";
+import { getProjectDbConnection } from "./projectProvisioner";
 
 export const accRouter = router({
   /**
@@ -334,38 +334,36 @@ export const accRouter = router({
         })
         .where(eq(projects.id, input.projectId));
       
-      // Get the updated project to access TA/TDD fields
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, input.projectId))
-        .limit(1);
-      
-      // If this project has a linked TA/TDD project, store ACC mapping in per-project DB
-      if (project && project.taTddDbName && project.taTddProjectId) {
-        console.log(`[TA/TDD Integration] Storing ACC mapping in ${project.taTddDbName}`);
-        
-        // Get hub name from listHubs (we only have hubId)
-        const hubs = await listHubs(creds[0].accessToken);
-        const hub = hubs.find((h: any) => h.id === input.hubId);
-        const hubName = (hub as any)?.attributes?.name || 'Unknown Hub';
-        
-        // Store ACC project mapping
-        await storeAccMapping(project.taTddProjectId, {
-          accHubId: input.hubId,
-          accHubName: hubName,
-          accProjectId: accProject.id,
-          accProjectName: accProject.name,
-        });
-        
-        // Store ACC credentials in per-project DB
-        await storeAccCredentials(project.taTddProjectId, {
-          accessToken: creds[0].accessToken,
-          refreshToken: creds[0].refreshToken || undefined,
-          expiresAt: new Date(creds[0].expiresAt),
-        });
-        
-        console.log(`[TA/TDD Integration] ACC integration complete for ${project.taTddDbName}`);
+      // Store ACC mapping and credentials in the project's dedicated database
+      try {
+        const projectConn = await getProjectDbConnection(input.projectId);
+        try {
+          // Get hub name
+          const hubs = await listHubs(creds[0].accessToken);
+          const hub = hubs.find((h: any) => h.id === input.hubId);
+          const hubName = (hub as any)?.attributes?.name || 'Unknown Hub';
+
+          // Store ACC project mapping
+          await projectConn.execute(
+            `INSERT INTO acc_project_mapping (accHubId, accHubName, accProjectId, accProjectName, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, NOW(), NOW())`,
+            [input.hubId, hubName, accProject.id, accProject.name]
+          );
+
+          // Store ACC credentials
+          await projectConn.execute(
+            `INSERT INTO acc_credentials (accessToken, refreshToken, expiresAt, createdAt, updatedAt)
+             VALUES (?, ?, ?, NOW(), NOW())`,
+            [creds[0].accessToken, creds[0].refreshToken || null, new Date(creds[0].expiresAt)]
+          );
+
+          console.log(`[ACC] Stored ACC mapping and credentials in project database proj_${input.projectId}`);
+        } finally {
+          await projectConn.end();
+        }
+      } catch (error) {
+        console.error('[ACC] Failed to store ACC data in project database:', error);
+        // Non-fatal: ACC project is created, credentials are in oe_toolkit.accCredentials
       }
       
       return {

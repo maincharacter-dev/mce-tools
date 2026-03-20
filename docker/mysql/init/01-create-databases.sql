@@ -9,8 +9,8 @@ CREATE DATABASE IF NOT EXISTS `oe_toolkit`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
--- MCE Ingestion Engine (mce-tools root app)
-CREATE DATABASE IF NOT EXISTS `mce_ingestion`
+-- MCE Workspace (mce-workspace) — project workspace engine
+CREATE DATABASE IF NOT EXISTS `mce_workspace`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 

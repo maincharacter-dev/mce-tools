@@ -2,7 +2,7 @@
 set -e
 
 echo "============================================"
-echo "  MCE Ingestion Engine — Docker Entrypoint"
+echo "  MCE Workspace — Docker Entrypoint"
 echo "============================================"
 
 # ---- Parse MySQL connection details from DATABASE_URL ----
@@ -43,5 +43,5 @@ npx drizzle-kit migrate 2>&1 || {
 echo "[Entrypoint] Migrations complete."
 
 # ---- Start the application ----
-echo "[Entrypoint] Starting MCE Ingestion Engine..."
+echo "[Entrypoint] Starting MCE Workspace..."
 exec node dist/index.js

@@ -155,12 +155,12 @@ export default function AgentChat() {
     { enabled: !!conversationId }
   );
 
-  // @ts-ignore - taTddProjects router exists at runtime
-  const taTddProjectsQuery = trpc.taTddProjects.list.useQuery();
-  const taTddProjects: Array<{ id: number; name: string }> = taTddProjectsQuery.data ?? [];
+  // @ts-ignore - workspaceProjects router exists at runtime
+  const workspaceProjectsQuery = trpc.workspaceProjects.list.useQuery();
+  const workspaceProjects: Array<{ id: number; name: string }> = workspaceProjectsQuery.data ?? [];
 
-  // @ts-ignore - taTddProjects router exists at runtime
-  const projectContextQuery = trpc.taTddProjects.getProjectContext.useQuery(
+  // @ts-ignore - workspaceProjects router exists at runtime
+  const projectContextQuery = trpc.workspaceProjects.getProjectContext.useQuery(
     { projectId: parseInt(selectedProjectId) },
     { enabled: selectedProjectId !== "none" && !isNaN(parseInt(selectedProjectId)) }
   );
@@ -532,7 +532,7 @@ export default function AgentChat() {
                 <SelectItem value="none" className="text-slate-300 text-xs">
                   No project context
                 </SelectItem>
-                {taTddProjects.map((p) => (
+                {workspaceProjects.map((p) => (
                   <SelectItem
                     key={p.id}
                     value={String(p.id)}

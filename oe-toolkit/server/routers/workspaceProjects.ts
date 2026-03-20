@@ -1,55 +1,47 @@
 /**
- * TA/TDD Projects Router
+ * Workspace Projects Router
  *
- * Provides endpoints to query projects and project context from the TA/TDD shared database.
- * The project context is used to inject relevant facts into Sprocket chat requests.
+ * Provides project context endpoints for Sprocket AI agent injection.
+ * Projects are sourced from oe_toolkit.projects (the single registry).
+ * Project-specific data (facts, red flags) is read from mce-workspace's
+ * mce_workspace database using proj_{id}_ table prefixes.
  */
 
 import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import mysql from "mysql2/promise";
+import { getDb } from "../db";
+import { projects } from "../../drizzle/schema";
 
 /**
- * Get a fresh TA/TDD database connection
+ * Get a connection to the mce-workspace database (for reading project data)
  */
-async function getTaTddDbConnection() {
-  const dbUrl = process.env.TA_TDD_DATABASE_URL;
-  if (!dbUrl) throw new Error("TA_TDD_DATABASE_URL environment variable not set");
+async function getWorkspaceDbConnection() {
+  const dbUrl = process.env.MCE_WORKSPACE_DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) throw new Error("MCE_WORKSPACE_DATABASE_URL environment variable not set");
 
+  // Replace the database name in the URL with mce_workspace
   const url = new URL(dbUrl);
+  url.pathname = "/mce_workspace";
+
   return await mysql.createConnection({
     host: url.hostname,
     port: parseInt(url.port) || 3306,
     user: url.username,
     password: url.password,
-    database: url.pathname.slice(1),
-    ssl: { rejectUnauthorized: true },
+    database: "mce_workspace",
   });
 }
 
-export const taTddProjectsRouter = router({
+export const workspaceProjectsRouter = router({
   /**
-   * List all projects from TA/TDD database
+   * List all projects from oe_toolkit (the single registry).
+   * Used by mce-workspace UI and Sprocket to select a project context.
    */
   list: protectedProcedure.query(async () => {
-    const connection = await getTaTddDbConnection();
-    try {
-      const [rows] = await connection.execute(
-        `SELECT id, name, description, dbName, createdAt, updatedAt
-         FROM projects
-         ORDER BY updatedAt DESC`
-      );
-      return rows as Array<{
-        id: number;
-        name: string;
-        description: string | null;
-        dbName: string;
-        createdAt: Date;
-        updatedAt: Date;
-      }>;
-    } finally {
-      await connection.end();
-    }
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    return await db.select().from(projects);
   }),
 
   /**
@@ -60,43 +52,33 @@ export const taTddProjectsRouter = router({
   getProjectContext: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
-      const connection = await getTaTddDbConnection();
-      try {
-        // Get project info
-        const [projectRows] = await connection.execute(
-          `SELECT id, name, description, dbName FROM projects WHERE id = ? LIMIT 1`,
-          [input.projectId]
-        );
-        const projects = projectRows as Array<{ id: number; name: string; description: string | null; dbName: string }>;
-        if (!projects.length) throw new Error(`Project ${input.projectId} not found`);
+      let connection: mysql.Connection | null = null;
 
-        const project = projects[0];
-        const prefix = project.dbName; // e.g. "proj_390002"
+      try {
+        connection = await getWorkspaceDbConnection();
+
+        const prefix = `proj_${input.projectId}`;
 
         // Check if per-project tables exist
         const [tableCheck] = await connection.execute(
           `SELECT COUNT(*) as cnt FROM information_schema.tables 
-           WHERE table_schema = DATABASE() AND table_name = ?`,
-          [`${prefix}_extractedFacts`]
+           WHERE table_schema = 'mce_workspace' AND table_name = ?`,
+          [`${prefix}_extracted_facts`]
         );
         const hasTables = (tableCheck as Array<{ cnt: number }>)[0].cnt > 0;
 
-        let contextParts: string[] = [
-          `Project: ${project.name}`,
+        const contextParts: string[] = [
+          `Project ID: ${input.projectId}`,
         ];
-
-        if (project.description) {
-          contextParts.push(`Description: ${project.description}`);
-        }
 
         if (hasTables) {
           // Get top facts grouped by category (max 5 per category, highest confidence)
           const [factRows] = await connection.execute(
             `SELECT category, \`key\`, value, confidence
-             FROM \`${prefix}_extractedFacts\`
-             WHERE deleted_at IS NULL AND confidence >= 0.7
+             FROM \`${prefix}_extracted_facts\`
+             WHERE confidence >= 0.7
              ORDER BY category, confidence DESC
-             LIMIT 50`,
+             LIMIT 50`
           );
           const facts = factRows as Array<{ category: string; key: string; value: string; confidence: number }>;
 
@@ -120,15 +102,15 @@ export const taTddProjectsRouter = router({
           // Check for red flags table
           const [rfCheck] = await connection.execute(
             `SELECT COUNT(*) as cnt FROM information_schema.tables 
-             WHERE table_schema = DATABASE() AND table_name = ?`,
-            [`${prefix}_redFlags`]
+             WHERE table_schema = 'mce_workspace' AND table_name = ?`,
+            [`${prefix}_red_flags`]
           );
           const hasRedFlags = (rfCheck as Array<{ cnt: number }>)[0].cnt > 0;
 
           if (hasRedFlags) {
             const [rfRows] = await connection.execute(
               `SELECT category, description, severity
-               FROM \`${prefix}_redFlags\`
+               FROM \`${prefix}_red_flags\`
                ORDER BY severity DESC
                LIMIT 10`
             );
@@ -144,12 +126,18 @@ export const taTddProjectsRouter = router({
         }
 
         return {
-          projectId: project.id,
-          projectName: project.name,
+          projectId: input.projectId,
           context: contextParts.join("\n"),
         };
+      } catch (error) {
+        console.error(`[WorkspaceProjects] Failed to get project context for ${input.projectId}:`, error);
+        // Return minimal context rather than throwing — Sprocket should still work without it
+        return {
+          projectId: input.projectId,
+          context: `Project ID: ${input.projectId}`,
+        };
       } finally {
-        await connection.end();
+        if (connection) await connection.end();
       }
     }),
 });

@@ -57,6 +57,13 @@
       "when": 1771067881548,
       "tag": "0007_fat_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1742389200000,
+      "tag": "0008_projects_schema_refactor",
+      "breakpoints": true
     }
   ]
 }

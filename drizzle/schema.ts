@@ -1,32 +1,36 @@
 import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
 
 /**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
+ * mce-workspace schema
+ *
+ * This database (mce_workspace) contains:
+ * - App-level config (ollamaConfig, knowledgeBaseConfig)
+ * - Per-project data tables using proj_{id}_ prefix (managed via raw SQL in project-table-provisioner)
+ * - Agent module tables
+ *
+ * NOTE: users and projects tables are NOT here — they live in oe_toolkit.
  */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
+/**
+ * User type — represents an authenticated user.
+ * mce-workspace does NOT store users in its database;
+ * this type is derived from the JWT payload issued by oe-toolkit.
+ */
+export type User = {
+  id: number;
+  openId: string;
+  name: string | null;
+  email: string | null;
+  loginMethod: string | null;
+  role: "user" | "admin";
+  createdAt: Date;
+  updatedAt: Date;
+  lastSignedIn: Date;
+};
 
 /**
  * Multi-tenant tables for project documents, facts, and red flags
+ * These are type definitions only — actual tables use proj_{id}_ prefix via raw SQL.
  */
 export const documents = mysqlTable("documents", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -311,27 +315,6 @@ export type FinancialData = typeof financialData.$inferSelect;
 export type InsertFinancialData = typeof financialData.$inferInsert;
 export type WeatherFile = typeof weatherFiles.$inferSelect;
 export type InsertWeatherFile = typeof weatherFiles.$inferInsert;
-
-/**
- * Projects table - stores project metadata and per-project database configuration
- */
-export const projects = mysqlTable("projects", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  dbName: varchar("dbName", { length: 255 }).notNull().unique(), // Dynamic project DB name
-  dbHost: varchar("dbHost", { length: 255 }).default("localhost"),
-  dbPort: int("dbPort").default(3306),
-  dbUser: varchar("dbUser", { length: 255 }),
-  dbPassword: varchar("dbPassword", { length: 255 }),
-  status: mysqlEnum("status", ["Active", "Archived", "Deleted"]).default("Active"),
-  createdByUserId: int("createdByUserId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Project = typeof projects.$inferSelect;
-export type InsertProject = typeof projects.$inferInsert;
 
 /**
  * Knowledge base configuration - stores connection details for the central knowledge database

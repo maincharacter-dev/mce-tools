@@ -130,20 +130,19 @@ async function startServer() {
     }
   });
 
-  // ─── TA/TDD Engine proxy ─────────────────────────────────────────────────
-  // Forward /ta-tdd/* to mce-ingestion so toolkit.maincharacter.wtf/ta-tdd/ works
-  const ingestionUrl = process.env.MCE_INGESTION_URL || "http://mce-ingestion:3000";
-  app.use("/ta-tdd", createProxyMiddleware({
-    target: ingestionUrl,
+  // ─── MCE Workspace proxy ──────────────────────────────────────────────
+  // Forward /workspace/* to mce-workspace so toolkit.maincharacter.wtf/workspace/ works
+  const workspaceUrl = process.env.MCE_WORKSPACE_URL || "http://mce-workspace:3000";
+  app.use("/workspace", createProxyMiddleware({
+    target: workspaceUrl,
     changeOrigin: true,
     on: {
       error: (err: any, _req: any, res: any) => {
-        console.error("[TA/TDD proxy] Error:", err.message);
+        console.error("[Workspace proxy] Error:", err.message);
         if (!res.headersSent) {
-          (res as any).status(502).json({ error: "TA/TDD Engine unavailable" });
+          (res as any).status(502).json({ error: "MCE Workspace unavailable" });
         }
       },
-    },
   }));
 
   // development mode uses Vite, production mode uses static files

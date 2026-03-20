@@ -194,10 +194,14 @@ services:
       SPROCKET_URL: http://sprocket:3000
       SPROCKET_USERNAME: ${SPROCKET_USERNAME:-admin}
       SPROCKET_PASSWORD: ${SPROCKET_PASSWORD}
+      MCE_WORKSPACE_URL: http://mce-workspace:3000
+      MCE_WORKSPACE_DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${MCE_WORKSPACE_DATABASE:-mce_workspace}
     depends_on:
       mysql:
         condition: service_healthy
       sprocket:
+        condition: service_healthy
+      mce-workspace:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/trpc/system.health?input=%7B%22json%22%3A%7B%22timestamp%22%3A0%7D%7D"]
@@ -209,29 +213,29 @@ services:
       - suite-network
 
   # ----------------------------------------------------------
-  # MCE Ingestion Engine — Document processing app (mce-tools root)
+  # MCE Workspace — Project workspace engine (mce-tools root)
   # Access: http://localhost:3001 (local)
   # Auth: LOCAL_AUTH=true — shared credentials via SHARED_JWT_SECRET
   # ----------------------------------------------------------
-  mce-tools:
+  mce-workspace:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mce-ingestion
+    container_name: mce-workspace
     restart: unless-stopped
     ports:
-      - "${MCE_TOOLS_PORT:-3001}:3000"
+      - "${MCE_WORKSPACE_PORT:-3001}:3000"
     environment:
       PORT: 3000
       NODE_ENV: production
-      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${MCE_TOOLS_DATABASE:-mce_ingestion}
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${MCE_WORKSPACE_DATABASE:-mce_workspace}
       JWT_SECRET: ${SHARED_JWT_SECRET}
       LOCAL_AUTH: "true"
       LOCAL_USERNAME: ${LOCAL_USERNAME:-rob}
       LOCAL_PASSWORD: ${LOCAL_PASSWORD}
       APS_CLIENT_ID: ${APS_CLIENT_ID:-}
       APS_CLIENT_SECRET: ${APS_CLIENT_SECRET:-}
-      BASE_PATH: /ta-tdd
+      BASE_PATH: /workspace
     depends_on:
       mysql:
         condition: service_healthy
