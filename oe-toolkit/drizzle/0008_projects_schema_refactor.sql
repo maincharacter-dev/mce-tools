@@ -1,18 +1,15 @@
 -- Migration: Refactor projects table to OE Toolkit registry schema
 --
--- The projects table previously held mce-ingestion style columns (name, dbName, dbHost etc).
--- This migration replaces it with the proper OE Toolkit project registry schema:
---   - projectName, projectCode, projectType, phase
---   - projectDbName (the proj_{id} database provisioned for this project)
---   - accProjectId, accHubId (ACC integration)
---   - status, archivedAt (lifecycle)
+-- The projects table at this point has:
+--   id, name, description, dbName, dbHost, dbPort, dbUser, dbPassword,
+--   status (enum Active/Archived from 0004), archivedAt (from 0004),
+--   createdByUserId, createdAt, updatedAt,
+--   taTddProjectId, taTddDbName (from 0003)
 --
--- The old columns (name, description, dbName, dbHost, dbPort, dbUser, dbPassword)
--- are dropped as they are no longer used by oe-toolkit.
--- Users and auth are the single source of truth in oe_toolkit.users.
--- All project operational data lives in per-project proj_{id} databases.
+-- This migration adds the new OE Toolkit registry columns and drops the old ones.
+-- NOTE: status and archivedAt already exist (added by migration 0004), so we do NOT add them here.
 
--- Step 1: Add new columns
+-- Step 1: Add new columns (status and archivedAt already exist from migration 0004)
 ALTER TABLE `projects`
   ADD COLUMN `projectName` varchar(255) NOT NULL DEFAULT '' AFTER `id`,
   ADD COLUMN `projectCode` varchar(64) NOT NULL DEFAULT '' AFTER `projectName`,
@@ -20,8 +17,7 @@ ALTER TABLE `projects`
   ADD COLUMN `phase` varchar(64) NOT NULL DEFAULT 'Initiation' AFTER `projectType`,
   ADD COLUMN `projectDbName` varchar(255) NULL AFTER `phase`,
   ADD COLUMN `accProjectId` varchar(255) NULL AFTER `projectDbName`,
-  ADD COLUMN `accHubId` varchar(255) NULL AFTER `accProjectId`,
-  ADD COLUMN `archivedAt` timestamp NULL AFTER `status`;
+  ADD COLUMN `accHubId` varchar(255) NULL AFTER `accProjectId`;
 --> statement-breakpoint
 
 -- Step 2: Migrate existing data — copy name into projectName, set projectCode from dbName
@@ -35,7 +31,7 @@ UPDATE `projects` SET
 ALTER TABLE `projects` ADD UNIQUE (`projectCode`);
 --> statement-breakpoint
 
--- Step 4: Drop old columns
+-- Step 4: Drop old columns (including taTddProjectId and taTddDbName from migration 0003)
 ALTER TABLE `projects`
   DROP COLUMN `name`,
   DROP COLUMN `description`,
@@ -43,13 +39,6 @@ ALTER TABLE `projects`
   DROP COLUMN `dbHost`,
   DROP COLUMN `dbPort`,
   DROP COLUMN `dbUser`,
-  DROP COLUMN `dbPassword`;
---> statement-breakpoint
-
--- Step 5: Update status enum (old had 'Deleted', new only has 'Active'/'Archived')
--- Set any 'Deleted' rows to 'Archived' first
-UPDATE `projects` SET `status` = 'Archived' WHERE `status` = 'Deleted';
---> statement-breakpoint
-
--- Step 6: Change status column to new enum
-ALTER TABLE `projects` MODIFY `status` enum('Active','Archived') NOT NULL DEFAULT 'Active';
+  DROP COLUMN `dbPassword`,
+  DROP COLUMN `taTddProjectId`,
+  DROP COLUMN `taTddDbName`;

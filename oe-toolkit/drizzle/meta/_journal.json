@@ -64,6 +64,13 @@
       "when": 1742389200000,
       "tag": "0008_projects_schema_refactor",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1742475600000,
+      "tag": "0009_fix_missing_project_columns",
+      "breakpoints": true
     }
   ]
 }

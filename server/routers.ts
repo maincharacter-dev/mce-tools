@@ -532,11 +532,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) return { error: "Database not available", document: null };
         
-        const [projects] = await db.execute(`SELECT id, dbName FROM projects WHERE id = ${parseInt(input.projectId)}`) as any;
-        if (!projects || projects.length === 0) {
-          return { error: `Project ${input.projectId} not found`, document: null };
-        }
-        
+        // Note: projects table lives in oe_toolkit, not mce_workspace — skip existence check
         const connection = await createProjectDbConnection(parseInt(input.projectId));
         
         try {
@@ -586,12 +582,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         
-        // Verify project exists
-        const [projects] = await db.execute(`SELECT id FROM projects WHERE id = ${parseInt(input.projectId)}`) as any;
-        if (!projects || projects.length === 0) {
-          throw new Error(`Project ${input.projectId} not found`);
-        }
-        
+        // Note: projects table lives in oe_toolkit, not mce_workspace — skip existence check
         // Query documents from project database using table-prefix architecture
         const connection = await createProjectDbConnection(parseInt(input.projectId));
         
@@ -638,12 +629,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         
-        // Verify project exists
-        const [projects] = await db.execute(`SELECT id FROM projects WHERE id = ${parseInt(input.projectId)}`) as any;
-        if (!projects || projects.length === 0) {
-          throw new Error(`Project ${input.projectId} not found`);
-        }
-        
+        // Note: projects table lives in oe_toolkit, not mce_workspace — skip existence check
         // Update document type in project database using table-prefix architecture
         const connection = await createProjectDbConnection(parseInt(input.projectId));
         
@@ -1056,8 +1042,50 @@ export const appRouter = router({
     /**
      * Projects are managed by oe-toolkit (the single registry).
      * mce-workspace provisions its own proj_{id}_ tables on first access.
+     *
+     * list and get are proxy endpoints that read from the oe_toolkit database
+     * so that the mce-workspace client can use the same tRPC client for all calls.
      */
-
+    // List all projects (reads from oe_toolkit database)
+    list: protectedProcedure.query(async () => {
+      const mysql = await import('mysql2/promise');
+      const { getDbConfig } = await import('./db-connection');
+      const config = getDbConfig('oe_toolkit');
+      const conn = await mysql.createConnection(config as any);
+      try {
+        const [rows] = await conn.execute(
+          `SELECT id, projectName, projectCode, projectType, phase, projectDbName,
+                  accProjectId, accHubId, status, archivedAt, createdByUserId, createdAt, updatedAt
+           FROM projects
+           WHERE status != 'Deleted'
+           ORDER BY createdAt DESC`
+        ) as any;
+        return rows as any[];
+      } finally {
+        await conn.end();
+      }
+    }),
+    // Get project by ID (reads from oe_toolkit database)
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const mysql = await import('mysql2/promise');
+        const { getDbConfig } = await import('./db-connection');
+        const config = getDbConfig('oe_toolkit');
+        const conn = await mysql.createConnection(config as any);
+        try {
+          const [rows] = await conn.execute(
+            `SELECT id, projectName, projectCode, projectType, phase, projectDbName,
+                    accProjectId, accHubId, status, archivedAt, createdByUserId, createdAt, updatedAt
+             FROM projects WHERE id = ?`,
+            [input.id]
+          ) as any;
+          if (!rows || rows.length === 0) throw new Error(`Project ${input.id} not found`);
+          return rows[0] as any;
+        } finally {
+          await conn.end();
+        }
+      }),
     // Provision tables for a project (called by oe-toolkit after project creation)
     provision: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -1653,13 +1681,8 @@ Synthesized narrative:`;
         try {
           const validationId = `pv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           
-          // Get project_id from project database name
-          const mainDb = await getDb();
-          const [projectRows] = await mainDb.execute(
-            "SELECT id FROM projects WHERE id = ?",
-            [input.projectId]
-          ) as any;
-          const projectId = projectRows[0]?.id;
+          // Use projectId directly (projects table lives in oe_toolkit, not mce_workspace)
+          const projectId = parseInt(input.projectId);
           
           await projectDb.execute(
             `INSERT INTO performance_validations (

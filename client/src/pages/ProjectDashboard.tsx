@@ -1,84 +1,25 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
-import { Plus, Loader2, AlertCircle, FolderOpen, Upload, ArrowLeft, Linkedin, Menu, FileText, Settings, AlertTriangle, Trash2, Zap, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { Loader2, AlertCircle, FolderOpen, ExternalLink, Linkedin, Menu } from "lucide-react";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProjectCard } from "@/components/ProjectCard";
+import { useState } from "react";
+
+// OE Toolkit URL — projects are managed there, not in mce-workspace
+const OE_TOOLKIT_URL = "/";
 
 export default function ProjectDashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: "", description: "" });
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
 
-  // Fetch projects
+  // Fetch projects from oe-toolkit (via /api/trpc which routes to oe-toolkit)
   const { data: projects, isLoading, error } = trpc.projects.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
-
-  const utils = trpc.useUtils();
-
-  // Create project mutation
-  const createMutation = trpc.projects.create.useMutation({
-    onSuccess: () => {
-      setFormData({ name: "", description: "" });
-      setIsCreateOpen(false);
-      // Invalidate projects list to refetch
-      utils.projects.list.invalidate();
-      toast.success("Project created successfully!");
-    },
-    onError: (error) => {
-      toast.error(`Failed to create project: ${error.message}`);
-    },
-  });
-
-  const demoMutation = trpc.demo.simulateWorkflow.useMutation({
-    onSuccess: (data) => {
-      utils.projects.list.invalidate();
-      toast.success(`Demo data loaded! ${data.stats.documents} documents, ${data.stats.facts} insights, ${data.stats.redFlags} red flags`);
-    },
-    onError: (error) => {
-      toast.error(`Failed to load demo data: ${error.message}`);
-    },
-  });
-
-  const deleteMutation = trpc.projects.delete.useMutation({
-    onSuccess: () => {
-      utils.projects.list.invalidate();
-      toast.success("Project deleted successfully!");
-      setDeleteConfirmOpen(false);
-      setProjectToDelete(null);
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete project: ${error.message}`);
-    },
-  });
-
-
-
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim()) return;
-    await createMutation.mutateAsync({
-      name: formData.name,
-      description: formData.description || undefined,
-    });
-  };
-
-  const handleLoadDemoData = async (projectId: number) => {
-    await demoMutation.mutateAsync({ projectId });
-  };
 
   if (!isAuthenticated) {
     return (
@@ -95,15 +36,15 @@ export default function ProjectDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      {/* Header - Matching OE Toolkit Style */}
+      {/* Header */}
       <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-6 flex items-center justify-between">
           {/* Logo Section */}
           <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img 
-              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png" 
-              alt="Main Character Energy" 
-              className="h-10 w-10 md:h-12 md:w-12" 
+            <img
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663183448316/ajFrkysEfsqfkiXJ.png"
+              alt="Main Character Energy"
+              className="h-10 w-10 md:h-12 md:w-12"
             />
             <div>
               <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
@@ -117,20 +58,13 @@ export default function ProjectDashboard() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            <button
-              onClick={() => setLocation("/")}
+            <a
+              href={OE_TOOLKIT_URL}
               className="text-slate-300 hover:text-orange-400 transition-colors font-medium"
             >
-              Home
-            </button>
-            <button
-              onClick={() => setLocation("/ollama-config")}
-              className="text-slate-300 hover:text-orange-400 transition-colors font-medium flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Ollama Settings
-            </button>
-            <a 
+              OE Toolkit
+            </a>
+            <a
               href="https://www.linkedin.com/company/main-character-energy-consulting/"
               target="_blank"
               rel="noopener noreferrer"
@@ -150,16 +84,14 @@ export default function ProjectDashboard() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] bg-slate-900 border-slate-700">
               <div className="flex flex-col gap-8 mt-8">
-                <button
-                  onClick={() => {
-                    setLocation("/");
-                    setIsMenuOpen(false);
-                  }}
-                  className="text-xl font-semibold text-slate-300 hover:text-white transition-colors py-2 text-left"
+                <a
+                  href={OE_TOOLKIT_URL}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl font-semibold text-white hover:text-orange-400 transition-colors py-2"
                 >
-                  Home
-                </button>
-                <a 
+                  OE Toolkit
+                </a>
+                <a
                   href="https://www.linkedin.com/company/main-character-energy-consulting/"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -177,14 +109,23 @@ export default function ProjectDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12 md:py-20">
         {/* Page Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Your Projects
-          </h1>
-          <p className="text-lg text-slate-300 max-w-3xl">
-            Manage renewable energy projects with isolated databases for data sovereignty. 
-            Create new projects or access existing ones to begin document ingestion and analysis.
-          </p>
+        <div className="mb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Your Projects
+            </h1>
+            <p className="text-lg text-slate-300 max-w-3xl">
+              Select a project to upload documents, extract insights, and manage your TA/TDD workflow.
+              Projects are created and managed in OE Toolkit.
+            </p>
+          </div>
+          {/* Link to OE Toolkit for project creation */}
+          <a href={`${OE_TOOLKIT_URL}projects`}>
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold whitespace-nowrap">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Manage in OE Toolkit
+            </Button>
+          </a>
         </div>
 
         {/* Error State */}
@@ -208,79 +149,10 @@ export default function ProjectDashboard() {
           </div>
         ) : projects && projects.length > 0 ? (
           <div>
-            {/* Action Bar */}
-            <div className="flex items-center justify-between mb-8">
-              <p className="text-slate-400">
-                {projects.length} project{projects.length !== 1 ? "s" : ""} total
-              </p>
-              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Project
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Create New Project</DialogTitle>
-                    <DialogDescription className="text-slate-400">
-                      Start a new project for document ingestion and analysis.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateProject} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-slate-300">Project Name</Label>
-                      <Input
-                        id="name"
-                        placeholder="e.g., Clare Solar Farm Phase 2"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description" className="text-slate-300">Description (Optional)</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Brief description of the project..."
-                        value={formData.description}
-                        onChange={(e) =>
-                          setFormData({ ...formData, description: e.target.value })
-                        }
-                        className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 resize-none"
-                        rows={3}
-                      />
-                    </div>
-                    <div className="flex gap-3 justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsCreateOpen(false)}
-                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        className="bg-orange-500 hover:bg-orange-600 text-white"
-                        disabled={createMutation.isPending || !formData.name.trim()}
-                      >
-                        {createMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating...
-                          </>
-                        ) : (
-                          "Create Project"
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+            {/* Project count */}
+            <p className="text-slate-400 mb-8">
+              {projects.length} project{projects.length !== 1 ? "s" : ""} total
+            </p>
 
             {/* Projects Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -289,11 +161,6 @@ export default function ProjectDashboard() {
                   key={project.id}
                   project={project}
                   onClick={() => setLocation(`/project-dashboard?projectId=${project.id}`)}
-                  onDelete={() => {
-                    setProjectToDelete(project.id);
-                    setDeleteConfirmOpen(true);
-                  }}
-                  isDeleting={deleteMutation.isPending && projectToDelete === project.id}
                 />
               ))}
             </div>
@@ -307,126 +174,17 @@ export default function ProjectDashboard() {
             </div>
             <h3 className="text-3xl font-bold text-white mb-4">No Projects Yet</h3>
             <p className="text-slate-300 mb-8 max-w-md mx-auto text-lg">
-              Create your first project to start ingesting and analyzing renewable energy project documents.
+              Create your first project in OE Toolkit to get started with document ingestion and analysis.
             </p>
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold" size="lg">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Create Your First Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Create New Project</DialogTitle>
-                  <DialogDescription className="text-slate-400">
-                    Start a new project for document ingestion and analysis.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateProject} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-slate-300">Project Name</Label>
-                    <Input
-                      id="name"
-                      placeholder="e.g., Clare Solar Farm Phase 2"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description" className="text-slate-300">Description (Optional)</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Brief description of the project..."
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
-                      }
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 resize-none"
-                      rows={3}
-                    />
-                  </div>
-                  <div className="flex gap-3 justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsCreateOpen(false)}
-                      className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="bg-orange-500 hover:bg-orange-600 text-white"
-                      disabled={createMutation.isPending || !formData.name.trim()}
-                    >
-                      {createMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        "Create Project"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <a href={`${OE_TOOLKIT_URL}projects`}>
+              <Button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold" size="lg">
+                <ExternalLink className="mr-2 h-5 w-5" />
+                Create Project in OE Toolkit
+              </Button>
+            </a>
           </div>
         )}
       </main>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-400" />
-              Delete Project?
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              This action cannot be undone. This will permanently delete the project, all documents, insights, and associated data.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 justify-end pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeleteConfirmOpen(false);
-                setProjectToDelete(null);
-              }}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (projectToDelete) {
-                  deleteMutation.mutate({ projectId: String(projectToDelete) });
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Project
-                </>
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

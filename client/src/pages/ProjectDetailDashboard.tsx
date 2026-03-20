@@ -31,9 +31,9 @@ export default function ProjectDetailDashboard() {
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   // Marker is now handled by MapView component
 
-  // Fetch project details
+  // Fetch project details from oe-toolkit (projects.get expects { id: number })
   const { data: project, isLoading: isLoadingProject } = trpc.projects.get.useQuery(
-    { projectId: String(projectId) },
+    { id: Number(projectId) },
     { enabled: !!projectId }
   );
 

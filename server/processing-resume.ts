@@ -27,19 +27,29 @@ export async function resumeIncompleteProcessing() {
       return;
     }
     
-    // Get all projects
-    const [projects] = await db.execute('SELECT id FROM projects') as any;
+    // Discover active projects by scanning for proj_*_processing_jobs tables
+    // (projects table lives in oe_toolkit, not mce_workspace)
+    const [tables] = await db.execute(
+      `SELECT TABLE_NAME FROM information_schema.TABLES 
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'proj_%_processing_jobs'`
+    ) as any;
     
-    if (!projects || projects.length === 0) {
-      console.log('[Processing Resume] No projects found');
+    if (!tables || tables.length === 0) {
+      console.log('[Processing Resume] No project tables found');
       return;
     }
+    
+    // Extract project IDs from table names like proj_5_processing_jobs
+    const projects = (tables as any[]).map((t: any) => {
+      const match = t.TABLE_NAME.match(/^proj_(\d+)_processing_jobs$/);
+      return match ? { id: parseInt(match[1]) } : null;
+    }).filter(Boolean);
     
     let totalIncomplete = 0;
     
     // Check each project for incomplete processing jobs
     for (const project of projects) {
-      const projectId = project.id;
+      const projectId = project!.id;
       
       try {
         const projectConn = await createProjectDbConnection(projectId);
@@ -137,11 +147,19 @@ export async function checkWaitingForSandboxJobs() {
     const db = await getDb();
     if (!db) return;
     
-    const [projects] = await db.execute('SELECT id FROM projects') as any;
-    if (!projects || projects.length === 0) return;
+    // Discover active projects by scanning for proj_*_processing_jobs tables
+    const [tables] = await db.execute(
+      `SELECT TABLE_NAME FROM information_schema.TABLES 
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'proj_%_processing_jobs'`
+    ) as any;
+    if (!tables || tables.length === 0) return;
+    const projects = (tables as any[]).map((t: any) => {
+      const match = t.TABLE_NAME.match(/^proj_(\d+)_processing_jobs$/);
+      return match ? { id: parseInt(match[1]) } : null;
+    }).filter(Boolean);
     
     for (const project of projects) {
-      const projectId = project.id;
+      const projectId = project!.id;
       
       try {
         const projectConn = await createProjectDbConnection(projectId);

@@ -222,16 +222,7 @@ export async function uploadDocument(
   const mysql = await import('mysql2/promise');
   const { getDbConfig } = await import('./db-connection');
   
-  // Get project from main database
-  const mainConfig = getDbConfig();
-  const mainConn = await mysql.createConnection(mainConfig as any);
-  const [rows] = await mainConn.execute('SELECT id FROM projects WHERE id = ?', [projectId]);
-  await mainConn.end();
-  
-  if (!Array.isArray(rows) || rows.length === 0) {
-    throw new Error(`Project ${projectId} not found`);
-  }
-  
+  // Note: projects table lives in oe_toolkit, not mce_workspace — skip existence check
   // Save file to disk
   const metadata = await saveDocument(parseInt(projectId), fileBuffer, fileName, documentType);
   
