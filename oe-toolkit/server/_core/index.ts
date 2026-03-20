@@ -143,6 +143,7 @@ async function startServer() {
           (res as any).status(502).json({ error: "MCE Workspace unavailable" });
         }
       },
+    },
   }));
 
   // development mode uses Vite, production mode uses static files
