@@ -27,13 +27,13 @@ export function Documents() {
 
   // Fetch project details
   const { data: project, isLoading: projectLoading } = trpc.projects.get.useQuery(
-    { projectId: projectId || "0" },
+    { id: Number(projectId) || 0 },
     { enabled: !!projectId && isAuthenticated }
   );
 
   // Fetch documents list
   const { data: documents, isLoading: docsLoading, refetch } = trpc.documents.list.useQuery(
-    { projectId: projectId || "0" },
+    { id: Number(projectId) || 0 },
     { enabled: !!projectId && isAuthenticated }
   );
 
@@ -238,7 +238,7 @@ export function Documents() {
             </Button>
             <h1 className="text-3xl font-bold text-white">Documents</h1>
             {project && (
-              <p className="text-muted-foreground">Project: {project.name}</p>
+              <p className="text-muted-foreground">Project: {project.projectName}</p>
             )}
           </div>
           <Button onClick={() => setLocation(`/project/${projectId}/upload`)}>

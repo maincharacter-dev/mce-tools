@@ -10,12 +10,17 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
+// VITE_BASE_PATH is set at build time (e.g. "/workspace" when deployed behind nginx).
+// All API calls must be prefixed with it so they route to mce-workspace's own server,
+// not to oe-toolkit's server which sits at the root.
+const BASE_PATH = import.meta.env.VITE_BASE_PATH || '';
+
 // Cache the auth mode so we don't fetch it on every error
 let _authMode: "local" | "oauth" | null = null;
 async function getAuthMode(): Promise<"local" | "oauth"> {
   if (_authMode) return _authMode;
   try {
-    const res = await fetch("/api/auth/mode");
+    const res = await fetch(`${BASE_PATH}/api/auth/mode`);
     const data = await res.json();
     _authMode = data.mode === "local" ? "local" : "oauth";
   } catch {
@@ -32,8 +37,9 @@ const redirectToLoginIfUnauthorized = async (error: unknown) => {
   const mode = await getAuthMode();
   if (mode === "local") {
     // Local auth: redirect to our built-in login page
-    if (window.location.pathname !== "/login") {
-      window.location.href = "/login";
+    const loginPath = BASE_PATH ? `${BASE_PATH}/login` : "/login";
+    if (window.location.pathname !== loginPath) {
+      window.location.href = loginPath;
     }
   } else {
     // Manus OAuth: redirect to external OAuth portal
@@ -60,7 +66,9 @@ queryClient.getMutationCache().subscribe(event => {
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      // Use BASE_PATH prefix so calls go to mce-workspace's own tRPC server,
+      // not to oe-toolkit's server at the root.
+      url: `${BASE_PATH}/api/trpc`,
       transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {

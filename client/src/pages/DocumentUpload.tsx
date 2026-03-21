@@ -99,7 +99,7 @@ export default function DocumentUpload() {
 
   // Fetch project details
   const { data: project, isLoading: projectLoading } = trpc.projects.get.useQuery(
-    { projectId: String(projectId || 0) },
+    { id: projectId || 0 },
     { enabled: !!projectId && isAuthenticated }
   );
 
@@ -472,7 +472,7 @@ export default function DocumentUpload() {
             Upload Documents
           </h1>
           <p className="text-lg text-slate-300">
-            {project ? `Project: ${project.name}` : "Loading project..."}
+            {project ? `Project: ${project.projectName}` : "Loading project..."}
           </p>
         </div>
 

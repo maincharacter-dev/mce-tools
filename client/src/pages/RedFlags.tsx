@@ -111,13 +111,13 @@ export default function RedFlags() {
 
   // Fetch project details to get dbName
   const { data: project, isLoading: isLoadingProject } = trpc.projects.get.useQuery(
-    { projectId: String(projectId) },
+    { id: Number(projectId) },
     { enabled: !!projectId }
   );
 
   // Fetch facts using numeric projectId
   const { data: facts, isLoading: isLoadingFacts, refetch } = trpc.facts.list.useQuery(
-    { projectId: String(projectId) },
+    { id: Number(projectId) },
     { enabled: !!projectId }
   );
 
