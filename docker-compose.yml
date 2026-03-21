@@ -221,10 +221,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # VITE_ vars are baked into the client bundle at build time
+        VITE_BASE_PATH: /workspace
+        VITE_MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
     container_name: mce-workspace
     restart: unless-stopped
     ports:
       - "${MCE_WORKSPACE_PORT:-3001}:3000"
+    volumes:
+      - mce-workspace-data:/app/data
     environment:
       PORT: 3000
       NODE_ENV: production
@@ -236,6 +242,13 @@ services:
       APS_CLIENT_ID: ${APS_CLIENT_ID:-}
       APS_CLIENT_SECRET: ${APS_CLIENT_SECRET:-}
       BASE_PATH: /workspace
+      # AI / LLM — provide OPENAI_API_KEY for OpenAI (gpt-4o-mini)
+      # leave blank to fall back to the built-in Forge API
+      OPENAI_API_KEY: ${MCE_WORKSPACE_OPENAI_API_KEY:-}
+      # Ollama (optional local LLM — used only when OPENAI_API_KEY is blank)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # Document storage directory inside the container
+      DATA_DIR: /app/data
     depends_on:
       mysql:
         condition: service_healthy
@@ -405,7 +418,8 @@ volumes:
     driver: local
   minio-data:
     driver: local
-
+  mce-workspace-data:
+    driver: local
 # ============================================================
 # Networks
 # ============================================================

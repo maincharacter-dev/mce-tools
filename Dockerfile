@@ -23,6 +23,9 @@ COPY . .
 # Allow subpath base to be injected at build time (e.g. /workspace for nginx routing)
 ARG VITE_BASE_PATH=/workspace
 ENV VITE_BASE_PATH=${VITE_BASE_PATH}
+# Mapbox token — baked into the client bundle at build time
+ARG VITE_MAPBOX_TOKEN=
+ENV VITE_MAPBOX_TOKEN=${VITE_MAPBOX_TOKEN}
 # Build client (Vite → dist/public/) + server (esbuild → dist/index.js)
 RUN pnpm build
 
