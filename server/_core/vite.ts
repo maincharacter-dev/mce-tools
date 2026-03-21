@@ -52,34 +52,24 @@ export function serveStatic(app: Express) {
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
       : path.resolve(import.meta.dirname, "public");
+
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
 
-  const basePath = process.env.BASE_PATH || '';
-
-  // Serve static assets at root — Vite builds all asset paths as absolute URLs
-  // (e.g. /workspace/assets/index.js) so they resolve correctly regardless of mount path.
-  // Do NOT use app.use(basePath, express.static()) — that causes express.static to
-  // issue a 302 redirect to itself when it sees a directory request, creating an
-  // infinite redirect loop when proxied from another service.
+  // Serve static assets (JS/CSS/images built by Vite).
+  // NOTE: BASE_PATH (e.g. /workspace) is only used at Vite build time so that
+  // asset URLs in the HTML bundle are prefixed correctly.
+  // At runtime, oe-toolkit's proxy strips the /workspace prefix before forwarding
+  // requests here, so all paths arrive as bare paths (/, /projects, etc.).
+  // A plain catch-all is therefore correct — no basePath branching needed.
   app.use(express.static(distPath));
 
-  if (basePath) {
-    // SPA fallback: serve index.html for any path under the base path
-    app.use(`${basePath}/*`, (_req, res) => {
-      res.sendFile(path.resolve(distPath, "index.html"));
-    });
-    // Redirect bare root to base path for direct local access (e.g. localhost:3001 → localhost:3001/workspace/)
-    app.get("/", (_req, res) => {
-      res.redirect(basePath + "/");
-    });
-  } else {
-    // No base path — standard SPA fallback
-    app.use("*", (_req, res) => {
-      res.sendFile(path.resolve(distPath, "index.html"));
-    });
-  }
+  // SPA fallback — return index.html for any path that isn't a static file or API route,
+  // so that React Router can handle client-side navigation on hard refresh / direct URL.
+  app.use("*", (_req, res) => {
+    res.sendFile(path.resolve(distPath, "index.html"));
+  });
 }
