@@ -12,7 +12,7 @@ import mysql from 'mysql2/promise';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { storageGet } from './storage';
+// storage.ts (Forge API) no longer used — all storage is local filesystem
 import { createDocumentLogger } from './processing-logger';
 
 export interface ProcessedDocument {
@@ -65,60 +65,42 @@ export async function processDocument(
     // Check if filePath contains chunked metadata (JSON string)
     // Handle both with and without spaces in JSON: "type":"chunked" or "type": "chunked"
     if (filePath.startsWith('{') && (filePath.includes('"type":"chunked"') || filePath.includes('"type": "chunked"'))) {
-      console.log(`[Document Processor] Detected chunked file metadata, downloading from S3...`);
+      console.log(`[Document Processor] Detected chunked file metadata, reading from local storage...`);
       
       const metadata = JSON.parse(filePath);
       const { uploadId, totalChunks, filename, fileSize } = metadata;
       const fileSizeMB = fileSize ? (fileSize / 1024 / 1024).toFixed(2) : 'unknown';
       
-      await logger.start('Upload', `Downloading ${totalChunks} chunks (${fileSizeMB} MB) from storage`);
+      await logger.start('Upload', `Reading ${totalChunks} chunks (${fileSizeMB} MB) from local storage`);
       
       // Create temp file for reassembled content
       tempFile = path.join(os.tmpdir(), `${documentId}-${filename}`);
-      console.log(`[Document Processor] Downloading ${totalChunks} chunks to ${tempFile}`);
+      console.log(`[Document Processor] Reassembling ${totalChunks} chunks to ${tempFile}`);
       
-      // Download and reassemble chunks
+      const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+      const uploadDir = path.join(dataDir, 'temp-uploads', uploadId);
+      
+      // Reassemble chunks from local filesystem
       const chunks: Buffer[] = [];
-      console.log(`[Document Processor] Starting chunk download at ${new Date().toISOString()}`);
-      
       for (let i = 0; i < totalChunks; i++) {
-        const chunkKey = `temp-uploads/${uploadId}/chunk-${i}`;
-        const chunkStartTime = Date.now();
-        console.log(`[Document Processor] Downloading chunk ${i + 1}/${totalChunks} at ${new Date().toISOString()}`);
-        
-        // Log progress every 5 chunks or on last chunk
         if (i % 5 === 0 || i === totalChunks - 1) {
-          await logger.progress('Upload', `Downloading chunk ${i + 1}/${totalChunks}`);
+          await logger.progress('Upload', `Reading chunk ${i + 1}/${totalChunks}`);
         }
-        
-        // Update heartbeat on every chunk to prevent stale detection
         if (onProgress) {
-          const progressPercent = Math.floor((i / totalChunks) * 10); // 0-10% during chunk download
-          await onProgress('downloading_chunks', progressPercent);
+          const progressPercent = Math.floor((i / totalChunks) * 10);
+          await onProgress('reading_chunks', progressPercent);
         }
-        
         try {
-          const { url } = await storageGet(chunkKey);
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`Failed to download chunk ${i}: ${response.statusText}`);
-          }
-          
-          const chunkBuffer = Buffer.from(await response.arrayBuffer());
+          const chunkPath = path.join(uploadDir, `chunk-${i}`);
+          const chunkBuffer = await fs.readFile(chunkPath);
           chunks.push(chunkBuffer);
-          
-          const chunkTime = Date.now() - chunkStartTime;
-          console.log(`[Document Processor] Chunk ${i + 1}/${totalChunks} downloaded in ${chunkTime}ms (${(chunkBuffer.length / 1024).toFixed(0)} KB)`);
         } catch (chunkError) {
-          console.error(`[Document Processor] ERROR downloading chunk ${i + 1}/${totalChunks}:`, chunkError);
+          console.error(`[Document Processor] ERROR reading chunk ${i + 1}/${totalChunks}:`, chunkError);
           throw chunkError;
         }
       }
       
-      console.log(`[Document Processor] All chunks downloaded at ${new Date().toISOString()}`);
-      console.log(`[Document Processor] Total chunks in memory: ${chunks.length}, total size: ${chunks.reduce((sum, c) => sum + c.length, 0)} bytes`);
-      
-      // Write reassembled file
+      // Write reassembled file to temp
       const fullBuffer = Buffer.concat(chunks);
       await fs.writeFile(tempFile, fullBuffer);
       const reassembledSizeMB = (fullBuffer.length / 1024 / 1024).toFixed(2);

@@ -24,7 +24,9 @@ export function sql(projectId: number, query: string): string {
 }
 
 /**
- * Common table names used across the system
+ * Common table names used across the system.
+ * IMPORTANT: Every table defined in db-project-schema.sql must be listed here
+ * so that ProjectDbConnection.transformQuery() can prefix them correctly.
  */
 export const Tables = {
   DOCUMENTS: 'documents',
@@ -39,7 +41,9 @@ export const Tables = {
   FINANCIAL_DATA: 'financial_data',
   PROJECT_LOCATION: 'project_location',
   PROCESSING_JOBS: 'processing_jobs',
+  PROCESSING_LOGS: 'processingLogs',
   CONSOLIDATION_JOBS: 'consolidation_jobs',
+  PROJECT_METADATA: 'projectMetadata',
   // ACC integration tables
   ACC_CREDENTIALS: 'acc_credentials',
   ACC_PROJECT_MAPPING: 'acc_project_mapping',

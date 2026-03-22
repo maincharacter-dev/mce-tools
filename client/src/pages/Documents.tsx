@@ -27,13 +27,13 @@ export function Documents() {
 
   // Fetch project details
   const { data: project, isLoading: projectLoading } = trpc.projects.get.useQuery(
-    { id: Number(projectId) || 0 },
+    { projectId: String(projectId || 0) },
     { enabled: !!projectId && isAuthenticated }
   );
 
   // Fetch documents list
   const { data: documents, isLoading: docsLoading, refetch } = trpc.documents.list.useQuery(
-    { id: Number(projectId) || 0 },
+    { projectId: String(projectId || 0) },
     { enabled: !!projectId && isAuthenticated }
   );
 

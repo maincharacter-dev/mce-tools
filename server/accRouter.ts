@@ -16,10 +16,10 @@ import {
   listFolderContents,
   downloadFile,
 } from "./aps";
-import { storagePut } from "./storage";
+// storagePut import removed — not used in accRouter
 import path from "path";
 import { getDb } from "./db";
-import { documents, projects } from "../drizzle/schema";
+import { documents } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { createProjectDbPool } from "./db-connection";

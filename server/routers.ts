@@ -103,10 +103,15 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
+        const fs = await import("fs/promises");
+        const path = await import("path");
         const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const { storagePut } = await import("./storage");
         
-        // Store metadata in S3 (works across server instances)
+        // Store metadata on local filesystem
+        const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+        const uploadDir = path.join(dataDir, 'temp-uploads', uploadId);
+        await fs.mkdir(uploadDir, { recursive: true });
+        
         const metadata = {
           projectId: input.projectId,
           fileName: input.fileName,
@@ -118,13 +123,13 @@ export const appRouter = router({
           createdAt: new Date().toISOString(),
         };
         
-        await storagePut(
-          `temp-uploads/${uploadId}/metadata.json`,
+        await fs.writeFile(
+          path.join(uploadDir, 'metadata.json'),
           JSON.stringify(metadata, null, 2),
-          "application/json"
+          'utf-8'
         );
         
-        console.log(`[Chunked Upload] Initialized upload ${uploadId} in S3`);
+        console.log(`[Chunked Upload] Initialized upload ${uploadId} locally at ${uploadDir}`);
         return { uploadId };
       }),
 
@@ -134,11 +139,12 @@ export const appRouter = router({
         z.object({
           uploadId: z.string(),
           chunkIndex: z.number(),
-          chunkData: z.string(), // base64 encoded
+          chunkData: z.string(), // base64 encoded compressed chunk
         })
       )
       .mutation(async ({ input }) => {
-        const { storagePut } = await import("./storage");
+        const fs = await import("fs/promises");
+        const path = await import("path");
         
         // Decode and decompress chunk
         const compressedBuffer = Buffer.from(input.chunkData, "base64");
@@ -146,14 +152,12 @@ export const appRouter = router({
         const decompressed = pako.inflate(compressedBuffer);
         const chunkBuffer = Buffer.from(decompressed);
         
-        // Upload chunk to S3
-        await storagePut(
-          `temp-uploads/${input.uploadId}/chunk-${input.chunkIndex}`,
-          chunkBuffer,
-          "application/octet-stream"
-        );
+        // Write chunk to local filesystem
+        const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+        const chunkPath = path.join(dataDir, 'temp-uploads', input.uploadId, `chunk-${input.chunkIndex}`);
+        await fs.writeFile(chunkPath, chunkBuffer);
         
-        console.log(`[Chunked Upload] Chunk ${input.chunkIndex} uploaded to S3`);
+        console.log(`[Chunked Upload] Chunk ${input.chunkIndex} written locally`);
         return { success: true, chunkIndex: input.chunkIndex };
       }),
 
@@ -167,28 +171,23 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const fs = await import("fs/promises");
         const path = await import("path");
-        const { storageGet } = await import("./storage");
         
         try {
           console.log(`[Chunked Upload] Finalizing upload: ${input.uploadId}`);
           
-          // Download metadata from S3
-          const metadataUrl = (await storageGet(`temp-uploads/${input.uploadId}/metadata.json`)).url;
-          const metadataResponse = await fetch(metadataUrl);
-          const metadata = await metadataResponse.json();
+          // Read metadata from local filesystem
+          const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+          const uploadDir = path.join(dataDir, 'temp-uploads', input.uploadId);
+          const metadataRaw = await fs.readFile(path.join(uploadDir, 'metadata.json'), 'utf-8');
+          const metadata = JSON.parse(metadataRaw);
           console.log(`[Chunked Upload] Metadata:`, metadata);
           
-          // Create local temp directory for reassembly
-          const tempDir = path.join(process.cwd(), "data", "temp-local", input.uploadId);
-          await fs.mkdir(tempDir, { recursive: true });
-          const reassembledPath = path.join(tempDir, "reassembled");
-          
-          // Download and reassemble chunks from S3
-          console.log(`[Chunked Upload] Downloading and reassembling ${metadata.totalChunks} chunks from S3...`);
+          // Reassemble chunks from local filesystem
+          const reassembledPath = path.join(uploadDir, 'reassembled');
+          console.log(`[Chunked Upload] Reassembling ${metadata.totalChunks} chunks from local storage...`);
           for (let i = 0; i < metadata.totalChunks; i++) {
-            const chunkUrl = (await storageGet(`temp-uploads/${input.uploadId}/chunk-${i}`)).url;
-            const chunkResponse = await fetch(chunkUrl);
-            const chunkBuffer = Buffer.from(await chunkResponse.arrayBuffer());
+            const chunkPath = path.join(uploadDir, `chunk-${i}`);
+            const chunkBuffer = await fs.readFile(chunkPath);
             
             if (i === 0) {
               await fs.writeFile(reassembledPath, chunkBuffer);
@@ -271,11 +270,10 @@ export const appRouter = router({
                 await projectConn.end();
               }
               
-              // Clean up temporary reassembled file
+              // Clean up temporary upload directory (chunks + metadata + reassembled)
               try {
-                await fs.unlink(reassembledPath);
-                await fs.rmdir(tempDir);
-                console.log(`[Chunked Upload] Cleaned up temp files`);
+                await fs.rm(uploadDir, { recursive: true, force: true });
+                console.log(`[Chunked Upload] Cleaned up temp upload dir: ${uploadDir}`);
               } catch (cleanupError) {
                 console.error(`[Chunked Upload] Cleanup failed:`, cleanupError);
               }
@@ -315,9 +313,7 @@ export const appRouter = router({
               console.log(`[Chunked Upload] Document queued for processing: ${document.id}`);
               console.log(`[Chunked Upload] Processing will start when user views Processing Status page`);
               
-          // Clean up S3 temp files
-          console.log(`[Chunked Upload] Cleaning up S3 temp files for: ${input.uploadId}`);
-          // Note: S3 cleanup is best-effort, files will be cleaned up by lifecycle policy if this fails
+          // Temp files already cleaned up above
           
           return { documentId };
         } catch (error: any) {
@@ -578,13 +574,20 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ projectId: z.string() }))
       .query(async ({ input }) => {
-        const mysql = await import('mysql2/promise');
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
+        const projectIdNum = parseInt(input.projectId);
         
-        // Note: projects table lives in oe_toolkit, not mce_workspace — skip existence check
+        // Auto-provision project tables on first access (idempotent — safe to call repeatedly)
+        try {
+          const { provisionProjectTables, getTableProvisionConfig } = await import('./project-table-provisioner');
+          const config = getTableProvisionConfig(projectIdNum);
+          await provisionProjectTables(config);
+        } catch (provisionErr) {
+          console.warn(`[documents.list] Auto-provision warning for project ${projectIdNum}:`, provisionErr);
+          // Continue — tables may already exist
+        }
+        
         // Query documents from project database using table-prefix architecture
-        const connection = await createProjectDbConnection(parseInt(input.projectId));
+        const connection = await createProjectDbConnection(projectIdNum);
         
         try {
           // Join with processing_jobs to get actual processing status
@@ -1847,17 +1850,17 @@ Synthesized narrative:`;
           const fileContent = fileBuffer.toString('utf-8');
           const fileSizeBytes = fileBuffer.length;
           
-          // Upload to S3
+          // Save to local filesystem
           const { v4: uuidv4 } = await import('uuid');
+          const path = await import('path');
+          const fsPromises = await import('fs/promises');
           const fileId = uuidv4();
-          const fileKey = `project-${input.projectId}/weather/manual/${fileId}-${input.fileName}`;
-          
-          const { storagePut } = await import('./storage');
-          const { url: fileUrl } = await storagePut(
-            fileKey,
-            fileContent,
-            'text/csv'
-          );
+          const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+          const weatherDir = path.join(dataDir, `project-${input.projectId}`, 'weather', 'manual');
+          await fsPromises.mkdir(weatherDir, { recursive: true });
+          const fileKey = path.join(weatherDir, `${fileId}-${input.fileName}`);
+          await fsPromises.writeFile(fileKey, fileContent, 'utf-8');
+          const fileUrl = fileKey; // Use local path as the URL/reference
           
           // Detect format from filename
           const ext = input.fileName.toLowerCase().split('.').pop();

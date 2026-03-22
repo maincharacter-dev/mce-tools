@@ -216,8 +216,8 @@ export default function DocumentUpload() {
   const uploadChunkMutation = trpc.documents.uploadChunk.useMutation();
   const finalizeChunkedUploadMutation = trpc.documents.finalizeChunkedUpload.useMutation();
 
-  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks (compressed to ~1-3MB)
-  const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024; // 50MB threshold for chunked upload
+  const CHUNK_SIZE = 512 * 1024; // 512KB chunks — keeps each request well within Cloudflare limits
+  // Always use chunked upload to avoid Cloudflare 100s timeout on large base64 payloads
 
   const uploadFileChunked = async (fileInfo: UploadedFile, fileObj: File) => {
     const totalChunks = Math.ceil(fileObj.size / CHUNK_SIZE);
@@ -341,19 +341,9 @@ export default function DocumentUpload() {
       ));
       
       try {
-        // Use chunked upload for large files (>50MB)
-        if (fileObj.size > LARGE_FILE_THRESHOLD) {
-          console.log(`Using chunked upload for large file: ${fileObj.name} (${fileObj.size} bytes)`);
-          await uploadFileChunked(fileInfo, fileObj);
-        } else {
-          console.log(`Using normal upload for file: ${fileObj.name} (${fileObj.size} bytes)`);
-          await uploadFileNormal(fileInfo, fileObj);
-          
-          // Mark as completed
-          setUploadedFiles(prev => prev.map(f => 
-            f.id === fileInfo.id ? { ...f, status: 'completed', progress: 100 } : f
-          ));
-        }
+        // Always use chunked upload — avoids Cloudflare timeout on large base64 payloads
+        console.log(`Uploading file in chunks: ${fileObj.name} (${fileObj.size} bytes)`);
+        await uploadFileChunked(fileInfo, fileObj);
         
         console.log('Upload completed:', fileObj.name);
       } catch (error: any) {

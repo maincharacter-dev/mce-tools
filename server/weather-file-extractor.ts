@@ -12,7 +12,8 @@
  */
 
 import { invokeLLM } from "./_core/llm.js";
-import { storagePut } from "./storage";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 
@@ -194,15 +195,15 @@ ${documentText.substring(0, 50000)}`;
       const urlFileName = urlParts[urlParts.length - 1] || 'weather_data.csv';
       const fileName = urlFileName.split('?')[0]; // Remove query params
       
-      // Upload to S3
-      const fileKey = `project-${projectId}/weather/${documentId}/${uuidv4()}-${fileName}`;
-      const { url: fileUrl } = await storagePut(
-        fileKey,
-        content,
-        'text/csv'
-      );
+      // Save to local filesystem
+      const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+      const weatherDir = path.join(dataDir, `project-${projectId}`, 'weather', documentId);
+      await fs.mkdir(weatherDir, { recursive: true });
+      const fileKey = path.join(weatherDir, `${uuidv4()}-${fileName}`);
+      await fs.writeFile(fileKey, content, 'utf-8');
+      const fileUrl = fileKey; // Use local path as reference
 
-      console.log(`Weather file downloaded and uploaded to S3: ${fileKey}`);
+      console.log(`Weather file downloaded and saved locally: ${fileKey}`);
       
       return {
         fileKey,
