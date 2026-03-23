@@ -16,6 +16,7 @@ export const ENV = {
   localAuth: process.env.LOCAL_AUTH === "true",
   localUsername: process.env.LOCAL_USERNAME ?? "",
   localPassword: process.env.LOCAL_PASSWORD ?? "",
+  localUsers: process.env.LOCAL_USERS ?? "",
 };
 
 export const isLocalAuth = () => ENV.localAuth;

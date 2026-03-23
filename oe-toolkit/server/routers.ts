@@ -10,6 +10,7 @@ import { listProjectFolders, createFolder } from "./aps";
 import { z } from "zod";
 import { agentRouter } from "./routers/agent";
 import { workspaceProjectsRouter } from "./routers/workspaceProjects";
+import { adminUsersRouter } from "./routers/adminUsers";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts
@@ -26,6 +27,8 @@ export const appRouter = router({
     }),
   }),
 
+  // Admin users management router (admin-only)
+  adminUsers: adminUsersRouter,
   // ACC integration router
   acc: accRouter,
   // AI Agent router

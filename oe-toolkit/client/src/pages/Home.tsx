@@ -1,4 +1,12 @@
-import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot, ClipboardList } from "lucide-react";
+import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot, ClipboardList, Shield, LogOut, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState } from "react";
@@ -125,6 +133,41 @@ export default function Home() {
             >
               <Linkedin className="h-5 w-5" />
             </a>
+            {/* User menu */}
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors text-sm font-medium">
+                    <div className="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 font-bold text-xs">
+                      {(user.name ?? 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden lg:inline">{user.name ?? 'User'}</span>
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                    Signed in as <span className="font-semibold text-foreground">{user.name ?? 'User'}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {(user as any).role === 'admin' && (
+                    <DropdownMenuItem asChild>
+                      <a href="/admin/users" className="flex items-center gap-2 cursor-pointer">
+                        <Shield className="h-4 w-4" />
+                        User Management
+                      </a>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer"
+                    onClick={() => logout()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -166,6 +209,25 @@ export default function Home() {
                   <Linkedin className="h-5 w-5" />
                   LinkedIn
                 </a>
+                {(user as any)?.role === 'admin' && (
+                  <a
+                    href="/admin/users"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-xl font-semibold text-slate-300 hover:text-orange-400 transition-colors py-2 flex items-center gap-2"
+                  >
+                    <Shield className="h-5 w-5" />
+                    User Management
+                  </a>
+                )}
+                {user && (
+                  <button
+                    onClick={() => { setIsMenuOpen(false); logout(); }}
+                    className="text-xl font-semibold text-red-400 hover:text-red-300 transition-colors py-2 flex items-center gap-2 text-left"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Sign Out
+                  </button>
+                )}
               </div>
             </SheetContent>
           </Sheet>

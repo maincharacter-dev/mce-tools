@@ -13,6 +13,7 @@ import AgentChat from "./pages/AgentChat";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import AgentStats from "./pages/AgentStats";
 import Login from "./pages/Login";
+import AdminUsers from "./pages/AdminUsers";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/agent/knowledge" component={KnowledgeBase} />
       <Route path="/agent/stats" component={AgentStats} />
       <Route path="/login" component={Login} />
+      <Route path="/admin/users" component={AdminUsers} />
       <Route path="/callback" component={Callback} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

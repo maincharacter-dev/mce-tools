@@ -187,8 +187,10 @@ services:
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${OE_TOOLKIT_DATABASE:-oe_toolkit}
       JWT_SECRET: ${SHARED_JWT_SECRET}
       LOCAL_AUTH: "true"
-      LOCAL_USERNAME: ${LOCAL_USERNAME:-rob}
-      LOCAL_PASSWORD: ${LOCAL_PASSWORD}
+      LOCAL_USERS: ${LOCAL_USERS:-}
+      # Legacy single-user fallback (used only if LOCAL_USERS is not set)
+      LOCAL_USERNAME: ${LOCAL_USERNAME:-}
+      LOCAL_PASSWORD: ${LOCAL_PASSWORD:-}
       APS_CLIENT_ID: ${APS_CLIENT_ID:-}
       APS_CLIENT_SECRET: ${APS_CLIENT_SECRET:-}
       SPROCKET_URL: http://sprocket:3000
@@ -237,8 +239,10 @@ services:
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${MCE_WORKSPACE_DATABASE:-mce_workspace}
       JWT_SECRET: ${SHARED_JWT_SECRET}
       LOCAL_AUTH: "true"
-      LOCAL_USERNAME: ${LOCAL_USERNAME:-rob}
-      LOCAL_PASSWORD: ${LOCAL_PASSWORD}
+      LOCAL_USERS: ${LOCAL_USERS:-}
+      # Legacy single-user fallback (used only if LOCAL_USERS is not set)
+      LOCAL_USERNAME: ${LOCAL_USERNAME:-}
+      LOCAL_PASSWORD: ${LOCAL_PASSWORD:-}
       APS_CLIENT_ID: ${APS_CLIENT_ID:-}
       APS_CLIENT_SECRET: ${APS_CLIENT_SECRET:-}
       BASE_PATH: /workspace
