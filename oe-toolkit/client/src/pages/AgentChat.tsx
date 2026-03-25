@@ -157,7 +157,11 @@ export default function AgentChat() {
 
   // @ts-ignore - workspaceProjects router exists at runtime
   const workspaceProjectsQuery = trpc.workspaceProjects.list.useQuery();
-  const workspaceProjects: Array<{ id: number; name: string }> = workspaceProjectsQuery.data ?? [];
+  // oe_toolkit projects use `projectName` (not `name`) — map to a consistent shape
+  const workspaceProjects: Array<{ id: number; name: string }> = (workspaceProjectsQuery.data ?? []).map((p: any) => ({
+    id: p.id,
+    name: p.projectName ?? p.name ?? `Project ${p.id}`,
+  }));
 
   // @ts-ignore - workspaceProjects router exists at runtime
   const projectContextQuery = trpc.workspaceProjects.getProjectContext.useQuery(
@@ -233,31 +237,21 @@ export default function AgentChat() {
     const ctx = projectContextQuery.data as any;
     if (!ctx) return undefined;
 
+    // getProjectContext returns { projectId, context } where context is a pre-built string
+    const projectName = workspaceProjects.find(p => String(p.id) === selectedProjectId)?.name ?? `Project ${selectedProjectId}`;
     const lines: string[] = [
-      `## Project Context: ${ctx.projectName}`,
+      `## Project Context: ${projectName}`,
       "",
       "You are assisting with analysis of this specific project. Use the following project data as context.",
       "",
     ];
 
-    if (ctx.facts?.length > 0) {
-      lines.push("### Key Project Facts");
-      ctx.facts.slice(0, 15).forEach((f: any) => {
-        lines.push(`- [${f.category}] ${f.value} (confidence: ${f.confidence})`);
-      });
-      lines.push("");
-    }
-
-    if (ctx.redFlags?.length > 0) {
-      lines.push("### Red Flags");
-      ctx.redFlags.slice(0, 10).forEach((r: any) => {
-        lines.push(`- ${r.description} (severity: ${r.severity || "unknown"})`);
-      });
-      lines.push("");
+    if (ctx.context) {
+      lines.push(ctx.context);
     }
 
     return lines.join("\n");
-  }, [selectedProjectId, projectContextQuery.data]);
+  }, [selectedProjectId, projectContextQuery.data, workspaceProjects]);
 
   // ─── Send message via SSE stream ─────────────────────────────────────────
   const handleSend = useCallback(async () => {

@@ -12,6 +12,7 @@ import { z } from "zod";
 import mysql from "mysql2/promise";
 import { getDb } from "../db";
 import { projects } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Get a connection to the mce-workspace database (for reading project data)
@@ -37,6 +38,7 @@ export const workspaceProjectsRouter = router({
   /**
    * List all projects from oe_toolkit (the single registry).
    * Used by mce-workspace UI and Sprocket to select a project context.
+   * Returns id + projectName so the AgentChat dropdown can display names.
    */
   list: protectedProcedure.query(async () => {
     const db = await getDb();
@@ -55,6 +57,18 @@ export const workspaceProjectsRouter = router({
       let connection: mysql.Connection | null = null;
 
       try {
+        // Fetch project metadata from oe_toolkit first
+        const oeDb = await getDb();
+        let projectMeta: { projectName: string; projectCode: string; phase: string | null } | null = null;
+        if (oeDb) {
+          const rows = await oeDb.select({
+            projectName: projects.projectName,
+            projectCode: projects.projectCode,
+            phase: projects.phase,
+          }).from(projects).where(eq(projects.id, input.projectId)).limit(1);
+          if (rows.length > 0) projectMeta = rows[0];
+        }
+
         connection = await getWorkspaceDbConnection();
 
         const prefix = `proj_${input.projectId}`;
@@ -69,6 +83,11 @@ export const workspaceProjectsRouter = router({
 
         const contextParts: string[] = [
           `Project ID: ${input.projectId}`,
+          ...(projectMeta ? [
+            `Project Name: ${projectMeta.projectName}`,
+            `Project Code: ${projectMeta.projectCode}`,
+            ...(projectMeta.phase ? [`Phase: ${projectMeta.phase}`] : []),
+          ] : []),
         ];
 
         if (hasTables) {
@@ -127,6 +146,7 @@ export const workspaceProjectsRouter = router({
 
         return {
           projectId: input.projectId,
+          projectName: projectMeta?.projectName ?? null,
           context: contextParts.join("\n"),
         };
       } catch (error) {
@@ -134,6 +154,7 @@ export const workspaceProjectsRouter = router({
         // Return minimal context rather than throwing — Sprocket should still work without it
         return {
           projectId: input.projectId,
+          projectName: null as string | null,
           context: `Project ID: ${input.projectId}`,
         };
       } finally {
