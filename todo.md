@@ -1676,3 +1676,22 @@
 - [x] Mark table-prefix-helper as deprecated
 - [x] Document the single source of truth for project schema (docs/PROJECT_CREATION_STANDARD.md)
 - [x] Fix existing projects with schema mismatches (added stage column to 390002, 390005, 390006)
+
+## Knowledge Engine Seeding (Mar 2026)
+- [ ] Design document ingestion pipeline (watched folder → classify → chunk → extract)
+- [ ] Implement document classifier (project type, document type)
+- [ ] Implement structured extraction using cloud LLM (facts, risks, red flags, benchmarks)
+- [ ] Add rate-limited, resumable background job for bulk seeding
+- [ ] Write Alembic migration files for KE DB schema (versions/ is empty)
+- [ ] Wire oe-toolkit document upload to push extracted data into KE after consolidation
+- [ ] Test seeding with sample historical project documents
+
+## LLM Usage Tracking (Mar 2026)
+- [x] Add llm_usage_log table to sprocket schema (drizzle/schema.ts + migration 0016)
+- [x] Hook logLlmUsage into invokeLLM in sprocket (fire-and-forget, never blocks)
+- [x] Add /api/usage endpoint to sprocket (aggregates by model, service, source, daily)
+- [x] Add getSprocketUsage client + getUsage tRPC procedure in oe-toolkit
+- [x] Add "LLM Usage & Spend" tab to Agent Stats page (budget gauges, model breakdown, daily chart)
+- [ ] Add _usageSource tags to key invokeLLM call sites (agent_chat, triage, ke_ingestion)
+- [ ] Wire knowledge engine Python LLM calls to POST usage records to sprocket /api/usage
+- [ ] Add configurable budget alert emails / Slack notifications when service hits 80% limit

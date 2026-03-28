@@ -275,3 +275,22 @@ export async function getSprocketBackgroundTask(
 ): Promise<SprocketBackgroundTask> {
   return sprocketGet<SprocketBackgroundTask>(`/api/background-tasks/${taskId}`);
 }
+
+// ─────────────────────────────────────────────
+// LLM Usage
+// ─────────────────────────────────────────────
+
+export interface UsageSummary {
+  totalTokens: number;
+  totalCostUsd: number;
+  callCount: number;
+  byModel: Array<{ model: string; callCount: number; totalTokens: number; costUsd: number }>;
+  byService: Array<{ service: string; callCount: number; totalTokens: number; costUsd: number }>;
+  bySource: Array<{ source: string; callCount: number; totalTokens: number; costUsd: number }>;
+  daily: Array<{ date: string; callCount: number; totalTokens: number; costUsd: number }>;
+}
+
+/** Get LLM token & spend summary from Sprocket */
+export async function getSprocketUsage(days = 30): Promise<UsageSummary> {
+  return sprocketGet<UsageSummary>(`/api/usage?days=${days}`);
+}

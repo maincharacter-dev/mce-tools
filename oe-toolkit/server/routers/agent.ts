@@ -19,6 +19,7 @@ import {
   createSprocketProject,
   getSprocketBackgroundTasks,
   getSprocketBackgroundTask,
+  getSprocketUsage,
 } from "../sprocket-client";
 
 export const agentRouter = router({
@@ -91,5 +92,12 @@ export const agentRouter = router({
     .input(z.object({ taskId: z.string() }))
     .query(async ({ input }) => {
       return getSprocketBackgroundTask(input.taskId);
+    }),
+
+  /** LLM token & spend usage summary */
+  getUsage: protectedProcedure
+    .input(z.object({ days: z.number().int().min(1).max(365).default(30) }))
+    .query(async ({ input }) => {
+      return getSprocketUsage(input.days);
     }),
 });
