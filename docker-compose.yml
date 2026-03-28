@@ -198,12 +198,15 @@ services:
       SPROCKET_PASSWORD: ${SPROCKET_PASSWORD}
       MCE_WORKSPACE_URL: http://mce-workspace:3000
       MCE_WORKSPACE_DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${MCE_WORKSPACE_DATABASE:-mce_workspace}
+      KNOWLEDGE_ENGINE_URL: http://knowledge-engine:8000
     depends_on:
       mysql:
         condition: service_healthy
       sprocket:
         condition: service_healthy
       mce-workspace:
+        condition: service_healthy
+      knowledge-engine:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/trpc/system.health?input=%7B%22json%22%3A%7B%22timestamp%22%3A0%7D%7D"]

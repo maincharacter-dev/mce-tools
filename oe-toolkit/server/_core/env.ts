@@ -12,6 +12,7 @@ export const ENV = {
   sprocketUrl: process.env.SPROCKET_URL ?? "",
   sprocketUsername: process.env.SPROCKET_USERNAME ?? "",
   sprocketPassword: process.env.SPROCKET_PASSWORD ?? "",
+  knowledgeEngineUrl: process.env.KNOWLEDGE_ENGINE_URL ?? "http://knowledge-engine:8000",
   // Local auth (username/password mode — no Manus OAuth required)
   localAuth: process.env.LOCAL_AUTH === "true",
   localUsername: process.env.LOCAL_USERNAME ?? "",

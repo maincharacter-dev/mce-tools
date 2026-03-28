@@ -14,6 +14,7 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import AgentStats from "./pages/AgentStats";
 import Login from "./pages/Login";
 import AdminUsers from "./pages/AdminUsers";
+import KnowledgeEngine from "./pages/KnowledgeEngine";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/acc-projects" component={ACCProjects} />
       <Route path="/agent" component={AgentChat} />
       <Route path="/agent/knowledge" component={KnowledgeBase} />
+      <Route path="/knowledge-engine" component={KnowledgeEngine} />
       <Route path="/agent/stats" component={AgentStats} />
       <Route path="/login" component={Login} />
       <Route path="/admin/users" component={AdminUsers} />

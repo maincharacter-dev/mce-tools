@@ -1,4 +1,4 @@
-import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot, ClipboardList, Shield, LogOut, ChevronDown } from "lucide-react";
+import { ArrowRight, Zap, BarChart3, Linkedin, Menu, Bot, ClipboardList, Shield, LogOut, ChevronDown, Brain } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +71,16 @@ const tools: ToolCard[] = [
     icon: <Bot className="h-8 w-8" />,
     color: "from-violet-500 to-violet-600",
     url: "/agent",
+    status: "Active",
+  },
+  {
+    id: "knowledge-engine",
+    title: "Knowledge Engine",
+    description:
+      "Cross-project intelligence built from de-identified project data. Query historical risks, benchmark cost and schedule estimates, and identify gaps in the knowledge base.",
+    icon: <Brain className="h-8 w-8" />,
+    color: "from-purple-500 to-indigo-600",
+    url: "/knowledge-engine",
     status: "Active",
   },
 ];

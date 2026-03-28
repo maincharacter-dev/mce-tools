@@ -11,6 +11,7 @@ import { z } from "zod";
 import { agentRouter } from "./routers/agent";
 import { workspaceProjectsRouter } from "./routers/workspaceProjects";
 import { adminUsersRouter } from "./routers/adminUsers";
+import { knowledgeEngineRouter } from "./routers/knowledgeEngine";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts
@@ -35,6 +36,8 @@ export const appRouter = router({
   agent: agentRouter,
   // Workspace project context router (reads from mce-workspace database for Sprocket)
   workspaceProjects: workspaceProjectsRouter,
+  // Knowledge Engine router — proxies to the MCE Knowledge Engine FastAPI service
+  knowledgeEngine: knowledgeEngineRouter,
 
   // Projects router — oe_toolkit is the single source of truth for all projects
   projects: router({
