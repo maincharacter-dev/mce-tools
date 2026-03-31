@@ -105,6 +105,17 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const fs = await import("fs/promises");
         const path = await import("path");
+
+        // Auto-provision project tables before upload begins (idempotent — safe to call repeatedly)
+        try {
+          const { provisionProjectTables, getTableProvisionConfig } = await import('./project-table-provisioner');
+          const config = getTableProvisionConfig(parseInt(input.projectId));
+          await provisionProjectTables(config);
+        } catch (provisionErr) {
+          console.warn(`[initChunkedUpload] Auto-provision warning for project ${input.projectId}:`, provisionErr);
+          // Continue — tables may already exist
+        }
+
         const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         // Store metadata on local filesystem
@@ -204,20 +215,10 @@ export const appRouter = router({
           const documentId = uuidv4();
           console.log(`[Chunked Upload] Generated document ID: ${documentId}`);
           
-          // Process synchronously to ensure document is saved before returning
-          console.log(`[Chunked Upload] === PROCESSING STARTED ===`);
-              // Determine document type (without loading file into memory)
-              let finalDocumentType = metadata.documentType;
-              if (metadata.documentType === "AUTO") {
-                const { detectDocumentType } = await import("./document-type-detector");
-                try {
-                  finalDocumentType = await detectDocumentType(reassembledPath, metadata.fileName);
-                  console.log(`AI detected document type: ${finalDocumentType}`);
-                } catch (err) {
-                  console.error(`[Chunked Upload] Document type detection failed:`, err);
-                  finalDocumentType = "OTHER";
-                }
-              }
+          // Document type: use the user-selected type, or keep AUTO for the processing pipeline to detect.
+          // We do NOT run LLM detection here to avoid 524 gateway timeouts on large files.
+          // The processing pipeline will detect and update the type as its first stage.
+          const finalDocumentType = metadata.documentType; // may be 'AUTO'
               
               // Store chunked metadata instead of local file path
               console.log(`[Chunked Upload] Preparing chunked metadata for database...`);

@@ -282,6 +282,30 @@ export async function resumeDocumentProcessing(projectId: number, job: any) {
     }
   }
   
+  // Resolve AUTO document type before processing
+  let resolvedDocumentType = job.documentType || 'OTHER';
+  if (resolvedDocumentType === 'AUTO') {
+    try {
+      const { detectDocumentType } = await import('./document-type-detector');
+      // For chunked files, pass the filePath JSON string — detectDocumentType handles reassembly
+      resolvedDocumentType = await detectDocumentType(document.filePath, document.fileName);
+      console.log(`[Processing Resume] AUTO detected document type: ${resolvedDocumentType}`);
+      // Persist the detected type back to the documents table
+      const projectDb = createProjectDbPool(projectId);
+      try {
+        await projectDb.execute(
+          `UPDATE documents SET documentType = ? WHERE id = ?`,
+          [resolvedDocumentType, document.id]
+        );
+      } finally {
+        await projectDb.end();
+      }
+    } catch (detectErr) {
+      console.error(`[Processing Resume] AUTO type detection failed, falling back to OTHER:`, detectErr);
+      resolvedDocumentType = 'OTHER';
+    }
+  }
+
   // Progress callback
   const updateProgress = async (stage: string, progress: number) => {
     const projectDb = createProjectDbPool(projectId);
@@ -303,7 +327,7 @@ export async function resumeDocumentProcessing(projectId: number, job: any) {
       projectId,
       document.id,
       document.filePath,
-      job.documentType || 'OTHER',
+      resolvedDocumentType,
       'llama3.2:latest',
       undefined,
       updateProgress
