@@ -35,6 +35,7 @@ export class LocationService {
   async extractLocationFromFacts(factsSummary: string): Promise<LocationSource | null> {
     try {
       const response = await invokeLLM({
+        _usageSource: "location_extraction",
         messages: [
           {
             role: 'system',

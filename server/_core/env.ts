@@ -16,4 +16,6 @@ export const ENV = {
   localPassword: process.env.LOCAL_PASSWORD ?? "",
   // Multi-user mode: JSON array of {username, password, name, role} objects
   localUsers: process.env.LOCAL_USERS ?? "",
+  // Sprocket URL — used by llm-usage-reporter to POST usage records centrally
+  sprocketUrl: process.env.SPROCKET_URL ?? "",
 };

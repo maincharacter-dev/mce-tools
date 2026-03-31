@@ -256,6 +256,8 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       # Document storage directory inside the container
       DATA_DIR: /app/data
+      # Sprocket URL — for centralised LLM usage reporting
+      SPROCKET_URL: http://sprocket:3000
     depends_on:
       mysql:
         condition: service_healthy
@@ -286,6 +288,8 @@ services:
       OPENAI_API_KEY: ${KNOWLEDGE_ENGINE_OPENAI_API_KEY:-}
       PINECONE_API_KEY: ${KNOWLEDGE_ENGINE_PINECONE_API_KEY:-}
       PINECONE_INDEX: ${KNOWLEDGE_ENGINE_PINECONE_INDEX:-mce-knowledge}
+      # Sprocket URL — for centralised LLM usage reporting
+      SPROCKET_URL: http://sprocket:3000
     depends_on:
       postgres:
         condition: service_healthy

@@ -56,6 +56,7 @@ ${documentText.substring(0, 10000)}`;
 
     try {
       const response = await invokeLLM({
+        _usageSource: "location_extraction",
         messages: [
           { role: "system", content: "You are a location extraction assistant. Extract location information accurately and return valid JSON only." },
           { role: "user", content: prompt }

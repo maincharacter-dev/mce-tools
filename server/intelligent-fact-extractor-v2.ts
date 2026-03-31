@@ -218,6 +218,7 @@ Return a JSON array of facts.`;
   private async callLLMExtraction(prompt: string, method: string): Promise<ExtractedFact[]> {
     try {
       const response = await invokeLLM({
+        _usageSource: "fact_extraction",
         messages: [
           {
             role: "system",

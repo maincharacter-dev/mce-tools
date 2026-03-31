@@ -20,6 +20,7 @@ import {
   getSprocketBackgroundTasks,
   getSprocketBackgroundTask,
   getSprocketUsage,
+  setSprocketBudgetLimit,
 } from "../sprocket-client";
 
 export const agentRouter = router({
@@ -99,5 +100,13 @@ export const agentRouter = router({
     .input(z.object({ days: z.number().int().min(1).max(365).default(30) }))
     .query(async ({ input }) => {
       return getSprocketUsage(input.days);
+    }),
+
+  /** Update the soft budget limit for a service */
+  setBudgetLimit: protectedProcedure
+    .input(z.object({ service: z.string(), limitUsd: z.number().min(0) }))
+    .mutation(async ({ input }) => {
+      await setSprocketBudgetLimit(input.service, input.limitUsd);
+      return { ok: true };
     }),
 });

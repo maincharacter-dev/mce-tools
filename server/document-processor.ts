@@ -189,6 +189,7 @@ ${text.substring(0, 2000)}
 Return ONLY the JSON array, no other text.`;
 
     const response = await invokeLLM({
+      _usageSource: "fact_extraction",
       messages: [
         {
           role: "system",

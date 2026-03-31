@@ -1375,6 +1375,7 @@ Synthesized narrative:`;
 
         try {
           const response = await invokeLLM({
+            _usageSource: "narrative_synthesis",
             messages: [
               { role: "system", content: "You are a technical writer specializing in project documentation for Technical Advisory teams." },
               { role: "user", content: prompt }

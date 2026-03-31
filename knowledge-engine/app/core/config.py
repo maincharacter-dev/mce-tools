@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     tatdd_engine_url: str = "http://localhost:3000"
     oe_toolkit_url: str = "http://localhost:3002"
     solar_analyzer_url: str = "http://localhost:3003"
+    # Sprocket URL — for centralised LLM usage reporting
+    sprocket_url: str = ""
 
     # Confidence Scoring Thresholds
     confidence_high_threshold: float = 0.8

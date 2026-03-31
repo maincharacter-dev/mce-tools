@@ -71,6 +71,7 @@ export class IntelligentFactExtractor {
     
     try {
       const response = await invokeLLM({
+        _usageSource: "fact_extraction",
         messages: [
           {
             role: "system",
@@ -156,6 +157,7 @@ Return JSON with facts array containing category="Dependencies", key (short desc
 
     try {
       const response = await invokeLLM({
+        _usageSource: "fact_extraction",
         messages: [
           {
             role: "system",
@@ -231,6 +233,7 @@ Return JSON with facts array containing category="Risks", key (risk type), value
 
     try {
       const response = await invokeLLM({
+        _usageSource: "fact_extraction",
         messages: [
           {
             role: "system",
@@ -305,6 +308,7 @@ Return JSON with facts array containing category="Assumptions", key (parameter n
 
     try {
       const response = await invokeLLM({
+        _usageSource: "fact_extraction",
         messages: [
           {
             role: "system",

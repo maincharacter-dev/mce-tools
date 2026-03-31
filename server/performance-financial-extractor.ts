@@ -147,6 +147,8 @@ ${documentText.substring(0, 15000)}`;
 
     try {
       const response = await invokeLLM({
+        _usageSource: "performance_extraction",
+        _usageSource: "performance_extraction",
         messages: [
           { role: "system", content: "You are a technical data extraction assistant. Extract information accurately and return valid JSON only." },
           { role: "user", content: prompt }

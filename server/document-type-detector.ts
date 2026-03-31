@@ -98,6 +98,7 @@ Category:`;
 
     // Call LLM
     const response = await invokeLLM({
+      _usageSource: "doc_type_detection",
       messages: [
         { role: 'user', content: prompt }
       ]

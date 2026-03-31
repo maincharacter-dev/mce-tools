@@ -66,6 +66,9 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
+  // Usage tracking — passed through to logLlmUsage (never sent to the LLM API)
+  _usageSource?: string;     // e.g. "fact_extraction", "narrative_synthesis", "doc_type_detection"
+  _usageProjectId?: string;  // numeric project ID as string, for per-project cost tracking
 };
 
 export type ToolCall = {
@@ -399,7 +402,21 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       
       // Try to parse as JSON
       try {
-        return JSON.parse(responseText) as InvokeResult;
+        const result = JSON.parse(responseText) as InvokeResult;
+        // Fire-and-forget usage logging — never blocks or throws
+        if (result.usage) {
+          const usageModel = (result.model ?? model) as string;
+          import("../llm-usage-reporter.js")
+            .then(({ reportUsage }) => reportUsage({
+              model: usageModel,
+              promptTokens: result.usage!.prompt_tokens,
+              completionTokens: result.usage!.completion_tokens,
+              source: params._usageSource,
+              projectId: params._usageProjectId,
+            }))
+            .catch(() => {/* swallow — usage logging must never crash the main flow */});
+        }
+        return result;
       } catch (parseError) {
         throw new Error(
           `Failed to parse LLM response as JSON: ${responseText.substring(0, 200)}`

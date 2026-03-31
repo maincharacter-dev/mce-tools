@@ -280,6 +280,14 @@ export async function getSprocketBackgroundTask(
 // LLM Usage
 // ─────────────────────────────────────────────
 
+export interface BudgetStatusEntry {
+  service: string;
+  spentUsd: number;
+  limitUsd: number;
+  percentUsed: number;
+  level: "ok" | "warning" | "critical";
+}
+
 export interface UsageSummary {
   totalTokens: number;
   totalCostUsd: number;
@@ -288,9 +296,19 @@ export interface UsageSummary {
   byService: Array<{ service: string; callCount: number; totalTokens: number; costUsd: number }>;
   bySource: Array<{ source: string; callCount: number; totalTokens: number; costUsd: number }>;
   daily: Array<{ date: string; callCount: number; totalTokens: number; costUsd: number }>;
+  /** 24-hour rolling budget status per service, included in the /api/usage response */
+  budgetStatus?: BudgetStatusEntry[];
 }
 
 /** Get LLM token & spend summary from Sprocket */
 export async function getSprocketUsage(days = 30): Promise<UsageSummary> {
   return sprocketGet<UsageSummary>(`/api/usage?days=${days}`);
+}
+
+/** Update the soft budget limit for a service at runtime */
+export async function setSprocketBudgetLimit(
+  service: string,
+  limitUsd: number,
+): Promise<void> {
+  await sprocketPost<{ ok: boolean }>("/api/usage/budget", { service, limitUsd });
 }

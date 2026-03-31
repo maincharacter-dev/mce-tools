@@ -203,6 +203,7 @@ export class ProjectConsolidator {
 
           try {
             const response = await invokeLLM({
+              _usageSource: "project_consolidation",
               messages: [
                 {
                   role: 'system',

@@ -471,6 +471,7 @@ async function executeNarrativesStep(projectId: number, stepData?: any): Promise
       
       try {
         const response = await invokeLLM({
+          _usageSource: "narrative_synthesis",
           messages: [
             {
               role: 'system',

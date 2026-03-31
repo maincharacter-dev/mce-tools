@@ -28,6 +28,8 @@ interface ReconciliationResult {
 export async function computeSemanticSimilarity(value1: string, value2: string): Promise<number> {
   try {
     const response = await invokeLLM({
+      _usageSource: "insight_reconciliation",
+      _usageSource: "insight_reconciliation",
       messages: [
         {
           role: 'system',

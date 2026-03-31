@@ -8,34 +8,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  AlertTriangle,
   ArrowLeft,
   BarChart3,
   BookOpen,
   Brain,
+  Check,
   DollarSign,
   Loader2,
   MessageSquare,
+  Pencil,
   TrendingUp,
   Wrench,
   Zap,
 } from "lucide-react";
-import { agentTrpc } from "@/lib/agent-trpc";
-
-// ─── Soft budget limits (USD / 30 days) ──────────────────────────────────────
-// Adjust these to match your actual budget targets.
-const BUDGET_LIMITS: Record<string, number> = {
-  sprocket:         20.00,
-  "knowledge-engine": 10.00,
-  "oe-toolkit":      5.00,
-};
-const TOTAL_BUDGET = Object.values(BUDGET_LIMITS).reduce((a, b) => a + b, 0);
-
+import { agentTrpc } from "@/lib/agent-trp
 type Tab = "overview" | "usage";
 
 export default function AgentStats() {
   useAuth({ redirectOnUnauthenticated: true });
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [usageDays, setUsageDays] = useState(30);
+  const [editingBudget, setEditingBudget] = useState<string | null>(null);
+  const [budgetInputValue, setBudgetInputValue] = useState("");
+
+  const setBudgetLimit = agentTrpc.setBudgetLimit.useMutation();
 
   const { data: knowledgeStats, isLoading: loadingKnowledge } =
     agentTrpc.getKnowledgeStats.useQuery({});
@@ -61,6 +58,16 @@ export default function AgentStats() {
   const toolsList: any[] = (tools as any) || [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const usage = (usageData as any) || null;
+  // Prefer server-side budget status (24h rolling) over client-side estimates
+  const budgetStatus: Array<{ service: string; spentUsd: number; limitUsd: number; percentUsed: number; level: string }> =
+    usage?.budgetStatus ?? [];
+
+  const handleSaveBudget = async (service: string) => {
+    const val = parseFloat(budgetInputValue);
+    if (isNaN(val) || val < 0) return;
+    await setBudgetLimit.mutateAsync({ service, limitUsd: val });
+    setEditingBudget(null);
+  };
 
   const fmt = (n: number) =>
     n >= 1_000_000
@@ -72,15 +79,10 @@ export default function AgentStats() {
   const fmtCost = (n: number) =>
     n < 0.01 ? "<$0.01" : `$${n.toFixed(2)}`;
 
-  const budgetPct = (service: string, cost: number) => {
-    const limit = BUDGET_LIMITS[service] ?? TOTAL_BUDGET;
-    return Math.min((cost / limit) * 100, 100);
-  };
-
   const budgetColor = (pct: number) =>
-    pct >= 90
+    pct >= 100
       ? "bg-red-500"
-      : pct >= 70
+      : pct >= 80
       ? "bg-amber-500"
       : "bg-emerald-500";
 
@@ -385,35 +387,78 @@ export default function AgentStats() {
                   </Card>
                 </div>
 
-                {/* Budget gauges by service */}
-                {usage.byService && usage.byService.length > 0 && (
+                {/* Budget gauges by service — uses 24h rolling data from server */}
+                {budgetStatus.length > 0 && (
                   <Card className="bg-slate-900/50 border-slate-700/50">
                     <CardHeader>
-                      <CardTitle className="text-white">
-                        Budget Usage by Service
-                        <span className="ml-2 text-sm font-normal text-slate-400">
-                          (soft limits — {usageDays}d window)
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-emerald-400" />
+                        24h Budget Status
+                        <span className="ml-1 text-sm font-normal text-slate-400">
+                          (rolling window · click limit to edit)
                         </span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {usage.byService.map((s: any) => {
-                          const limit = BUDGET_LIMITS[s.service] ?? TOTAL_BUDGET;
-                          const pct = budgetPct(s.service, s.costUsd);
+                        {budgetStatus.map((s) => {
+                          const pct = Math.min(s.percentUsed, 100);
+                          const isEditing = editingBudget === s.service;
                           return (
                             <div key={s.service}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-slate-300 text-sm font-medium capitalize">
+                                <span className="text-slate-300 text-sm font-medium capitalize flex items-center gap-1.5">
                                   {s.service}
+                                  {s.level === "critical" && (
+                                    <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+                                  )}
+                                  {s.level === "warning" && (
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                                  )}
                                 </span>
-                                <span className="text-slate-400 text-sm">
-                                  {fmtCost(s.costUsd)} / {fmtCost(limit)}
-                                  {pct >= 90 && (
-                                    <span className="ml-2 text-red-400 text-xs font-semibold">
-                                      NEAR LIMIT
+                                <span className="text-slate-400 text-sm flex items-center gap-1.5">
+                                  {fmtCost(s.spentUsd)} /
+                                  {isEditing ? (
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-slate-400">$</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={budgetInputValue}
+                                        onChange={(e) => setBudgetInputValue(e.target.value)}
+                                        className="w-16 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-white text-xs"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") handleSaveBudget(s.service);
+                                          if (e.key === "Escape") setEditingBudget(null);
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() => handleSaveBudget(s.service)}
+                                        className="text-emerald-400 hover:text-emerald-300"
+                                      >
+                                        <Check className="h-3.5 w-3.5" />
+                                      </button>
                                     </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setEditingBudget(s.service);
+                                        setBudgetInputValue(String(s.limitUsd));
+                                      }}
+                                      className="flex items-center gap-0.5 text-slate-400 hover:text-white transition-colors"
+                                      title="Edit budget limit"
+                                    >
+                                      {fmtCost(s.limitUsd)}
+                                      <Pencil className="h-3 w-3 ml-0.5 opacity-50" />
+                                    </button>
+                                  )}
+                                  {s.level === "critical" && (
+                                    <span className="ml-1 text-red-400 text-xs font-semibold">OVER LIMIT</span>
+                                  )}
+                                  {s.level === "warning" && (
+                                    <span className="ml-1 text-amber-400 text-xs font-semibold">80%+</span>
                                   )}
                                 </span>
                               </div>
@@ -423,9 +468,6 @@ export default function AgentStats() {
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              <p className="text-slate-500 text-xs mt-1">
-                                {s.callCount} calls · {fmt(s.totalTokens)} tokens
-                              </p>
                             </div>
                           );
                         })}

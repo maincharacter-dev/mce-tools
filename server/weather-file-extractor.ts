@@ -82,6 +82,7 @@ ${documentText.substring(0, 50000)}`;
 
     try {
       const response = await invokeLLM({
+        _usageSource: "weather_extraction",
         messages: [
           {
             role: "system",
