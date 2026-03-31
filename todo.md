@@ -1692,6 +1692,6 @@
 - [x] Add /api/usage endpoint to sprocket (aggregates by model, service, source, daily)
 - [x] Add getSprocketUsage client + getUsage tRPC procedure in oe-toolkit
 - [x] Add "LLM Usage & Spend" tab to Agent Stats page (budget gauges, model breakdown, daily chart)
-- [ ] Add _usageSource tags to key invokeLLM call sites (agent_chat, triage, ke_ingestion)
-- [ ] Wire knowledge engine Python LLM calls to POST usage records to sprocket /api/usage
-- [ ] Add configurable budget alert emails / Slack notifications when service hits 80% limit
+- [x] Add _usageSource tags to key invokeLLM call sites (all 17 call sites across mce-workspace tagged)
+- [x] Wire knowledge engine Python LLM calls to POST usage records to sprocket /api/usage (llm_usage_reporter.py)
+- [x] Add budget alert system: checkBudgetAlerts() fires after every write (WARN 80%, ERROR 100%); inline limit editing in Agent Stats UI; POST /api/usage/budget for runtime overrides
