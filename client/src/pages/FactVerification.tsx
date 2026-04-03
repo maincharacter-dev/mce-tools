@@ -84,13 +84,13 @@ export default function FactVerification() {
 
   // Fetch facts using numeric projectId
   const { data: facts, isLoading: isLoadingFacts, refetch } = trpc.facts.list.useQuery(
-    { id: Number(projectId) },
+    { projectId: String(projectId) },
     { enabled: !!projectId }
   );
 
   // Fetch pre-generated narratives
   const { data: preGeneratedNarratives } = trpc.facts.getNarratives.useQuery(
-    { id: Number(projectId) },
+    { projectId: String(projectId) },
     { enabled: !!projectId }
   );
 
@@ -106,7 +106,7 @@ export default function FactVerification() {
   // Poll for consolidation status
   const [isPolling, setIsPolling] = useState(false);
   const consolidationStatusQuery = trpc.projects.getConsolidationStatus.useQuery(
-    { id: Number(projectId) },
+    { projectId: String(projectId) },
     { 
       enabled: isPolling && !!projectId,
       refetchInterval: isPolling ? 2000 : false, // Poll every 2 seconds when active
@@ -190,7 +190,7 @@ export default function FactVerification() {
         // Continue to next step - small delay to prevent overwhelming the server
         setTimeout(() => {
           if (projectId) {
-            consolidateMutation.mutate({ id: Number(projectId) });
+            consolidateMutation.mutate({ projectId: String(projectId) });
           }
         }, 500);
       }
@@ -215,7 +215,7 @@ export default function FactVerification() {
       message: 'Starting consolidation...',
       progress: 0
     });
-    consolidateMutation.mutate({ id: Number(projectId) });
+    consolidateMutation.mutate({ projectId: String(projectId) });
   };
 
   const updateFactMutation = trpc.facts.update.useMutation({

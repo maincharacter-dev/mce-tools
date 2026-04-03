@@ -115,9 +115,9 @@ export default function RedFlags() {
     { enabled: !!projectId }
   );
 
-  // Fetch facts using numeric projectId
+  // Fetch facts using projectId string
   const { data: facts, isLoading: isLoadingFacts, refetch } = trpc.facts.list.useQuery(
-    { id: Number(projectId) },
+    { projectId: String(projectId) },
     { enabled: !!projectId }
   );
 

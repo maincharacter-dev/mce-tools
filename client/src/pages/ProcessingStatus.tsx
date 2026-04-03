@@ -69,7 +69,7 @@ export default function ProcessingStatus() {
 
   // Fetch jobs
   const { data: jobs, isLoading: isLoadingJobs, refetch: refetchJobs } = trpc.processing.listJobs.useQuery(
-    { id: Number(projectId) },
+    { projectId: String(projectId) },
     { 
       enabled: !!projectId,
       refetchInterval: 2000, // Poll every 2 seconds
@@ -154,7 +154,7 @@ export default function ProcessingStatus() {
     if (untriggeredQueuedJob && !hasProcessingJobs && !processNextMutation.isPending) {
       console.log(`[ProcessingStatus] Triggering processNext for ${untriggeredQueuedJob.document_id}`);
       triggeredDocsRef.current.add(untriggeredQueuedJob.document_id);
-      processNextMutation.mutate({ id: Number(projectId) });
+      processNextMutation.mutate({ projectId: String(projectId) });
     }
   }, [jobs, projectId]);
 
@@ -371,7 +371,7 @@ export default function ProcessingStatus() {
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (projectId) clearLogsMutation.mutate({ id: Number(projectId) });
+                      if (projectId) clearLogsMutation.mutate({ projectId: String(projectId) });
                     }}
                     variant="ghost"
                     size="sm"
