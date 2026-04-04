@@ -33,6 +33,28 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // ─── MCE Workspace proxy ──────────────────────────────────────────────
+  // MUST be registered BEFORE body parsers so that upload/chunk requests
+  // are streamed through unmodified. If body parsers run first, Express
+  // consumes the request body and the proxy forwards an empty stream.
+  const workspaceUrl = process.env.MCE_WORKSPACE_URL || "http://mce-workspace:3000";
+  app.use("/workspace", createProxyMiddleware({
+    target: workspaceUrl,
+    changeOrigin: true,
+    pathRewrite: { '^/workspace': '' },
+    proxyTimeout: 300000,  // 5 minutes — allow long-running processing requests
+    timeout: 300000,
+    on: {
+      error: (err: any, _req: any, res: any) => {
+        console.error("[Workspace proxy] Error:", err.message);
+        if (!res.headersSent) {
+          (res as any).status(502).json({ error: "MCE Workspace unavailable" });
+        }
+      },
+    },
+  }));
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -129,23 +151,6 @@ async function startServer() {
       }
     }
   });
-
-  // ─── MCE Workspace proxy ──────────────────────────────────────────────
-  // Forward /workspace/* to mce-workspace so toolkit.maincharacter.wtf/workspace/ works
-  const workspaceUrl = process.env.MCE_WORKSPACE_URL || "http://mce-workspace:3000";
-  app.use("/workspace", createProxyMiddleware({
-    target: workspaceUrl,
-    changeOrigin: true,
-    pathRewrite: { '^/workspace': '' },
-    on: {
-      error: (err: any, _req: any, res: any) => {
-        console.error("[Workspace proxy] Error:", err.message);
-        if (!res.headersSent) {
-          (res as any).status(502).json({ error: "MCE Workspace unavailable" });
-        }
-      },
-    },
-  }));
 
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
