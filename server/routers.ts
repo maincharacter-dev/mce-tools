@@ -1,4 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
+import * as fs from 'fs/promises';
+import { createReadStream } from 'fs';
+import * as path from 'path';
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
@@ -90,6 +93,46 @@ export const appRouter = router({
   }),
 
   documents: router({
+    // Debug endpoint: test filesystem write from within tRPC handler
+    testFsWrite: publicProcedure.mutation(async () => {
+      const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+      const testPath = path.join(dataDir, 'temp-uploads', `test_${Date.now()}.txt`);
+      const testDir = path.join(dataDir, 'temp-uploads');
+      const results: Record<string, any> = {
+        dataDir,
+        testPath,
+        cwd: process.cwd(),
+        pid: process.pid,
+        uid: process.getuid?.() ?? 'unknown',
+      };
+      try {
+        await fs.mkdir(testDir, { recursive: true });
+        results.mkdir = 'OK';
+      } catch (e) {
+        results.mkdir = `FAILED: ${e instanceof Error ? e.message : String(e)}`;
+      }
+      try {
+        await fs.writeFile(testPath, `test at ${new Date().toISOString()}`, 'utf-8');
+        results.writeFile = 'OK';
+      } catch (e) {
+        results.writeFile = `FAILED: ${e instanceof Error ? e.message : String(e)}`;
+      }
+      try {
+        const stat = await fs.stat(testPath);
+        results.stat = `OK size=${stat.size}`;
+      } catch (e) {
+        results.stat = `FAILED: ${e instanceof Error ? e.message : String(e)}`;
+      }
+      try {
+        const listing = await fs.readdir(testDir);
+        results.listing = listing.slice(0, 10);
+      } catch (e) {
+        results.listing = `FAILED: ${e instanceof Error ? e.message : String(e)}`;
+      }
+      console.log('[testFsWrite] Results:', JSON.stringify(results, null, 2));
+      return results;
+    }),
+
     // Initialize chunked upload session
     initChunkedUpload: protectedProcedure
       .input(
@@ -103,9 +146,6 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const fs = await import("fs/promises");
-        const path = await import("path");
-
         // Auto-provision project tables before upload begins (idempotent — safe to call repeatedly)
         try {
           const { provisionProjectTables, getTableProvisionConfig } = await import('./project-table-provisioner');
@@ -121,7 +161,16 @@ export const appRouter = router({
         // Store metadata on local filesystem
         const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
         const uploadDir = path.join(dataDir, 'temp-uploads', uploadId);
-        await fs.mkdir(uploadDir, { recursive: true });
+        
+        console.log(`[initChunkedUpload] START - uploadId=${uploadId}, dataDir=${dataDir}, uploadDir=${uploadDir}, cwd=${process.cwd()}`);
+        
+        try {
+          await fs.mkdir(uploadDir, { recursive: true });
+          console.log(`[initChunkedUpload] mkdir OK: ${uploadDir}`);
+        } catch (mkdirErr) {
+          console.error(`[initChunkedUpload] mkdir FAILED for ${uploadDir}:`, mkdirErr);
+          throw new Error(`Failed to create upload directory: ${mkdirErr instanceof Error ? mkdirErr.message : String(mkdirErr)}`);
+        }
         
         const metadata = {
           projectId: input.projectId,
@@ -134,13 +183,27 @@ export const appRouter = router({
           createdAt: new Date().toISOString(),
         };
         
-        await fs.writeFile(
-          path.join(uploadDir, 'metadata.json'),
-          JSON.stringify(metadata, null, 2),
-          'utf-8'
-        );
+        try {
+          await fs.writeFile(
+            path.join(uploadDir, 'metadata.json'),
+            JSON.stringify(metadata, null, 2),
+            'utf-8'
+          );
+          console.log(`[initChunkedUpload] metadata.json written OK`);
+        } catch (writeErr) {
+          console.error(`[initChunkedUpload] writeFile FAILED:`, writeErr);
+          throw new Error(`Failed to write metadata: ${writeErr instanceof Error ? writeErr.message : String(writeErr)}`);
+        }
         
-        console.log(`[Chunked Upload] Initialized upload ${uploadId} locally at ${uploadDir}`);
+        // Verify the file was actually written
+        try {
+          const stat = await fs.stat(path.join(uploadDir, 'metadata.json'));
+          console.log(`[initChunkedUpload] metadata.json verified, size=${stat.size}`);
+        } catch (statErr) {
+          console.error(`[initChunkedUpload] stat verify FAILED - file not found after write!`, statErr);
+        }
+        
+        console.log(`[initChunkedUpload] SUCCESS - returning uploadId=${uploadId}`);
         return { uploadId };
       }),
 
@@ -154,21 +217,42 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        const fs = await import("fs/promises");
-        const path = await import("path");
+        console.log(`[uploadChunk] START - uploadId=${input.uploadId}, chunkIndex=${input.chunkIndex}, chunkDataLen=${input.chunkData.length}`);
         
         // Decode and decompress chunk
-        const compressedBuffer = Buffer.from(input.chunkData, "base64");
-        const pako = await import("pako");
-        const decompressed = pako.inflate(compressedBuffer);
-        const chunkBuffer = Buffer.from(decompressed);
+        let chunkBuffer: Buffer;
+        try {
+          const compressedBuffer = Buffer.from(input.chunkData, "base64");
+          const pako = await import("pako");
+          const decompressed = pako.inflate(compressedBuffer);
+          chunkBuffer = Buffer.from(decompressed);
+          console.log(`[uploadChunk] Decompressed chunk ${input.chunkIndex}: ${chunkBuffer.length} bytes`);
+        } catch (decompErr) {
+          console.error(`[uploadChunk] Decompress FAILED for chunk ${input.chunkIndex}:`, decompErr);
+          throw new Error(`Failed to decompress chunk ${input.chunkIndex}: ${decompErr instanceof Error ? decompErr.message : String(decompErr)}`);
+        }
         
         // Write chunk to local filesystem
         const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
         const chunkPath = path.join(dataDir, 'temp-uploads', input.uploadId, `chunk-${input.chunkIndex}`);
-        await fs.writeFile(chunkPath, chunkBuffer);
+        console.log(`[uploadChunk] Writing to ${chunkPath}`);
         
-        console.log(`[Chunked Upload] Chunk ${input.chunkIndex} written locally`);
+        try {
+          await fs.writeFile(chunkPath, chunkBuffer);
+          console.log(`[uploadChunk] Chunk ${input.chunkIndex} written OK to ${chunkPath}`);
+        } catch (writeErr) {
+          console.error(`[uploadChunk] writeFile FAILED for chunk ${input.chunkIndex} at ${chunkPath}:`, writeErr);
+          throw new Error(`Failed to write chunk ${input.chunkIndex}: ${writeErr instanceof Error ? writeErr.message : String(writeErr)}`);
+        }
+        
+        // Verify
+        try {
+          const stat = await fs.stat(chunkPath);
+          console.log(`[uploadChunk] Chunk ${input.chunkIndex} verified on disk, size=${stat.size}`);
+        } catch (statErr) {
+          console.error(`[uploadChunk] stat verify FAILED for chunk ${input.chunkIndex} - file not found after write!`, statErr);
+        }
+        
         return { success: true, chunkIndex: input.chunkIndex };
       }),
 
@@ -180,9 +264,6 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const fs = await import("fs/promises");
-        const path = await import("path");
-        
         try {
           console.log(`[Chunked Upload] Finalizing upload: ${input.uploadId}`);
           
@@ -227,7 +308,7 @@ export const appRouter = router({
               
               // Calculate hash from reassembled file
               const hashStream = crypto.createHash('sha256');
-              const readStream = (await import('fs')).createReadStream(reassembledPath);
+              const readStream = createReadStream(reassembledPath);
               for await (const chunk of readStream) {
                 hashStream.update(chunk);
               }
@@ -343,8 +424,6 @@ export const appRouter = router({
           if (input.documentType === "AUTO") {
             const { detectDocumentType } = await import("./document-type-detector");
             // Save temp file for AI analysis
-            const fs = await import("fs/promises");
-            const path = await import("path");
             const tempPath = path.join("/tmp", `temp_${Date.now()}_${input.fileName}`);
             await fs.writeFile(tempPath, fileBuffer);
             try {
@@ -422,7 +501,6 @@ export const appRouter = router({
               let locationName: string | null = null;
               
               try {
-                const fs = await import('fs/promises');
                 const fileContent = await fs.readFile(document.filePath, 'utf-8');
                 const lines = fileContent.split('\n');
                 
@@ -653,7 +731,6 @@ export const appRouter = router({
         documentId: z.string()
       }))
       .mutation(async ({ input }) => {
-        const fs = await import('fs/promises');
         const projectIdNum = parseInt(input.projectId);
         const connection = await createProjectDbConnection(projectIdNum);
         
@@ -1854,14 +1931,12 @@ Synthesized narrative:`;
           
           // Save to local filesystem
           const { v4: uuidv4 } = await import('uuid');
-          const path = await import('path');
-          const fsPromises = await import('fs/promises');
           const fileId = uuidv4();
           const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
           const weatherDir = path.join(dataDir, `project-${input.projectId}`, 'weather', 'manual');
-          await fsPromises.mkdir(weatherDir, { recursive: true });
+          await fs.mkdir(weatherDir, { recursive: true });
           const fileKey = path.join(weatherDir, `${fileId}-${input.fileName}`);
-          await fsPromises.writeFile(fileKey, fileContent, 'utf-8');
+          await fs.writeFile(fileKey, fileContent, 'utf-8');
           const fileUrl = fileKey; // Use local path as the URL/reference
           
           // Detect format from filename
