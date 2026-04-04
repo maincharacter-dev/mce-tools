@@ -22,7 +22,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { agentTrpc } from "@/lib/agent-trp
+import { agentTrpc } from "@/lib/agent-trpc";
 type Tab = "overview" | "usage";
 
 export default function AgentStats() {
