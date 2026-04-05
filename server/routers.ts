@@ -301,8 +301,6 @@ export const appRouter = router({
           // The processing pipeline will detect and update the type as its first stage.
           const finalDocumentType = metadata.documentType; // may be 'AUTO'
               
-              // Store chunked metadata instead of local file path
-              console.log(`[Chunked Upload] Preparing chunked metadata for database...`);
               const crypto = await import('crypto');
               const projectIdNum = parseInt(metadata.projectId);
               
@@ -315,19 +313,23 @@ export const appRouter = router({
               const fileHash = hashStream.digest('hex');
               console.log(`[Chunked Upload] File hash: ${fileHash}`);
               
-              // Create chunked metadata JSON to store in filePath field
-              const chunkedMetadata = JSON.stringify({
-                type: "chunked",
-                uploadId: input.uploadId,
-                totalChunks: metadata.totalChunks,
-                filename: metadata.fileName,
-                fileSize: metadata.fileSize,
-                fileHash: fileHash
-              });
+              // Move reassembled file to a permanent location so the document processor can read it
+              // Store the real file path in the DB (not chunked metadata JSON)
+              const permanentDir = path.join(dataDir, `project-${projectIdNum}`, 'uploads');
+              await fs.mkdir(permanentDir, { recursive: true });
+              const permanentPath = path.join(permanentDir, `${documentId}-${metadata.fileName}`);
+              await fs.rename(reassembledPath, permanentPath);
+              console.log(`[Chunked Upload] Moved reassembled file to permanent location: ${permanentPath}`);
               
-              console.log(`[Chunked Upload] Chunked metadata:`, chunkedMetadata);
+              // Clean up temporary upload directory (chunks + metadata only — reassembled already moved)
+              try {
+                await fs.rm(uploadDir, { recursive: true, force: true });
+                console.log(`[Chunked Upload] Cleaned up temp upload dir: ${uploadDir}`);
+              } catch (cleanupError) {
+                console.error(`[Chunked Upload] Cleanup failed:`, cleanupError);
+              }
               
-              // Save to database using table-prefix architecture
+              // Save to database using table-prefix architecture — store real file path
               console.log(`[Chunked Upload] Connecting to database with table prefix for project ${projectIdNum}...`);
               const projectConn = await createProjectDbConnection(projectIdNum);
               
@@ -335,7 +337,7 @@ export const appRouter = router({
                 documentId,
                 projectIdNum,
                 fileName: metadata.fileName,
-                filePath: chunkedMetadata,
+                filePath: permanentPath,
                 fileSize: metadata.fileSize,
                 fileHash,
                 documentType: finalDocumentType,
@@ -346,23 +348,15 @@ export const appRouter = router({
                 await projectConn.execute(
                   `INSERT INTO documents (id, fileName, filePath, fileSizeBytes, fileHash, documentType, uploadDate, status) 
                    VALUES (?, ?, ?, ?, ?, ?, NOW(), 'uploaded')`,
-                  [documentId, metadata.fileName, chunkedMetadata, metadata.fileSize, fileHash, finalDocumentType]
+                  [documentId, metadata.fileName, permanentPath, metadata.fileSize, fileHash, finalDocumentType]
                 );
               } finally {
                 await projectConn.end();
               }
               
-              // Clean up temporary upload directory (chunks + metadata + reassembled)
-              try {
-                await fs.rm(uploadDir, { recursive: true, force: true });
-                console.log(`[Chunked Upload] Cleaned up temp upload dir: ${uploadDir}`);
-              } catch (cleanupError) {
-                console.error(`[Chunked Upload] Cleanup failed:`, cleanupError);
-              }
-              
               console.log(`[Chunked Upload] ✓ Document saved to database: ${documentId}`);
               
-              const document = { id: documentId, fileName: metadata.fileName, filePath: chunkedMetadata };
+              const document = { id: documentId, fileName: metadata.fileName, filePath: permanentPath };
 
               // Start processing
               const projectDb = createProjectDbPool(projectIdNum);

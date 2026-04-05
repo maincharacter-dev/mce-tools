@@ -252,34 +252,23 @@ export async function resumeDocumentProcessing(projectId: number, job: any) {
   console.log(`[Processing Resume] Starting background processing for ${document.fileName}`);
   console.log(`[Processing Resume] File path: ${document.filePath}`);
   
-  // Check if filePath contains chunked metadata (JSON string)
-  // Handle both with and without spaces in JSON: "type":"chunked" or "type": "chunked"
-  const isChunkedFile = document.filePath.startsWith('{') && 
-    (document.filePath.includes('"type":"chunked"') || document.filePath.includes('"type": "chunked"'));
-  
-  if (isChunkedFile) {
-    console.log(`[Processing Resume] Detected chunked file metadata, will download from S3 during processing`);
-    // For chunked files, the document-processor-v2 will handle S3 download
-    // No need to validate local file existence
-  } else {
-    // Validate local file exists before processing
-    const fs = await import('fs/promises');
+  // Validate local file exists before processing
+  const fsResume = await import('fs/promises');
+  try {
+    await fsResume.access(document.filePath);
+    console.log(`[Processing Resume] File exists: ${document.filePath}`);
+  } catch (error) {
+    console.error(`[Processing Resume] File not found: ${document.filePath}`);
+    const projectDb = createProjectDbPool(projectId);
     try {
-      await fs.access(document.filePath);
-      console.log(`[Processing Resume] File exists: ${document.filePath}`);
-    } catch (error) {
-      console.error(`[Processing Resume] File not found: ${document.filePath}`);
-      const projectDb = createProjectDbPool(projectId);
-      try {
-        await projectDb.execute(
-          `UPDATE processing_jobs SET status = 'failed', stage = 'error', error_message = ?, completed_at = NOW() WHERE document_id = ?`,
-          [`File not found: ${document.filePath}`, document.id]
-        );
-      } finally {
-        await projectDb.end();
-      }
-      return;
+      await projectDb.execute(
+        `UPDATE processing_jobs SET status = 'failed', stage = 'error', error_message = ?, completed_at = NOW() WHERE document_id = ?`,
+        [`File not found: ${document.filePath}`, document.id]
+      );
+    } finally {
+      await projectDb.end();
     }
+    return;
   }
   
   // Resolve AUTO document type before processing
@@ -287,7 +276,6 @@ export async function resumeDocumentProcessing(projectId: number, job: any) {
   if (resolvedDocumentType === 'AUTO') {
     try {
       const { detectDocumentType } = await import('./document-type-detector');
-      // For chunked files, pass the filePath JSON string — detectDocumentType handles reassembly
       resolvedDocumentType = await detectDocumentType(document.filePath, document.fileName);
       console.log(`[Processing Resume] AUTO detected document type: ${resolvedDocumentType}`);
       // Persist the detected type back to the documents table
