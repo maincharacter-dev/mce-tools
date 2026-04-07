@@ -93,10 +93,62 @@ export async function provisionProjectTables(config: ProjectTableConfig): Promis
     }
   }
 
+  // Run schema migrations for existing tables (adds missing columns, renames, etc.)
+  await migrateProjectTables(pool, prefix, config.projectId);
+
   // Mark as provisioned so future calls skip immediately
   provisionedProjects.add(config.projectId);
   console.log(`[ProjectTables] Successfully provisioned tables for project ${config.projectId}`);
   return true;
+}
+
+/**
+ * Run incremental schema migrations on existing project tables.
+ * Each migration is idempotent — safe to run multiple times.
+ */
+async function migrateProjectTables(pool: any, prefix: string, projectId: number): Promise<void> {
+  const accUploads = `${prefix}acc_uploads`;
+
+  // Migration 1: acc_uploads — rename old columns and add missing ones
+  const columnMigrations: Array<{ table: string; check: string; alter: string }> = [
+    {
+      table: accUploads,
+      check: 'acc_folder_path',
+      alter: `ALTER TABLE \`${accUploads}\` ADD COLUMN acc_folder_path VARCHAR(500)`,
+    },
+    {
+      table: accUploads,
+      check: 'acc_file_name',
+      alter: `ALTER TABLE \`${accUploads}\` ADD COLUMN acc_file_name VARCHAR(500)`,
+    },
+    {
+      table: accUploads,
+      check: 'acc_web_view_url',
+      alter: `ALTER TABLE \`${accUploads}\` ADD COLUMN acc_web_view_url VARCHAR(500)`,
+    },
+    {
+      table: accUploads,
+      check: 'uploaded_at',
+      alter: `ALTER TABLE \`${accUploads}\` ADD COLUMN uploaded_at TIMESTAMP NULL`,
+    },
+  ];
+
+  for (const migration of columnMigrations) {
+    try {
+      // Check if column already exists
+      const [cols]: any = await pool.execute(
+        `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [migration.table, migration.check]
+      );
+      if (cols.length === 0) {
+        await pool.execute(migration.alter);
+        console.log(`[ProjectTables] ✓ Migration: added column ${migration.check} to ${migration.table}`);
+      }
+    } catch (err: any) {
+      console.error(`[ProjectTables] Migration warning for ${migration.check}:`, err.message);
+    }
+  }
 }
 
 /**
