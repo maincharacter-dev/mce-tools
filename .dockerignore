@@ -1,0 +1,37 @@
+# Dependencies — installed fresh inside the Docker build stages
+node_modules
+.pnpm-store
+
+# Build output — rebuilt inside Docker
+dist
+
+# Local dev / editor files
+.git
+.gitignore
+.env
+.env.*
+*.local
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+coverage
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files themselves (not needed in context)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Temporary files
+tmp
+temp
+.tmp

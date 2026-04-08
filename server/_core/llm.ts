@@ -256,8 +256,13 @@ const resolveApiUrl = () => {
 };
 
 const assertApiKey = () => {
+  const useOpenAI = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-');
+  if (useOpenAI) {
+    // OpenAI mode — key is already validated by the startsWith check above
+    return;
+  }
   if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+    throw new Error("No LLM API key configured. Set OPENAI_API_KEY (sk-...) or BUILT_IN_FORGE_API_KEY.");
   }
 };
 
