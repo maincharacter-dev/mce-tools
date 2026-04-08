@@ -1,9 +1,13 @@
 # Dependencies — installed fresh inside the Docker build stages
+# Use ** to exclude node_modules at ANY depth (root, tools/*, oe-toolkit, etc.)
 node_modules
+**/node_modules
 .pnpm-store
+**/.pnpm-store
 
 # Build output — rebuilt inside Docker
 dist
+**/dist
 
 # Local dev / editor files
 .git
@@ -16,11 +20,13 @@ dist
 **/*.test.ts
 **/*.spec.ts
 coverage
+**/coverage
 
 # Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
+**/*.log
 
 # OS files
 .DS_Store
@@ -35,3 +41,5 @@ docker-compose*.yml
 tmp
 temp
 .tmp
+**/tmp
+**/temp
