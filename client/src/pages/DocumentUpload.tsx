@@ -39,22 +39,27 @@ function quickClassifyFilename(filename: string): { type: string; confidence: 'h
   if (/contract|agreement|\bppa\b|\bepc\b|\bo&m\b|lease/i.test(lowerName)) {
     return { type: 'CONTRACT', confidence: 'high' };
   }
-  if (/grid[_\s-]*study|grid[_\s-]*connection|connection[_\s-]*study|\bgca\b/i.test(lowerName)) {
+  if (/grid[_\s-]*study|grid[_\s-]*connection|connection[_\s-]*study|\bgca\b|feasib/i.test(lowerName)) {
     return { type: 'GRID_STUDY', confidence: 'high' };
   }
   if (/concept[_\s-]*design|preliminary[_\s-]*design|layout|site[_\s-]*plan/i.test(lowerName)) {
     return { type: 'CONCEPT_DESIGN', confidence: 'high' };
   }
-  if (/weather|\btmy\b|\bepw\b|solar[_\s-]*resource|irradiance|meteo/i.test(lowerName)) {
+  if (/weather|\btmy\b|\bepw\b|solar[_\s-]*resource|irradiance|meteo|\bghi\b|\bdni\b/i.test(lowerName)) {
     return { type: 'WEATHER_FILE', confidence: 'high' };
   }
-  
-  // Medium confidence - less specific patterns
-  if (/report|study|analysis/i.test(lowerName)) {
-    return { type: 'OTHER', confidence: 'medium' };
+  // CSV files are almost always weather/data files in this context — let AI decide
+  if (/\.csv$/i.test(lowerName)) {
+    return { type: 'AUTO', confidence: 'low' };
   }
   
-  return { type: 'OTHER', confidence: 'low' };
+  // Medium confidence — let AI refine
+  if (/report|study|analysis|assessment/i.test(lowerName)) {
+    return { type: 'AUTO', confidence: 'medium' };
+  }
+  
+  // Unknown — always defer to AI
+  return { type: 'AUTO', confidence: 'low' };
 }
 
 const DOCUMENT_TYPES = [

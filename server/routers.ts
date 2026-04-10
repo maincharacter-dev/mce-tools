@@ -694,6 +694,33 @@ export const appRouter = router({
           await connection.end();
         }
       }),
+    reclassifyDocument: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        documentId: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const projectIdNum = parseInt(input.projectId);
+        const connection = await createProjectDbConnection(projectIdNum);
+        try {
+          const [docs] = await connection.execute(
+            "SELECT id, fileName, filePath FROM documents WHERE id = ?",
+            [input.documentId]
+          ) as any;
+          if (!docs || docs.length === 0) throw new Error('Document not found');
+          const doc = docs[0];
+          const { detectDocumentType } = await import('./document-type-detector');
+          const detectedType = await detectDocumentType(doc.filePath, doc.fileName);
+          console.log(`[Reclassify] ${doc.fileName} → ${detectedType}`);
+          await connection.execute(
+            "UPDATE documents SET documentType = ?, updatedAt = NOW() WHERE id = ?",
+            [detectedType, input.documentId]
+          );
+          return { success: true, documentType: detectedType };
+        } finally {
+          await connection.end();
+        }
+      }),
     updateDocumentType: protectedProcedure
       .input(z.object({ 
         projectId: z.string(), 

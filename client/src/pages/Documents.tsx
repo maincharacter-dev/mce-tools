@@ -70,6 +70,17 @@ export function Documents() {
     },
   });
 
+  // Reclassify document mutation (AI auto-detect)
+  const reclassifyMutation = trpc.documents.reclassifyDocument.useMutation({
+    onSuccess: (result: any) => {
+      alert(`Document reclassified as: ${result.documentType}`);
+      refetch();
+    },
+    onError: (error: any) => {
+      alert(`Reclassify failed: ${error.message || 'Unknown error'}`);
+    },
+  });
+
   // Sync to ACC mutation
   const syncToACCMutation = trpc.documents.syncToACC.useMutation({
     onSuccess: (result: any) => {
@@ -418,6 +429,23 @@ export function Documents() {
                         <RefreshCw className={`h-4 w-4 ${retryProcessingMutation.isPending ? 'animate-spin' : ''}`} />
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (projectId) {
+                          reclassifyMutation.mutate({
+                            projectId: projectId,
+                            documentId: doc.id,
+                          });
+                        }
+                      }}
+                      disabled={reclassifyMutation.isPending}
+                      title="Auto-detect document type with AI"
+                      className="text-purple-400 border-purple-500/50 hover:bg-purple-500/10"
+                    >
+                      <span className={`text-xs font-bold ${reclassifyMutation.isPending ? 'animate-pulse' : ''}`}>AI</span>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

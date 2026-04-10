@@ -24,8 +24,14 @@ function normalizeDocType(type: string): DocumentType {
     'GRID_STUDY': 'GRID_STUDY',
     'CONCEPT_DESIGN': 'CONCEPT_DESIGN',
     'WEATHER_FILE': 'WEATHER_FILE',
-    'WEATHER_DATA': 'WEATHER_FILE', // Map to WEATHER_FILE
-    'FINANCIAL_MODEL': 'DD_PACK', // Financial models are part of DD packs
+    'WEATHER_DATA': 'WEATHER_FILE',       // Map to WEATHER_FILE
+    'FINANCIAL_MODEL': 'DD_PACK',          // Financial models are part of DD packs
+    'PLANNING': 'OTHER',                   // Planning docs → OTHER for now
+    'FEASIBILITY_STUDY': 'GRID_STUDY',     // Feasibility studies → GRID_STUDY
+    'FEASIBILITY': 'GRID_STUDY',
+    'TECHNICAL_REPORT': 'GRID_STUDY',
+    'SOLAR_RESOURCE': 'WEATHER_FILE',
+    'ENERGY_YIELD': 'GRID_STUDY',
     'OTHER': 'OTHER',
   };
   return typeMap[type] || 'OTHER';
@@ -75,23 +81,27 @@ export async function detectDocumentType(filePath: string, fileName: string): Pr
     const prompt = `You are a document classification expert for renewable energy projects. Analyze the following document and classify it into ONE of these categories:
 
 **Categories:**
-- IM: Information Memorandum (project overview, investment summary, executive summary)
-- DD_PACK: Due Diligence Pack (comprehensive project data, technical specifications, financial models)
-- CONTRACT: Contracts and agreements (PPAs, land leases, EPC contracts, O&M agreements)
-- GRID_STUDY: Grid connection studies (grid impact assessment, connection agreement, network studies)
-- PLANNING: Planning and permitting documents (development applications, environmental approvals, permits)
-- CONCEPT_DESIGN: Concept designs and layouts (site plans, electrical diagrams, preliminary designs)
-- WEATHER_FILE: Weather data files (TMY, EPW, CSV with solar irradiance data, PVGIS data)
-- OTHER: Any other document type
+- IM: Information Memorandum (project overview, investment summary, executive summary, project teaser)
+- DD_PACK: Due Diligence Pack (comprehensive project data, technical specifications, financial models, data room)
+- CONTRACT: Contracts and agreements (PPAs, land leases, EPC contracts, O&M agreements, offtake agreements)
+- GRID_STUDY: Grid connection studies AND feasibility studies (grid impact assessment, connection agreement, network studies, solar feasibility, project feasibility report, energy yield assessment)
+- CONCEPT_DESIGN: Concept designs and layouts (site plans, electrical diagrams, preliminary designs, single line diagrams)
+- WEATHER_FILE: Weather data files (TMY, EPW, CSV with solar irradiance data, PVGIS data, meteorological data, GHI/DNI columns, wind speed data)
+- OTHER: Any other document type not listed above
 
 **Document to classify:**
 Filename: ${fileName}
 ${textSample ? `\nFirst page content:\n${textSample}` : ''}
 
+**Key hints:**
+- CSV files with columns like GHI, DNI, DHI, temperature, wind speed → WEATHER_FILE
+- Documents with "feasibility", "feasibility study", "solar feasibility" in name or content → GRID_STUDY
+- Documents with "information memorandum", "investment memo", "executive summary" → IM
+
 **Instructions:**
 1. Analyze the filename and content carefully
 2. Look for key indicators like document titles, section headings, terminology
-3. Return ONLY the category code (IM, DD_PACK, CONTRACT, GRID_STUDY, PLANNING, CONCEPT_DESIGN, WEATHER_FILE, or OTHER)
+3. Return ONLY the category code (IM, DD_PACK, CONTRACT, GRID_STUDY, CONCEPT_DESIGN, WEATHER_FILE, or OTHER)
 4. Do not include any explanation or additional text
 
 Category:`;
@@ -107,7 +117,7 @@ Category:`;
     const content = response.choices[0].message.content;
     const detectedType = (typeof content === 'string' ? content : '').trim().toUpperCase();
 
-    // Validate response
+    // Validate response — also handle extended types via normalizeDocType
     const validTypes: DocumentType[] = [
       'IM',
       'DD_PACK',
@@ -117,12 +127,19 @@ Category:`;
       'WEATHER_FILE',
       'OTHER'
     ];
+    // Extended types the LLM might return that we can map
+    const extendedTypes = ['PLANNING', 'FEASIBILITY_STUDY', 'FEASIBILITY', 'WEATHER_DATA',
+      'FINANCIAL_MODEL', 'TECHNICAL_REPORT', 'SOLAR_RESOURCE', 'ENERGY_YIELD'];
     
     if (validTypes.includes(detectedType as DocumentType)) {
       console.log(`[Document Type Detector] Detected type: ${detectedType}`);
       return detectedType as DocumentType;
+    } else if (extendedTypes.includes(detectedType)) {
+      const normalized = normalizeDocType(detectedType);
+      console.log(`[Document Type Detector] Extended type ${detectedType} normalized to: ${normalized}`);
+      return normalized;
     } else {
-      console.warn(`[Document Type Detector] Invalid response: ${detectedType}, defaulting to OTHER`);
+      console.warn(`[Document Type Detector] Unexpected response: "${detectedType}", defaulting to OTHER`);
       return 'OTHER';
     }
 
