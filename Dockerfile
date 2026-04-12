@@ -1,22 +1,34 @@
 # ============================================================
 # Multi-stage Dockerfile for MCE Workspace (mce-workspace)
 # ============================================================
-# Stage 1: Install dependencies
+# Stage 1: Install dependencies (with BuildKit pnpm store cache)
 # Stage 2: Build the application (Vite + esbuild)
 # Stage 3: Production runtime
+#
+# IMPORTANT: Enable BuildKit for fast incremental builds:
+#   DOCKER_BUILDKIT=1 docker compose build
+# Or add to docker-compose.yml:
+#   x-build-args: &build-args
+#     BUILDKIT_INLINE_CACHE: "1"
 # ============================================================
 
 # ---- Stage 1: Dependencies ----
 FROM node:22-slim AS deps
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
+# Install pnpm via npm (faster than corepack which downloads from internet)
+RUN npm install -g pnpm@10.4.1 --quiet
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
-RUN pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+# Use BuildKit cache mount for pnpm store — avoids re-downloading on every build
+# The github: tarball for @oe-ecosystem/ai-agent is cached here after first download
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline || \
+    pnpm install --no-frozen-lockfile --prefer-offline || \
+    pnpm install --no-frozen-lockfile
 
 # ---- Stage 2: Build ----
 FROM node:22-slim AS build
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
+RUN npm install -g pnpm@10.4.1 --quiet
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -37,9 +49,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
-# Install drizzle-kit globally for migrations
-RUN npm install -g drizzle-kit
+RUN npm install -g pnpm@10.4.1 drizzle-kit --quiet
 
 WORKDIR /app
 
