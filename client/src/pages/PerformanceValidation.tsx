@@ -67,6 +67,25 @@ export default function PerformanceValidation() {
   const hasWeatherFile = weatherFilesArray && weatherFilesArray.length > 0;
   const hasPerfParams = perfParamsArray && perfParamsArray.length > 0;
   const hasWeatherData = !!weatherData;
+
+  // Staleness detection: check if a newer/better weather file was uploaded after the last validation
+  const latestUploadedWeatherFile = weatherFilesArray?.find((f: any) => f.source_type === 'uploaded' || f.file_name);
+  const validationRanWithFreeData = latestValidation && (
+    !latestValidation.weather_data_source ||
+    latestValidation.weather_data_source === 'free' ||
+    latestValidation.weather_data_source === 'open-meteo' ||
+    latestValidation.weather_data_source === 'fallback'
+  );
+  const newerWeatherFileExists = latestValidation && latestUploadedWeatherFile && (
+    new Date(latestUploadedWeatherFile.created_at) > new Date(latestValidation.created_at)
+  );
+  // Show stale warning if: validation used free data but uploaded file now exists,
+  // OR a newer uploaded file was added after the last validation
+  const isValidationStale = !!latestValidation && (
+    (validationRanWithFreeData && hasWeatherFile) ||
+    !!newerWeatherFileExists
+  );
+  const staleWeatherFileName = latestUploadedWeatherFile?.file_name;
   
   // Refetch validations when weather file is uploaded
   const utils = trpc.useUtils();
@@ -327,6 +346,33 @@ export default function PerformanceValidation() {
           </Button>
         </div>
       </div>
+
+      {/* Stale Validation Warning — shown when a newer/better weather file exists */}
+      {isValidationStale && (
+        <Alert className="border-amber-500/50 bg-amber-500/10">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <div>
+              <span className="font-semibold text-amber-400">Validation results may be outdated.</span>
+              {' '}
+              {newerWeatherFileExists
+                ? `A newer weather file (${staleWeatherFileName}) was uploaded after this validation ran.`
+                : `This validation used free Open-Meteo data, but site-specific weather data (${staleWeatherFileName}) is now available.`
+              }
+              {' '}Re-run the validation to get improved results using your project-specific weather data.
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20 shrink-0"
+              onClick={() => projectId && runValidation.mutate({ projectId })}
+              disabled={runValidation.isPending}
+            >
+              {runValidation.isPending ? 'Running...' : 'Re-run Now'}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Monthly Irradiance Chart - Always show if weather data exists */}
       {hasWeatherData && weatherData && (

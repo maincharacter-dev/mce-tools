@@ -1655,11 +1655,13 @@ Synthesized narrative:`;
           console.log('[Validation] Got weather rows:', weatherRows?.length);
           
           let weatherData = null;
+          let weatherDataSource = 'free'; // default — will be overridden if uploaded file used
           if (weatherRows && weatherRows.length > 0 && weatherRows[0].annual_summary) {
             const summary = weatherRows[0].annual_summary;
             console.log('[Validation] annual_summary type:', typeof summary);
             // Handle both string and already-parsed object
             weatherData = typeof summary === 'string' ? JSON.parse(summary) : summary;
+            weatherDataSource = 'uploaded'; // we have a real uploaded weather file
           }
           
           // Run validation calculation
@@ -1679,15 +1681,15 @@ Synthesized narrative:`;
               contractor_claim_gwh, variance_percent, variance_gwh, flag_triggered, confidence_level,
               dc_capacity_mw, ac_capacity_mw, tracking_type, total_system_losses_percent,
               parameters_extracted_count, parameters_assumed_count,
-              ghi_annual_kwh_m2, assumptions, warnings
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              ghi_annual_kwh_m2, weather_data_source, assumptions, warnings
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               result.id, result.project_id, result.calculation_id,
               result.annual_generation_gwh, result.capacity_factor_percent, result.specific_yield_kwh_kwp,
               result.contractor_claim_gwh, result.variance_percent, result.variance_gwh, result.flag_triggered, result.confidence_level,
               result.dc_capacity_mw, result.ac_capacity_mw, result.tracking_type, result.total_system_losses_percent,
               result.parameters_extracted_count, result.parameters_assumed_count,
-              result.ghi_annual_kwh_m2, JSON.stringify(result.assumptions), JSON.stringify(result.warnings)
+              result.ghi_annual_kwh_m2, weatherDataSource, JSON.stringify(result.assumptions), JSON.stringify(result.warnings)
             ]
           );
           
