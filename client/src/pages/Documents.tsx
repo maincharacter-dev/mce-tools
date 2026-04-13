@@ -165,9 +165,10 @@ export function Documents() {
     { value: "IM", label: "Information Memorandum" },
     { value: "DD_PACK", label: "Due Diligence Pack" },
     { value: "CONTRACT", label: "Contract" },
+    { value: "FEASIBILITY_STUDY", label: "Feasibility Study" },
     { value: "GRID_STUDY", label: "Grid Study" },
-    { value: "PLANNING", label: "Planning Document" },
     { value: "CONCEPT_DESIGN", label: "Concept Design" },
+    { value: "WEATHER_FILE", label: "Weather File" },
     { value: "OTHER", label: "Other" },
   ];
 

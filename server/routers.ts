@@ -141,7 +141,7 @@ export const appRouter = router({
           fileName: z.string(),
           fileType: z.string(),
           fileSize: z.number(),
-          documentType: z.enum(["IM", "DD_PACK", "CONTRACT", "GRID_STUDY", "CONCEPT_DESIGN", "WEATHER_FILE", "OTHER", "AUTO"]),
+          documentType: z.enum(["IM", "DD_PACK", "CONTRACT", "GRID_STUDY", "FEASIBILITY_STUDY", "CONCEPT_DESIGN", "WEATHER_FILE", "OTHER", "AUTO"]),
           totalChunks: z.number(),
         })
       )
@@ -405,7 +405,7 @@ export const appRouter = router({
             fileName: z.string(),
             fileType: z.string(),
             fileSize: z.number(),
-            documentType: z.enum(["IM", "DD_PACK", "CONTRACT", "GRID_STUDY", "CONCEPT_DESIGN", "WEATHER_FILE", "OTHER", "AUTO"]),
+            documentType: z.enum(["IM", "DD_PACK", "CONTRACT", "GRID_STUDY", "FEASIBILITY_STUDY", "CONCEPT_DESIGN", "WEATHER_FILE", "OTHER", "AUTO"]),
             fileData: z.string(), // base64 encoded
           })
         )
@@ -725,7 +725,7 @@ export const appRouter = router({
       .input(z.object({ 
         projectId: z.string(), 
         documentId: z.string(),
-        documentType: z.enum(['IM', 'DD_PACK', 'CONTRACT', 'GRID_STUDY', 'PLANNING', 'CONCEPT_DESIGN', 'WEATHER_FILE', 'OTHER'])
+        documentType: z.enum(['IM', 'DD_PACK', 'CONTRACT', 'GRID_STUDY', 'FEASIBILITY_STUDY', 'CONCEPT_DESIGN', 'WEATHER_FILE', 'OTHER'])
       }))
       .mutation(async ({ input }) => {
         const mysql = await import('mysql2/promise');

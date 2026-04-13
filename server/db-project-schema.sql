@@ -41,7 +41,7 @@ CREATE TABLE documents (
   filePath VARCHAR(512) NOT NULL,
   fileSizeBytes INT,
   fileHash VARCHAR(255),
-  documentType ENUM('IM', 'DD_PACK', 'CONTRACT', 'GRID_STUDY', 'CONCEPT_DESIGN', 'WEATHER_FILE', 'OTHER') NOT NULL,
+  documentType ENUM('IM', 'DD_PACK', 'CONTRACT', 'GRID_STUDY', 'FEASIBILITY_STUDY', 'CONCEPT_DESIGN', 'WEATHER_FILE', 'OTHER') NOT NULL,
   uploadDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   status ENUM('Uploaded', 'Processing', 'Processed', 'Error') DEFAULT 'Uploaded',
   processingError TEXT,

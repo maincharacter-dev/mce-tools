@@ -149,6 +149,25 @@ async function migrateProjectTables(pool: any, prefix: string, projectId: number
       console.error(`[ProjectTables] Migration warning for ${migration.check}:`, err.message);
     }
   }
+
+  // Migration 2: documents — expand documentType ENUM to include FEASIBILITY_STUDY
+  const documentsTable = `${prefix}documents`;
+  try {
+    const [enumRows]: any = await pool.execute(
+      `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'documentType'`,
+      [documentsTable]
+    );
+    if (enumRows.length > 0 && !enumRows[0].COLUMN_TYPE.includes('FEASIBILITY_STUDY')) {
+      await pool.execute(
+        `ALTER TABLE \`${documentsTable}\` MODIFY COLUMN documentType
+         ENUM('IM','DD_PACK','CONTRACT','GRID_STUDY','FEASIBILITY_STUDY','CONCEPT_DESIGN','WEATHER_FILE','OTHER') NOT NULL`
+      );
+      console.log(`[ProjectTables] ✓ Migration: expanded documentType ENUM in ${documentsTable}`);
+    }
+  } catch (err: any) {
+    console.error(`[ProjectTables] Migration warning for documentType ENUM:`, err.message);
+  }
 }
 
 /**

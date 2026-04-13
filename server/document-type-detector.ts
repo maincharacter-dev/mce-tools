@@ -10,7 +10,7 @@ import { invokeLLM } from './_core/llm';
 import { extractTextFromDocument } from './document-extractor';
 import { classifyByFilename, classifyByContent, type ClassificationResult } from './document-classifier';
 
-export type DocumentType = 'IM' | 'DD_PACK' | 'CONTRACT' | 'GRID_STUDY' | 'CONCEPT_DESIGN' | 'WEATHER_FILE' | 'OTHER';
+export type DocumentType = 'IM' | 'DD_PACK' | 'CONTRACT' | 'GRID_STUDY' | 'FEASIBILITY_STUDY' | 'CONCEPT_DESIGN' | 'WEATHER_FILE' | 'OTHER';
 
 /**
  * Normalize document type from classifier to valid DocumentType
@@ -22,16 +22,17 @@ function normalizeDocType(type: string): DocumentType {
     'DD_PACK': 'DD_PACK',
     'CONTRACT': 'CONTRACT',
     'GRID_STUDY': 'GRID_STUDY',
+    'FEASIBILITY_STUDY': 'FEASIBILITY_STUDY',
+    'FEASIBILITY': 'FEASIBILITY_STUDY',
+    'ENERGY_YIELD': 'FEASIBILITY_STUDY',
+    'YIELD_ASSESSMENT': 'FEASIBILITY_STUDY',
+    'TECHNICAL_REPORT': 'FEASIBILITY_STUDY',  // Most technical reports in this context are feasibility-related
     'CONCEPT_DESIGN': 'CONCEPT_DESIGN',
     'WEATHER_FILE': 'WEATHER_FILE',
-    'WEATHER_DATA': 'WEATHER_FILE',       // Map to WEATHER_FILE
-    'FINANCIAL_MODEL': 'DD_PACK',          // Financial models are part of DD packs
-    'PLANNING': 'OTHER',                   // Planning docs → OTHER for now
-    'FEASIBILITY_STUDY': 'GRID_STUDY',     // Feasibility studies → GRID_STUDY
-    'FEASIBILITY': 'GRID_STUDY',
-    'TECHNICAL_REPORT': 'GRID_STUDY',
+    'WEATHER_DATA': 'WEATHER_FILE',
     'SOLAR_RESOURCE': 'WEATHER_FILE',
-    'ENERGY_YIELD': 'GRID_STUDY',
+    'FINANCIAL_MODEL': 'DD_PACK',             // Financial models are part of DD packs
+    'PLANNING': 'OTHER',                       // Planning docs → OTHER for now
     'OTHER': 'OTHER',
   };
   return typeMap[type] || 'OTHER';
@@ -84,7 +85,8 @@ export async function detectDocumentType(filePath: string, fileName: string): Pr
 - IM: Information Memorandum (project overview, investment summary, executive summary, project teaser)
 - DD_PACK: Due Diligence Pack (comprehensive project data, technical specifications, financial models, data room)
 - CONTRACT: Contracts and agreements (PPAs, land leases, EPC contracts, O&M agreements, offtake agreements)
-- GRID_STUDY: Grid connection studies AND feasibility studies (grid impact assessment, connection agreement, network studies, solar feasibility, project feasibility report, energy yield assessment)
+- GRID_STUDY: Grid connection studies (grid impact assessment, connection agreement, network studies, load flow analysis, fault level studies)
+- FEASIBILITY_STUDY: Feasibility studies and energy yield assessments (solar feasibility report, project feasibility, pre-feasibility study, energy yield assessment, bankability report, independent engineer report)
 - CONCEPT_DESIGN: Concept designs and layouts (site plans, electrical diagrams, preliminary designs, single line diagrams)
 - WEATHER_FILE: Weather data files (TMY, EPW, CSV with solar irradiance data, PVGIS data, meteorological data, GHI/DNI columns, wind speed data)
 - OTHER: Any other document type not listed above
@@ -95,13 +97,14 @@ ${textSample ? `\nFirst page content:\n${textSample}` : ''}
 
 **Key hints:**
 - CSV files with columns like GHI, DNI, DHI, temperature, wind speed → WEATHER_FILE
-- Documents with "feasibility", "feasibility study", "solar feasibility" in name or content → GRID_STUDY
+- Documents with "feasibility", "feasibility study", "solar feasibility", "energy yield" in name or content → FEASIBILITY_STUDY
+- Documents with "grid connection", "network study", "load flow", "fault level" → GRID_STUDY
 - Documents with "information memorandum", "investment memo", "executive summary" → IM
 
 **Instructions:**
 1. Analyze the filename and content carefully
 2. Look for key indicators like document titles, section headings, terminology
-3. Return ONLY the category code (IM, DD_PACK, CONTRACT, GRID_STUDY, CONCEPT_DESIGN, WEATHER_FILE, or OTHER)
+3. Return ONLY the category code (IM, DD_PACK, CONTRACT, GRID_STUDY, FEASIBILITY_STUDY, CONCEPT_DESIGN, WEATHER_FILE, or OTHER)
 4. Do not include any explanation or additional text
 
 Category:`;
@@ -123,13 +126,14 @@ Category:`;
       'DD_PACK',
       'CONTRACT',
       'GRID_STUDY',
+      'FEASIBILITY_STUDY',
       'CONCEPT_DESIGN',
       'WEATHER_FILE',
       'OTHER'
     ];
     // Extended types the LLM might return that we can map
-    const extendedTypes = ['PLANNING', 'FEASIBILITY_STUDY', 'FEASIBILITY', 'WEATHER_DATA',
-      'FINANCIAL_MODEL', 'TECHNICAL_REPORT', 'SOLAR_RESOURCE', 'ENERGY_YIELD'];
+    const extendedTypes = ['PLANNING', 'FEASIBILITY', 'WEATHER_DATA',
+      'FINANCIAL_MODEL', 'TECHNICAL_REPORT', 'SOLAR_RESOURCE', 'ENERGY_YIELD', 'YIELD_ASSESSMENT'];
     
     if (validTypes.includes(detectedType as DocumentType)) {
       console.log(`[Document Type Detector] Detected type: ${detectedType}`);
@@ -158,6 +162,7 @@ export function getDocumentTypeLabel(type: DocumentType): string {
     'DD_PACK': 'Due Diligence Pack',
     'CONTRACT': 'Contract',
     'GRID_STUDY': 'Grid Study',
+    'FEASIBILITY_STUDY': 'Feasibility Study',
     'CONCEPT_DESIGN': 'Concept Design',
     'WEATHER_FILE': 'Weather File',
     'OTHER': 'Other'

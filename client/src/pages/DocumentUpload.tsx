@@ -39,8 +39,11 @@ function quickClassifyFilename(filename: string): { type: string; confidence: 'h
   if (/contract|agreement|\bppa\b|\bepc\b|\bo&m\b|lease/i.test(lowerName)) {
     return { type: 'CONTRACT', confidence: 'high' };
   }
-  if (/grid[_\s-]*study|grid[_\s-]*connection|connection[_\s-]*study|\bgca\b|feasib/i.test(lowerName)) {
+  if (/grid[_\s-]*study|grid[_\s-]*connection|connection[_\s-]*study|\bgca\b|load[_\s-]*flow|fault[_\s-]*level/i.test(lowerName)) {
     return { type: 'GRID_STUDY', confidence: 'high' };
+  }
+  if (/feasib|energy[_\s-]*yield|yield[_\s-]*assessment|bankab|independent[_\s-]*engineer/i.test(lowerName)) {
+    return { type: 'FEASIBILITY_STUDY', confidence: 'high' };
   }
   if (/concept[_\s-]*design|preliminary[_\s-]*design|layout|site[_\s-]*plan/i.test(lowerName)) {
     return { type: 'CONCEPT_DESIGN', confidence: 'high' };
@@ -67,8 +70,10 @@ const DOCUMENT_TYPES = [
   { value: "IM", label: "Investment Memorandum" },
   { value: "DD_PACK", label: "Due Diligence Pack" },
   { value: "CONTRACT", label: "Contract" },
+  { value: "FEASIBILITY_STUDY", label: "Feasibility Study" },
   { value: "GRID_STUDY", label: "Grid Study" },
   { value: "CONCEPT_DESIGN", label: "Concept Design" },
+  { value: "WEATHER_FILE", label: "Weather File" },
   { value: "OTHER", label: "Other" },
 ];
 
