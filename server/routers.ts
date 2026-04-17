@@ -1382,22 +1382,22 @@ export const appRouter = router({
     getNarratives: protectedProcedure
       .input(z.object({ projectId: z.string() }))
       .query(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        
-        // projectId is actually the project_db_name (e.g., "proj_1_1769157846333")
-        // Query narratives directly using it
-        const [rows] = await db.execute(
-          `SELECT section_name, narrative_text FROM section_narratives WHERE project_db_name = '${input.projectId}'`
-        );
-        
-        // Convert to map for easy lookup
-        const narratives: Record<string, string> = {};
-        for (const row of rows as any[]) {
-          narratives[row.section_name] = row.narrative_text;
+        const projectIdNum = parseInt(input.projectId);
+        if (isNaN(projectIdNum)) throw new Error("Invalid projectId");
+        const projectDb = await createProjectDbConnection(projectIdNum);
+        try {
+          const [rows] = await projectDb.execute(
+            `SELECT section_key, narrative FROM section_narratives WHERE project_id = ?`,
+            [projectIdNum]
+          );
+          const narratives: Record<string, string> = {};
+          for (const row of rows as any[]) {
+            narratives[row.section_key] = row.narrative;
+          }
+          return narratives;
+        } finally {
+          await projectDb.end();
         }
-        
-        return narratives;
       }),
     update: protectedProcedure
       .input(
@@ -1489,6 +1489,29 @@ Synthesized narrative:`;
           console.error("Failed to synthesize narrative:", error);
           // Fallback: return facts as bullet points
           return { narrative: factsList };
+        }
+      }),
+
+    saveNarrative: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        sectionKey: z.string(),
+        narrative: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const projectIdNum = parseInt(input.projectId);
+        if (isNaN(projectIdNum)) throw new Error("Invalid projectId");
+        const projectDb = await createProjectDbConnection(projectIdNum);
+        try {
+          await projectDb.execute(
+            `INSERT INTO section_narratives (project_id, section_key, narrative)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE narrative = ?, updated_at = NOW()`,
+            [projectIdNum, input.sectionKey, input.narrative, input.narrative]
+          );
+          return { success: true };
+        } finally {
+          await projectDb.end();
         }
       }),
   }),

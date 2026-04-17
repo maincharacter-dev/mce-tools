@@ -18,6 +18,7 @@ import {
   Lightbulb,
   ArrowLeft,
   MapPin,
+  BookOpen,
 } from "lucide-react";
 import { ACCConnectionStatus } from "@/components/ACCConnectionStatus";
 
@@ -444,6 +445,15 @@ export default function ProjectDetailDashboard() {
                   Documents List
                 </Button>
                 
+                <Button
+                  onClick={() => navigate(`/project/${projectId}/deliverables`)}
+                  variant="outline"
+                  className="justify-start border-slate-700 hover:bg-slate-800 hover:border-orange-500/50"
+                >
+                  <BookOpen className="h-4 w-4 mr-2 text-orange-400" />
+                  Deliverables
+                </Button>
+
                 <Button
                   onClick={() => navigate(`/processing-status?projectId=${projectId}`)}
                   variant="outline"

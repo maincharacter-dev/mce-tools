@@ -20,6 +20,7 @@ import { PerformanceParameters } from "./pages/PerformanceParameters";
 import { FinancialData } from "./pages/FinancialData";
 import ACCCallback from "./pages/ACCCallback";
 import Login from "./pages/Login";
+import Deliverables from "./pages/Deliverables";
 
 function Router() {
   // Base path for subpath routing behind nginx (e.g. /workspace)
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/project/:projectId/performance" component={PerformanceValidation} />
       <Route path="/project/:projectId/performance-params" component={PerformanceParameters} />
       <Route path="/project/:projectId/financial" component={FinancialData} />
+      <Route path="/project/:projectId/deliverables" component={Deliverables} />
       <Route path="/ollama-config" component={OllamaConfig} />
       <Route path="/processing-status" component={ProcessingStatus} />
       <Route path="/api/acc/oauth/callback" component={ACCCallback} />
