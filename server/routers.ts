@@ -16,6 +16,7 @@ import { resumeDocumentProcessing } from './processing-resume';
 import { demoRouter } from "./demo-router";
 import { accRouter } from "./accRouter";
 import { agentRouter } from "./agent/agent-router";
+import { reportRouter } from "./report-router";
 import mysql from 'mysql2/promise';
 import { sql } from 'drizzle-orm';
 
@@ -23,6 +24,7 @@ export const appRouter = router({
   system: systemRouter,
   acc: accRouter,
   agent: agentRouter,
+  report: reportRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

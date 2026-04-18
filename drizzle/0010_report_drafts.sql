@@ -1,0 +1,52 @@
+-- Migration 0010: Report Drafts and Sections tables for the Report Builder
+
+CREATE TABLE IF NOT EXISTS `report_drafts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `report_type` varchar(50) NOT NULL DEFAULT 'dd_report',
+  `step` varchar(50) NOT NULL DEFAULT 'structure',
+  `project_name` varchar(500) NOT NULL DEFAULT '',
+  `sections` json DEFAULT NULL,
+  `content` json DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
+  `data_summary` text DEFAULT NULL,
+  `project_type` varchar(50) DEFAULT 'default',
+  `generation_job_id` varchar(100) DEFAULT NULL,
+  `generation_status` varchar(50) DEFAULT NULL,
+  `generation_progress` int DEFAULT 0,
+  `generation_current_section` varchar(200) DEFAULT NULL,
+  `generation_completed_sections` int DEFAULT 0,
+  `generation_total_sections` int DEFAULT 0,
+  `generation_error` text DEFAULT NULL,
+  `generated_file_key` varchar(500) DEFAULT NULL,
+  `generated_filename` varchar(500) DEFAULT NULL,
+  `generated_file_size_bytes` int DEFAULT 0,
+  `content_generation_job_id` varchar(100) DEFAULT NULL,
+  `content_generation_status` varchar(50) DEFAULT NULL,
+  `content_generation_progress` int DEFAULT 0,
+  `content_generation_current_section` varchar(200) DEFAULT NULL,
+  `content_generation_completed_sections` int DEFAULT 0,
+  `content_generation_total_sections` int DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_report_drafts_project_id` (`project_id`),
+  KEY `idx_report_drafts_step` (`step`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `generated_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `draft_id` int DEFAULT NULL,
+  `report_type` varchar(50) NOT NULL DEFAULT 'dd_report',
+  `filename` varchar(500) NOT NULL,
+  `file_key` varchar(500) DEFAULT NULL,
+  `file_size_bytes` int DEFAULT 0,
+  `download_url` text DEFAULT NULL,
+  `download_url_expires_at` timestamp NULL DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_generated_reports_project_id` (`project_id`),
+  KEY `idx_generated_reports_draft_id` (`draft_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
