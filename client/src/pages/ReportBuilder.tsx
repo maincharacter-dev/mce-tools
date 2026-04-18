@@ -1109,7 +1109,7 @@ export default function ReportBuilder() {
 
   // Fetch project details
   const { data: project } = trpc.projects.get.useQuery(
-    { projectId: String(projectId) },
+    { id: Number(projectId) },
     { enabled: !!projectId }
   );
 
@@ -1176,7 +1176,7 @@ export default function ReportBuilder() {
   const initNewDraft = async () => {
     if (!projectId || !project) return;
     try {
-      const projectName = project.name || project.description || `Project ${projectId}`;
+      const projectName = (project as any).projectName || (project as any).name || `Project ${projectId}`;
       const result = await createDraft.mutateAsync({
         projectId,
         projectName,
@@ -1204,7 +1204,7 @@ export default function ReportBuilder() {
     }
   };
 
-  const projectName = project?.name || project?.description || `Project ${projectId}`;
+  const projectName = (project as any)?.projectName || (project as any)?.name || `Project ${projectId}`;
 
   if (!projectId) {
     return (

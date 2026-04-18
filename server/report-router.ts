@@ -3,6 +3,10 @@
  *
  * Handles all report draft management and generation endpoints for the
  * Deliverables page and Report Builder workflow.
+ *
+ * NOTE: projectId is optional in most endpoints — when omitted the server
+ * resolves it from the draft row itself. This lets client components pass
+ * only draftId.
  */
 
 import { z } from "zod";
@@ -26,10 +30,11 @@ function getMainDb() {
   return { pool, db: drizzle(pool) };
 }
 
-async function getDraft(pool: any, draftId: number, projectId: number) {
-  const [rows] = await pool.execute(
-    "SELECT * FROM report_drafts WHERE id = ? AND project_id = ?",
-    [draftId, projectId]
+/** Fetch a draft. When projectId is omitted the lookup is by id only. */
+async function fetchDraft(pool: any, draftId: number, projectId?: number | null) {
+  const [rows] = (projectId != null
+    ? await pool.execute("SELECT * FROM report_drafts WHERE id = ? AND project_id = ?", [draftId, projectId])
+    : await pool.execute("SELECT * FROM report_drafts WHERE id = ?", [draftId])
   ) as any;
   const row = rows[0];
   if (!row) return null;
@@ -41,11 +46,21 @@ async function getDraft(pool: any, draftId: number, projectId: number) {
   };
 }
 
+// Zod schema for a section object (used in generateSection input)
+const sectionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  order: z.number().optional(),
+  wordTarget: z.number().optional(),
+  prompt: z.string().optional(),
+  included: z.boolean().optional(),
+});
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const reportRouter = router({
 
-  // List all in-progress drafts for a project
+  // List all drafts for a project
   listDrafts: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
@@ -56,7 +71,7 @@ export const reportRouter = router({
                   generation_status, content_generation_status,
                   created_at, updated_at
            FROM report_drafts
-           WHERE project_id = ? AND (generation_status IS NULL OR generation_status != 'completed')
+           WHERE project_id = ?
            ORDER BY updated_at DESC`,
           [input.projectId]
         ) as any;
@@ -86,13 +101,13 @@ export const reportRouter = router({
       }
     }),
 
-  // Get a single draft by ID
+  // Get a single draft by ID (projectId optional)
   getDraft: protectedProcedure
-    .input(z.object({ draftId: z.number(), projectId: z.number() }))
+    .input(z.object({ draftId: z.number(), projectId: z.number().optional() }))
     .query(async ({ input }) => {
       const { pool } = getMainDb();
       try {
-        const draft = await getDraft(pool, input.draftId, input.projectId);
+        const draft = await fetchDraft(pool, input.draftId, input.projectId);
         if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
         return draft;
       } finally {
@@ -100,7 +115,7 @@ export const reportRouter = router({
       }
     }),
 
-  // Create a new draft (Step 1: Structure)
+  // Create a new draft — proposes TOC via AI
   createDraft: protectedProcedure
     .input(z.object({
       projectId: z.number(),
@@ -112,7 +127,6 @@ export const reportRouter = router({
       try {
         console.log(`[Report Router] Creating draft for project ${input.projectId}`);
 
-        // Propose table of contents using AI
         const { sections, projectType, dataSummary } = await proposeTableOfContents(
           db as any,
           input.projectId,
@@ -133,7 +147,7 @@ export const reportRouter = router({
           ]
         ) as any;
 
-        return { draftId: result.insertId, sections, projectType, dataSummary };
+        return { draftId: result.insertId, sections, projectType, dataSummary, metadata: {} };
       } finally {
         await pool.end();
       }
@@ -143,7 +157,7 @@ export const reportRouter = router({
   updateStructure: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
+      projectId: z.number().optional(),
       sections: z.array(z.object({
         id: z.string(),
         title: z.string(),
@@ -157,8 +171,8 @@ export const reportRouter = router({
       const { pool } = getMainDb();
       try {
         await pool.execute(
-          "UPDATE report_drafts SET sections = ?, step = 'content', updated_at = NOW() WHERE id = ? AND project_id = ?",
-          [JSON.stringify(input.sections), input.draftId, input.projectId]
+          "UPDATE report_drafts SET sections = ?, step = 'content', updated_at = NOW() WHERE id = ?",
+          [JSON.stringify(input.sections), input.draftId]
         );
         return { success: true };
       } finally {
@@ -170,15 +184,15 @@ export const reportRouter = router({
   updateMetadata: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
+      projectId: z.number().optional(),
       metadata: z.record(z.string()),
     }))
     .mutation(async ({ input }) => {
       const { pool } = getMainDb();
       try {
         await pool.execute(
-          "UPDATE report_drafts SET metadata = ?, updated_at = NOW() WHERE id = ? AND project_id = ?",
-          [JSON.stringify(input.metadata), input.draftId, input.projectId]
+          "UPDATE report_drafts SET metadata = ?, updated_at = NOW() WHERE id = ?",
+          [JSON.stringify(input.metadata), input.draftId]
         );
         return { success: true };
       } finally {
@@ -190,22 +204,22 @@ export const reportRouter = router({
   updateSectionContent: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
+      projectId: z.number().optional(),
       sectionId: z.string(),
       content: z.string(),
     }))
     .mutation(async ({ input }) => {
       const { pool } = getMainDb();
       try {
-        const draft = await getDraft(pool, input.draftId, input.projectId);
+        const draft = await fetchDraft(pool, input.draftId);
         if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
 
         const existingContent = draft.content || {};
         existingContent[input.sectionId] = input.content;
 
         await pool.execute(
-          "UPDATE report_drafts SET content = ?, updated_at = NOW() WHERE id = ? AND project_id = ?",
-          [JSON.stringify(existingContent), input.draftId, input.projectId]
+          "UPDATE report_drafts SET content = ?, updated_at = NOW() WHERE id = ?",
+          [JSON.stringify(existingContent), input.draftId]
         );
         return { success: true };
       } finally {
@@ -214,33 +228,43 @@ export const reportRouter = router({
     }),
 
   // Generate content for a single section
+  // Client passes either sectionId (string) or section (full object)
   generateSection: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
-      sectionId: z.string(),
+      projectId: z.number().optional(),
+      sectionId: z.string().optional(),
+      section: sectionSchema.optional(),
     }))
     .mutation(async ({ input }) => {
       const { pool, db } = getMainDb();
       try {
-        const draft = await getDraft(pool, input.draftId, input.projectId);
+        const draft = await fetchDraft(pool, input.draftId);
         if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
 
-        const sections: ReportSection[] = draft.sections || [];
-        const section = sections.find((s: ReportSection) => s.id === input.sectionId);
+        const projectId: number = input.projectId ?? draft.project_id;
+
+        // Support both { sectionId } and { section } call patterns
+        let section: ReportSection | undefined;
+        if (input.section) {
+          section = input.section as ReportSection;
+        } else if (input.sectionId) {
+          const sections: ReportSection[] = draft.sections || [];
+          section = sections.find((s: ReportSection) => s.id === input.sectionId);
+        }
         if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
 
-        const content = await generateSectionContent(db as any, input.projectId, section);
+        const content = await generateSectionContent(db as any, projectId, section);
 
         const existingContent = draft.content || {};
-        existingContent[input.sectionId] = content;
+        existingContent[section.id] = content;
 
         await pool.execute(
-          "UPDATE report_drafts SET content = ?, updated_at = NOW() WHERE id = ? AND project_id = ?",
-          [JSON.stringify(existingContent), input.draftId, input.projectId]
+          "UPDATE report_drafts SET content = ?, updated_at = NOW() WHERE id = ?",
+          [JSON.stringify(existingContent), input.draftId]
         );
 
-        return { sectionId: input.sectionId, content };
+        return { sectionId: section.id, content };
       } finally {
         await pool.end();
       }
@@ -250,20 +274,21 @@ export const reportRouter = router({
   generateAllSections: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
+      projectId: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const { pool, db } = getMainDb();
       try {
-        const draft = await getDraft(pool, input.draftId, input.projectId);
+        const draft = await fetchDraft(pool, input.draftId);
         if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+
+        const projectId: number = input.projectId ?? draft.project_id;
 
         const sections: ReportSection[] = (draft.sections || []).filter(
           (s: ReportSection) => s.included !== false
         );
         const jobId = `content-${input.draftId}-${Date.now()}`;
 
-        // Mark as in-progress
         await pool.execute(
           `UPDATE report_drafts
            SET content_generation_job_id = ?,
@@ -273,8 +298,8 @@ export const reportRouter = router({
                content_generation_total_sections = ?,
                content_generation_current_section = ?,
                updated_at = NOW()
-           WHERE id = ? AND project_id = ?`,
-          [jobId, sections.length, sections[0]?.title || "", input.draftId, input.projectId]
+           WHERE id = ?`,
+          [jobId, sections.length, sections[0]?.title || "", input.draftId]
         );
 
         // Run generation in background (fire and forget)
@@ -283,7 +308,7 @@ export const reportRouter = router({
           for (let i = 0; i < sections.length; i++) {
             const section = sections[i];
             try {
-              const content = await generateSectionContent(db as any, input.projectId, section);
+              const content = await generateSectionContent(db as any, projectId, section);
               existingContent[section.id] = content;
 
               await pool.execute(
@@ -333,58 +358,77 @@ export const reportRouter = router({
     }),
 
   // Poll content generation progress
+  // Returns fields the client expects: isComplete, isFailed, completedSections, content
   getContentProgress: protectedProcedure
-    .input(z.object({ draftId: z.number(), projectId: z.number() }))
+    .input(z.object({ draftId: z.number(), projectId: z.number().optional() }))
     .query(async ({ input }) => {
       const { pool } = getMainDb();
       try {
         const [rows] = await pool.execute(
           `SELECT content_generation_status, content_generation_progress,
                   content_generation_current_section, content_generation_completed_sections,
-                  content_generation_total_sections
-           FROM report_drafts WHERE id = ? AND project_id = ?`,
-          [input.draftId, input.projectId]
+                  content_generation_total_sections, content
+           FROM report_drafts WHERE id = ?`,
+          [input.draftId]
         ) as any;
-        return rows[0] || null;
+        const row = rows[0];
+        if (!row) return null;
+        return {
+          status: row.content_generation_status,
+          progress: row.content_generation_progress,
+          currentSection: row.content_generation_current_section,
+          completedSections: row.content_generation_completed_sections,
+          totalSections: row.content_generation_total_sections,
+          isComplete: row.content_generation_status === "completed",
+          isFailed: row.content_generation_status === "failed",
+          content: row.content ? JSON.parse(row.content) : {},
+        };
       } finally {
         await pool.end();
       }
     }),
 
   // Refine a section with a specific instruction
+  // Accepts extra client fields (sectionTitle, currentContent, wordTarget) via passthrough
   refineSection: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
+      projectId: z.number().optional(),
       sectionId: z.string(),
       instruction: z.string(),
+      // Optional fields sent by client (ignored server-side, resolved from draft)
+      sectionTitle: z.string().optional(),
+      currentContent: z.string().optional(),
+      wordTarget: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const { pool, db } = getMainDb();
       try {
-        const draft = await getDraft(pool, input.draftId, input.projectId);
+        const draft = await fetchDraft(pool, input.draftId);
         if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+
+        const projectId: number = input.projectId ?? draft.project_id;
 
         const sections: ReportSection[] = draft.sections || [];
         const section = sections.find((s: ReportSection) => s.id === input.sectionId);
         if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
 
-        const currentContent = (draft.content || {})[input.sectionId] || "";
+        const currentContent = (draft.content || {})[input.sectionId] || input.currentContent || "";
         const refined = await refineSectionContent(
           currentContent,
           section.title,
           input.instruction,
-          section.wordTarget || 500,
+          input.wordTarget || section.wordTarget || 500,
           db as any,
-          input.projectId
+          projectId
         );
 
         const existingContent = draft.content || {};
         existingContent[input.sectionId] = refined;
 
         await pool.execute(
-          "UPDATE report_drafts SET content = ?, updated_at = NOW() WHERE id = ? AND project_id = ?",
-          [JSON.stringify(existingContent), input.draftId, input.projectId]
+          "UPDATE report_drafts SET content = ?, updated_at = NOW() WHERE id = ?",
+          [JSON.stringify(existingContent), input.draftId]
         );
 
         return { sectionId: input.sectionId, content: refined };
@@ -397,25 +441,26 @@ export const reportRouter = router({
   generateFinalReport: protectedProcedure
     .input(z.object({
       draftId: z.number(),
-      projectId: z.number(),
+      projectId: z.number().optional(),
+      projectName: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const { pool } = getMainDb();
       try {
-        const draft = await getDraft(pool, input.draftId, input.projectId);
+        const draft = await fetchDraft(pool, input.draftId);
         if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
 
+        const projectId: number = input.projectId ?? draft.project_id;
         const jobId = `gen-${input.draftId}-${Date.now()}`;
 
-        // Mark as generating
         await pool.execute(
           `UPDATE report_drafts
            SET generation_job_id = ?,
                generation_status = 'running',
                generation_progress = 0,
                updated_at = NOW()
-           WHERE id = ? AND project_id = ?`,
-          [jobId, input.draftId, input.projectId]
+           WHERE id = ?`,
+          [jobId, input.draftId]
         );
 
         const sections: ReportSection[] = (draft.sections || []).filter(
@@ -432,19 +477,13 @@ export const reportRouter = router({
               [input.draftId]
             );
 
-            const docxBuffer = await generateReportFromContent(
-              sections,
-              content,
-              metadata,
-              input.projectId
-            );
+            const docxBuffer = await generateReportFromContent(sections, content, metadata, projectId);
 
             await pool.execute(
               "UPDATE report_drafts SET generation_progress = 80, generation_current_section = 'Saving file...' WHERE id = ?",
               [input.draftId]
             );
 
-            // Save to local filesystem
             const fs = await import("fs/promises");
             const path = await import("path");
             const outputDir = `/app/data/reports`;
@@ -458,12 +497,11 @@ export const reportRouter = router({
 
             const stats = await fs.stat(filePath);
 
-            // Record in generated_reports
-            const [result] = await pool.execute(
+            await pool.execute(
               `INSERT INTO generated_reports
                (project_id, draft_id, report_type, filename, file_key, file_size_bytes)
                VALUES (?, ?, ?, ?, ?, ?)`,
-              [input.projectId, input.draftId, draft.report_type || "dd_report", filename, filePath, stats.size]
+              [projectId, input.draftId, draft.report_type || "dd_report", filename, filePath, stats.size]
             ) as any;
 
             await pool.execute(
@@ -499,15 +537,15 @@ export const reportRouter = router({
 
   // Poll final report generation status
   getGenerationStatus: protectedProcedure
-    .input(z.object({ draftId: z.number(), projectId: z.number() }))
+    .input(z.object({ draftId: z.number(), projectId: z.number().optional() }))
     .query(async ({ input }) => {
       const { pool } = getMainDb();
       try {
         const [rows] = await pool.execute(
           `SELECT generation_status, generation_progress, generation_current_section,
                   generation_error, generated_file_key, generated_filename, generated_file_size_bytes
-           FROM report_drafts WHERE id = ? AND project_id = ?`,
-          [input.draftId, input.projectId]
+           FROM report_drafts WHERE id = ?`,
+          [input.draftId]
         ) as any;
         return rows[0] || null;
       } finally {
@@ -517,13 +555,13 @@ export const reportRouter = router({
 
   // Retry a failed generation
   retryGeneration: protectedProcedure
-    .input(z.object({ draftId: z.number(), projectId: z.number() }))
+    .input(z.object({ draftId: z.number(), projectId: z.number().optional() }))
     .mutation(async ({ input }) => {
       const { pool } = getMainDb();
       try {
         await pool.execute(
-          "UPDATE report_drafts SET generation_status = NULL, generation_error = NULL, generation_progress = 0 WHERE id = ? AND project_id = ?",
-          [input.draftId, input.projectId]
+          "UPDATE report_drafts SET generation_status = NULL, generation_error = NULL, generation_progress = 0 WHERE id = ?",
+          [input.draftId]
         );
         return { success: true };
       } finally {
@@ -533,18 +571,17 @@ export const reportRouter = router({
 
   // Download a generated report
   downloadReport: protectedProcedure
-    .input(z.object({ reportId: z.number(), projectId: z.number() }))
+    .input(z.object({ reportId: z.number(), projectId: z.number().optional() }))
     .query(async ({ input }) => {
       const { pool } = getMainDb();
       try {
         const [rows] = await pool.execute(
-          "SELECT * FROM generated_reports WHERE id = ? AND project_id = ?",
-          [input.reportId, input.projectId]
+          "SELECT * FROM generated_reports WHERE id = ?",
+          [input.reportId]
         ) as any;
         const report = rows[0];
         if (!report) throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
 
-        // Return the file path for the client to download via a separate HTTP endpoint
         return {
           filename: report.filename,
           fileKey: report.file_key,
@@ -557,13 +594,13 @@ export const reportRouter = router({
 
   // Delete a draft
   deleteDraft: protectedProcedure
-    .input(z.object({ draftId: z.number(), projectId: z.number() }))
+    .input(z.object({ draftId: z.number(), projectId: z.number().optional() }))
     .mutation(async ({ input }) => {
       const { pool } = getMainDb();
       try {
         await pool.execute(
-          "DELETE FROM report_drafts WHERE id = ? AND project_id = ?",
-          [input.draftId, input.projectId]
+          "DELETE FROM report_drafts WHERE id = ?",
+          [input.draftId]
         );
         return { success: true };
       } finally {

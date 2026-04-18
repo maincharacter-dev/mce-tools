@@ -145,7 +145,7 @@ export default function Deliverables() {
 
   // Fetch project details
   const { data: project, isLoading: isLoadingProject } = trpc.projects.get.useQuery(
-    { projectId: String(projectId) },
+    { id: Number(projectId) },
     { enabled: !!projectId }
   );
 
@@ -171,7 +171,7 @@ export default function Deliverables() {
     onError: (err) => toast.error("Failed to delete draft", { description: err.message }),
   });
 
-  const projectName = project?.name || project?.description || `Project ${projectId}`;
+  const projectName = (project as any)?.projectName || (project as any)?.name || `Project ${projectId}`;
 
   // Separate active drafts from completed
   const activeDrafts = useMemo(
