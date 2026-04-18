@@ -5,7 +5,6 @@ import PizZip from "pizzip";
 import { createReport } from "docx-templates";
 import { invokeLLM } from "./_core/llm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
-import { sql } from "drizzle-orm";
 import { createProjectDbConnection, createProjectDbPool } from "./db-connection";
 import type { Connection } from "mysql2/promise";
 import { AgentOrchestrator } from '@oe-ecosystem/ai-agent';
@@ -429,15 +428,26 @@ export async function gatherProjectData(
 ): Promise<ProjectData> {
   console.log("[Report Generator] Gathering project data for ID:", projectId);
 
-  // Get project info from main database
-  const projectResult = await mainDb.execute(
-    sql.raw(`SELECT id, name, description, dbName, createdAt FROM projects WHERE id = ${projectId}`)
-  );
-  const project = (projectResult as any)[0][0];
+  // Get project info from oe_toolkit database (projects table lives there, not in mce_workspace)
+  const mysql = await import('mysql2/promise');
+  const { getDbConfig } = await import('./db-connection');
+  const oeConfig = getDbConfig('oe_toolkit');
+  const oeConn = await mysql.createConnection(oeConfig as any);
+  let project: any;
+  try {
+    const [rows] = await oeConn.execute(
+      `SELECT id, projectName AS name, projectCode, projectType, projectDbName AS dbName, createdAt
+       FROM projects WHERE id = ?`,
+      [projectId]
+    ) as any;
+    project = rows[0];
+  } finally {
+    await oeConn.end();
+  }
   if (!project) {
     throw new Error(`Project ${projectId} not found`);
   }
-  console.log("[Report Generator] Project found:", project.name || project.description);
+  console.log("[Report Generator] Project found:", project.name);
 
   // Create project database connection
   const projectConn: Connection = await createProjectDbConnection(projectId);
