@@ -256,8 +256,10 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       # Document storage directory inside the container
       DATA_DIR: /app/data
-      # Sprocket URL — for centralised LLM usage reporting
+      # Sprocket URL — for centralised LLM usage reporting and report generation
       SPROCKET_URL: http://sprocket:3000
+      SPROCKET_USERNAME: ${SPROCKET_USERNAME:-admin}
+      SPROCKET_PASSWORD: ${SPROCKET_PASSWORD}
     depends_on:
       mysql:
         condition: service_healthy

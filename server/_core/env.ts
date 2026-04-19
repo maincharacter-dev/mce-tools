@@ -18,4 +18,7 @@ export const ENV = {
   localUsers: process.env.LOCAL_USERS ?? "",
   // Sprocket URL — used by llm-usage-reporter to POST usage records centrally
   sprocketUrl: process.env.SPROCKET_URL ?? "",
+  // Sprocket auth — for server-to-server calls (report generation)
+  sprocketUsername: process.env.SPROCKET_USERNAME ?? "admin",
+  sprocketPassword: process.env.SPROCKET_PASSWORD ?? "",
 };

@@ -6,10 +6,9 @@ import { createReport } from "docx-templates";
 import { invokeLLM } from "./_core/llm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { createProjectDbConnection, createProjectDbPool, getDbConfig } from "./db-connection";
-import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import type { Connection } from "mysql2/promise";
-import { AgentOrchestrator } from '@oe-ecosystem/ai-agent';
+import { sprocketChat } from './sprocket-client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -670,73 +669,66 @@ export async function proposeTableOfContents(
 }
 
 /**
- * Create an AgentOrchestrator instance for project-context-aware generation.
- * The agent has access to query_facts, query_documents, query_red_flags,
+ * Generate content for a single section via Sprocket (oe-ai-agent-2) REST API.
+ * Sprocket has access to query_facts, query_documents, query_red_flags,
  * search_knowledge_base, and other tools to gather real project data.
- */
-function createAgentForProject(_mainDb?: MySql2Database<any>): AgentOrchestrator {
-  // The AgentOrchestrator needs the oe_toolkit DB (where agentConversations,
-  // agentMessages, etc. live in camelCase). mce_workspace has snake_case copies
-  // that the agent package doesn't recognise. Always connect to oe_toolkit.
-  const oePool = mysql.createPool(getDbConfig('oe_toolkit') as any);
-  const oeDb = drizzle(oePool);
-  const getProjectDb = async (projectId: number) => {
-    return createProjectDbPool(projectId) as any;
-  };
-  return new AgentOrchestrator(oeDb as any, getProjectDb);
-}
-
-/**
- * Generate content for a single section using the oe-ai-agent.
- * The agent autonomously queries the project database for relevant facts,
- * documents, red flags, and knowledge base entries to generate grounded content.
  */
 export async function generateSectionContent(
   mainDb: MySql2Database<any>,
   projectId: number,
   section: ReportSection
 ): Promise<string> {
-  console.log(`[Report Builder] Generating section via oe-ai-agent: ${section.title}`);
+  console.log(`[Report Builder] Generating section via Sprocket: ${section.title}`);
 
   try {
-    const agent = createAgentForProject(mainDb);
+    // Gather a compact project data summary to inject as system context
+    const data = await gatherProjectData(mainDb, projectId);
+    const systemContext = `You are generating a section for a Technical Due Diligence report.
 
-    const message = `Generate the "${section.title}" section for a Technical Due Diligence report on this project.
+Project: ${data.project.name}
+Description: ${data.project.description || 'Not provided'}
+Project ID (for tool calls): ${projectId}
+
+Key Facts (${data.facts.length} available):
+${data.facts.slice(0, 30).map(f => `- ${f.category}: ${f.key} = ${f.value}`).join('\n') || 'None extracted yet.'}
+
+Red Flags (${data.redFlags.length} available):
+${data.redFlags.slice(0, 10).map(r => `- [${r.severity}] ${r.category}: ${r.description}`).join('\n') || 'None identified.'}
+
+Documents (${data.documents.length} available):
+${data.documents.slice(0, 10).map(d => `- ${d.documentType}: ${d.fileName}`).join('\n') || 'None uploaded.'}`;
+
+    const message = `Generate the "${section.title}" section for a Technical Due Diligence report.
 
 Section guidance: ${section.prompt}
 Target word count: ${section.wordTarget} words
 
 IMPORTANT INSTRUCTIONS:
-1. First, use your tools to query the project database for relevant facts, documents, red flags, and knowledge base entries related to this section topic.
-2. Use query_facts, query_red_flags, query_documents, and search_knowledge_base to gather comprehensive data.
-3. Then write the section content grounded in the actual project data you retrieved.
-4. Write in flowing paragraphs separated by double newlines. No bullet points, no markdown formatting, no headers.
-5. The content should be professional and suitable for investment decision-makers.
-6. Include specific data points, figures, and references from the project data.
-7. If data is limited, note what information gaps exist.
-8. Return ONLY the section content text, no preamble or explanation.`;
+1. Use your tools (query_facts, query_red_flags, query_documents, search_knowledge_base) to gather comprehensive data for project ID ${projectId}.
+2. Write the section grounded in the actual project data you retrieve.
+3. Write in flowing paragraphs separated by double newlines. No bullet points, no markdown formatting, no headers.
+4. The content should be professional and suitable for investment decision-makers.
+5. Include specific data points, figures, and references from the project data.
+6. If data is limited, note what information gaps exist.
+7. Return ONLY the section content text, no preamble or explanation.`;
 
-    const response = await agent.processMessage({
-      userId: 0, // System-level generation
-      projectId,
+    const response = await sprocketChat({
       message,
-      context: {
-        workflowStage: 'report_generation',
-        currentPage: 'report-builder',
-      },
+      systemContext,
+      userId: 1,
     });
 
     const content = response.message?.trim();
     if (content && content.length > 50) {
-      console.log(`[Report Builder] Agent generated ${content.length} chars for ${section.title} (tools used: ${response.metadata.toolsUsed.join(', ') || 'none'})`);
+      console.log(`[Report Builder] Sprocket generated ${content.length} chars for ${section.title}`);
       return content;
     }
 
-    // Fallback to direct LLM if agent returns too little
-    console.warn(`[Report Builder] Agent returned insufficient content for ${section.title}, falling back to direct LLM`);
+    // Fallback to direct LLM if Sprocket returns too little
+    console.warn(`[Report Builder] Sprocket returned insufficient content for ${section.title}, falling back to direct LLM`);
     return generateSectionContentDirect(mainDb, projectId, section);
   } catch (err: any) {
-    console.error(`[Report Builder] Agent generation failed for ${section.title}:`, err.message);
+    console.error(`[Report Builder] Sprocket generation failed for ${section.title}:`, err.message);
     // Fallback to direct LLM call
     return generateSectionContentDirect(mainDb, projectId, section);
   }
