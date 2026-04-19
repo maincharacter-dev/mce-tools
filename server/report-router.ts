@@ -30,6 +30,15 @@ function getMainDb() {
   return { pool, db: drizzle(pool) };
 }
 
+/** Safely parse a value that may already be a JS object (mysql2 auto-parses JSON columns). */
+function safeParse(val: any): any {
+  if (val == null) return null;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return null; }
+  }
+  return val; // already parsed by mysql2 driver
+}
+
 /** Fetch a draft. When projectId is omitted the lookup is by id only. */
 async function fetchDraft(pool: any, draftId: number, projectId?: number | null) {
   const [rows] = (projectId != null
@@ -40,9 +49,9 @@ async function fetchDraft(pool: any, draftId: number, projectId?: number | null)
   if (!row) return null;
   return {
     ...row,
-    sections: row.sections ? JSON.parse(row.sections) : null,
-    content: row.content ? JSON.parse(row.content) : null,
-    metadata: row.metadata ? JSON.parse(row.metadata) : null,
+    sections: safeParse(row.sections),
+    content: safeParse(row.content),
+    metadata: safeParse(row.metadata),
   };
 }
 
@@ -185,7 +194,7 @@ export const reportRouter = router({
     .input(z.object({
       draftId: z.number(),
       projectId: z.number().optional(),
-      metadata: z.record(z.string()),
+      metadata: z.record(z.string(), z.string()),
     }))
     .mutation(async ({ input }) => {
       const { pool } = getMainDb();
@@ -381,7 +390,7 @@ export const reportRouter = router({
           totalSections: row.content_generation_total_sections,
           isComplete: row.content_generation_status === "completed",
           isFailed: row.content_generation_status === "failed",
-          content: row.content ? JSON.parse(row.content) : {},
+          content: safeParse(row.content) || {},
         };
       } finally {
         await pool.end();

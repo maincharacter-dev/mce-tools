@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1089,6 +1090,7 @@ export default function ReportBuilder() {
   const [, navigate] = useLocation();
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId ? parseInt(params.projectId, 10) : null;
+  const { user } = useAuth();
 
   const [draftId, setDraftId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("structure");
@@ -1106,6 +1108,7 @@ export default function ReportBuilder() {
   const [dataSummary, setDataSummary] = useState("");
   const [projectType, setProjectType] = useState("default");
   const [isInitializing, setIsInitializing] = useState(true);
+  const [metadataAutoPopulated, setMetadataAutoPopulated] = useState(false);
 
   // Fetch project details
   const { data: project } = trpc.projects.get.useQuery(
@@ -1167,6 +1170,23 @@ export default function ReportBuilder() {
       setIsInitializing(false);
     }
   }, [getDraft.data, isInitializing]);
+
+  // Auto-populate metadata from project data and logged-in user (only once, for new drafts)
+  useEffect(() => {
+    if (!project || metadataAutoPopulated) return;
+    const p = project as any;
+    const projectName = p.projectName || p.name || "";
+    const projectCode = p.projectCode || "";
+    const userName = user?.name || "";
+    setMetadata(prev => ({
+      ...prev,
+      clientName: prev.clientName || projectName,
+      projectNumber: prev.projectNumber || projectCode,
+      preparedBy: prev.preparedBy || userName,
+      documentType: prev.documentType || "Technical Due Diligence Report",
+    }));
+    setMetadataAutoPopulated(true);
+  }, [project, user, metadataAutoPopulated]);
 
   const loadDraft = async (id: number) => {
     setDraftId(id);
