@@ -925,7 +925,7 @@ function GenerateStep({
     if (genStatus.generation_status === 'completed' && genStatus.generated_filename) {
       setIsGenerating(false);
       setResult({
-        fileUrl: `/api/reports/download-by-draft/${draftId}`,
+        fileUrl: `/workspace/api/reports/download-by-draft/${draftId}`,
         filename: genStatus.generated_filename,
         fileSizeBytes: genStatus.generated_file_size_bytes || 0,
       });
@@ -1108,7 +1108,7 @@ export default function ReportBuilder() {
   const [dataSummary, setDataSummary] = useState("");
   const [projectType, setProjectType] = useState("default");
   const [isInitializing, setIsInitializing] = useState(true);
-  const [metadataAutoPopulated, setMetadataAutoPopulated] = useState(false);
+
 
   // Fetch project details
   const { data: project } = trpc.projects.get.useQuery(
@@ -1156,7 +1156,20 @@ export default function ReportBuilder() {
       const draft = getDraft.data;
       setSections(draft.sections || []);
       setContent(draft.content || {});
-      setMetadata(draft.metadata || metadata);
+      // Restore draft metadata then fill any empty fields from project data
+      const savedMeta = draft.metadata || {};
+      const p = project as any;
+      const projectName = p?.projectName || p?.name || "";
+      const projectCode = p?.projectCode || "";
+      const userName = user?.name || "";
+      setMetadata(prev => ({
+        ...prev,
+        ...savedMeta,
+        clientName: savedMeta.clientName || projectName,
+        projectNumber: savedMeta.projectNumber || projectCode,
+        preparedBy: savedMeta.preparedBy || userName,
+        documentType: savedMeta.documentType || "Technical Due Diligence Report",
+      }));
       // Map draft step to workflow step
       let mappedStep: WorkflowStep = "structure";
       if (draft.step === "completed" || draft.step === "generating") {
@@ -1169,11 +1182,12 @@ export default function ReportBuilder() {
       setCurrentStep(mappedStep);
       setIsInitializing(false);
     }
-  }, [getDraft.data, isInitializing]);
+  }, [getDraft.data, isInitializing, project, user]);
 
-  // Auto-populate metadata from project data and logged-in user (only once, for new drafts)
+  // Auto-populate metadata for NEW drafts (when getDraft never fires because it's a brand-new draft)
   useEffect(() => {
-    if (!project || metadataAutoPopulated) return;
+    if (!project || !draftId || !isInitializing) return;
+    // Only fill if we're still initializing (new draft, no getDraft data yet)
     const p = project as any;
     const projectName = p.projectName || p.name || "";
     const projectCode = p.projectCode || "";
@@ -1185,8 +1199,7 @@ export default function ReportBuilder() {
       preparedBy: prev.preparedBy || userName,
       documentType: prev.documentType || "Technical Due Diligence Report",
     }));
-    setMetadataAutoPopulated(true);
-  }, [project, user, metadataAutoPopulated]);
+  }, [project, user, draftId, isInitializing]);
 
   const loadDraft = async (id: number) => {
     setDraftId(id);

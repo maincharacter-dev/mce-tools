@@ -108,7 +108,7 @@ export const reportRouter = router({
         return (rows as any[]).map((r: any) => ({
           ...r,
           report_title: r.filename ? r.filename.replace(/_/g, ' ').replace(/\.docx$/i, '') : 'DD Report',
-          file_url: `/api/reports/download/${r.id}`,
+          file_url: `/workspace/api/reports/download/${r.id}`,
         }));
       } finally {
         await pool.end();

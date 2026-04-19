@@ -67,14 +67,25 @@ async function sprocketFetch(
 ): Promise<Response> {
   const cookie = await getSessionCookie();
 
-  const res = await fetch(`${ENV.sprocketUrl}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookie,
-      ...(options.headers ?? {}),
-    },
-  });
+  // 45-second timeout — Sprocket /api/chat can take a while with tool calls,
+  // but we don't want to block report generation indefinitely.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
+
+  let res: Response;
+  try {
+    res = await fetch(`${ENV.sprocketUrl}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        ...(options.headers ?? {}),
+      },
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (res.status === 401 && !retried) {
     cachedSessionCookie = null;

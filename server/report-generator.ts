@@ -505,8 +505,10 @@ async function callLLM(systemPrompt: string, userPrompt: string, maxRetries = 3)
     } catch (err: any) {
       console.error(`[Report Generator] LLM call failed (attempt ${attempt}/${maxRetries}):`, err.message);
       if (attempt < maxRetries) {
-        const delay = attempt * 2000; // 2s, 4s backoff
-        console.log(`[Report Generator] Retrying in ${delay}ms...`);
+        // Use longer backoff for rate limit errors (429)
+        const is429 = err.message?.includes('429') || err.message?.includes('Too Many Requests') || err.message?.includes('rate_limit');
+        const delay = is429 ? attempt * 15000 : attempt * 2000; // 15s/30s for 429, 2s/4s for others
+        console.log(`[Report Generator] Retrying in ${delay}ms (${is429 ? 'rate limit' : 'error'})...`);
         await new Promise((r) => setTimeout(r, delay));
       }
     }
@@ -521,7 +523,14 @@ async function callLLM(systemPrompt: string, userPrompt: string, maxRetries = 3)
 // ─── Multi-step Report Builder ─────────────────────────────────────────────
 
 const SYSTEM_PROMPT =
-  "You are a senior technical due diligence consultant at MCE (Main Character Energy), a renewable energy advisory firm. Write in a professional, technical style appropriate for investment decision-makers. Do not use markdown formatting - write plain text with paragraph breaks (use \\n\\n between paragraphs) only. Do not use bullet points, headers, or any formatting characters like *, #, -, etc.";
+  `You are a senior technical due diligence consultant at MCE (Main Character Energy), a renewable energy advisory firm. You are writing a formal Technical Due Diligence report for an infrastructure investor.
+
+CRITICAL RULES — violating any of these will make the report unusable:
+1. Write ONLY flowing prose paragraphs separated by double newlines (\n\n). No bullet points, no headers, no markdown, no asterisks, no dashes at line start.
+2. Make SPECIFIC, DEFINITIVE statements using the data values provided. Do NOT hedge with phrases like "a review of the documentation suggests", "further analysis is required", "it is recommended that", "based on available information", or "the project appears to".
+3. If a fact value is provided (e.g. capacity = 200 MW), state it as fact: "The project has a nameplate capacity of 200 MW."
+4. If data is genuinely absent for a sub-topic, state it concisely in one sentence and move on. Do not dwell on gaps.
+5. Write at the level of a CFA-qualified infrastructure analyst presenting findings to an investment committee.`;
 
 export type ProgressCallback = (step: string, sectionsCompleted: number) => Promise<void>;
 
@@ -719,13 +728,23 @@ IMPORTANT INSTRUCTIONS:
     });
 
     const content = response.message?.trim();
-    if (content && content.length > 50) {
+
+    // Detect Sprocket error responses or low-quality fallback messages
+    const isErrorResponse = !content ||
+      content.length < 100 ||
+      content.includes("I encountered an issue") ||
+      content.includes("Could you rephrase") ||
+      content.includes("I'm sorry, I can't") ||
+      content.includes("I apologize, but I") ||
+      content.includes("I don't have enough information");
+
+    if (!isErrorResponse) {
       console.log(`[Report Builder] Sprocket generated ${content.length} chars for ${section.title}`);
       return content;
     }
 
-    // Fallback to direct LLM if Sprocket returns too little
-    console.warn(`[Report Builder] Sprocket returned insufficient content for ${section.title}, falling back to direct LLM`);
+    // Fallback to direct LLM if Sprocket returns an error or insufficient content
+    console.warn(`[Report Builder] Sprocket returned error/insufficient content for ${section.title}, falling back to direct LLM`);
     return generateSectionContentDirect(mainDb, projectId, section);
   } catch (err: any) {
     console.error(`[Report Builder] Sprocket generation failed for ${section.title}:`, err.message);
@@ -746,51 +765,60 @@ async function generateSectionContentDirect(
   console.log(`[Report Builder] Fallback: direct LLM generation for ${section.title}`);
   const data = await gatherProjectData(mainDb, projectId);
 
-  const factsStr = data.facts
-    .slice(0, 80)
-    .map((f) => `- ${f.category}: ${f.key} = ${f.value}`)
-    .join("\n");
+  // Group facts by category for better LLM comprehension
+  const factsByCategory: Record<string, string[]> = {};
+  for (const f of data.facts.slice(0, 120)) {
+    const cat = f.category || "General";
+    if (!factsByCategory[cat]) factsByCategory[cat] = [];
+    factsByCategory[cat].push(`${f.key}: ${f.value}`);
+  }
+  const factsStr = Object.entries(factsByCategory)
+    .map(([cat, items]) => `[${cat}]\n${items.join("\n")}`)
+    .join("\n\n");
+
   const redFlagsStr = data.redFlags
-    .slice(0, 20)
-    .map((r) => `- [${r.severity}] ${r.category}: ${r.description}`)
+    .slice(0, 30)
+    .map((r) => `[${r.severity?.toUpperCase() || 'FLAG'}] ${r.category}: ${r.description}${r.recommendation ? ` | Recommendation: ${r.recommendation}` : ''}`)
     .join("\n");
+
   const docsStr = data.documents
-    .slice(0, 20)
-    .map((d) => `- ${d.documentType}: ${d.fileName}`)
+    .slice(0, 30)
+    .map((d) => `${d.documentType || 'Document'}: ${d.fileName || d.originalName || 'unnamed'}`)
     .join("\n");
+
   const perfStr = data.performanceParams
-    .slice(0, 20)
-    .map((p) => JSON.stringify(p))
+    .slice(0, 30)
+    .map((p: any) => `${p.parameterName || p.name || 'param'}: ${p.value} ${p.unit || ''} (${p.source || ''})`)
     .join("\n");
+
   const finStr = data.financialData
-    .slice(0, 20)
-    .map((f) => JSON.stringify(f))
+    .slice(0, 30)
+    .map((f: any) => `${f.dataType || f.category || 'item'}: ${f.value} ${f.currency || ''} (${f.year || f.period || ''})`)
     .join("\n");
 
-  const userPrompt = `Write the "${section.title}" section (${section.wordTarget} words target) for a Technical Due Diligence report.
+  const userPrompt = `Write the "${section.title}" section (~${section.wordTarget} words) for a Technical Due Diligence report on ${data.project.name}.
 
-Project: ${data.project.name}
-Description: ${data.project.description || "Not provided"}
+Section task: ${section.prompt}
 
-Section guidance: ${section.prompt}
+=== EXTRACTED PROJECT DATA ===
 
-Available Data:
-Key Facts (${data.facts.length} total):
-${factsStr || "No facts extracted yet."}
+FACTS BY CATEGORY (${data.facts.length} total extracted facts):
+${factsStr || "No facts extracted yet — state that data is pending ingestion."}
 
-Red Flags (${data.redFlags.length} total):
+RED FLAGS & RISKS (${data.redFlags.length} identified):
 ${redFlagsStr || "No red flags identified."}
 
-Documents Reviewed (${data.documents.length} total):
+DOCUMENTS IN SCOPE (${data.documents.length} documents):
 ${docsStr || "No documents uploaded yet."}
 
-Performance Parameters:
-${perfStr || "Not available"}
+PERFORMANCE PARAMETERS:
+${perfStr || "Not extracted."}
 
-Financial Data:
-${finStr || "Not available"}
+FINANCIAL DATA:
+${finStr || "Not extracted."}
 
-Write in flowing paragraphs separated by double newlines (\\n\\n). No bullet points, no markdown formatting, no headers. The content should be professional and suitable for investment decision-makers.`;
+=== WRITING INSTRUCTIONS ===
+Use the data above to write the section. Every claim must be grounded in a specific data point above. State figures as facts (e.g. "The project capacity is X MW"). If a sub-topic has no data, say so in one sentence. Do NOT use hedging phrases like "it is understood that", "a review suggests", "further analysis is required", or "based on available documentation". Write ${section.wordTarget} words of flowing prose paragraphs (double newline between paragraphs). No bullet points, no headers, no markdown.`;
 
   return callLLM(SYSTEM_PROMPT, userPrompt);
 }
