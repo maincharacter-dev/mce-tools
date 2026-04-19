@@ -464,7 +464,7 @@ export async function gatherProjectData(
   };
 
   try {
-    const facts = await safeQuery("SELECT * FROM extractedFacts ORDER BY category, `key` LIMIT 1000");
+    const facts = await safeQuery("SELECT * FROM extracted_facts ORDER BY category, `key` LIMIT 1000");
     console.log("[Report Generator] Found facts:", facts.length);
 
     const documents = await safeQuery("SELECT * FROM documents ORDER BY uploadDate DESC LIMIT 100");
@@ -473,10 +473,10 @@ export async function gatherProjectData(
     const redFlags = await safeQuery("SELECT * FROM redFlags ORDER BY severity DESC, category LIMIT 100");
     console.log("[Report Generator] Found red flags:", redFlags.length);
 
-    const performanceParams = await safeQuery("SELECT * FROM performanceParameters LIMIT 100");
+    const performanceParams = await safeQuery("SELECT * FROM performance_parameters LIMIT 100");
     console.log("[Report Generator] Found performance params:", performanceParams.length);
 
-    const financialData = await safeQuery("SELECT * FROM financialData LIMIT 100");
+    const financialData = await safeQuery("SELECT * FROM financial_data LIMIT 100");
     console.log("[Report Generator] Found financial data:", financialData.length);
 
     return { project, facts, documents, redFlags, performanceParams, financialData };

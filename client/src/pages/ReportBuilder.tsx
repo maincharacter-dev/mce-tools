@@ -1219,7 +1219,19 @@ export default function ReportBuilder() {
       setSections(result.sections);
       setDataSummary(result.dataSummary);
       setProjectType(result.projectType);
-      setMetadata(result.metadata);
+      // Merge returned metadata with auto-populated values — don't overwrite with empty object
+      const p = project as any;
+      const projectName = p?.projectName || p?.name || "";
+      const projectCode = p?.projectCode || "";
+      const userName = user?.name || "";
+      setMetadata(prev => ({
+        ...prev,
+        ...(result.metadata || {}),
+        clientName: (result.metadata as any)?.clientName || prev.clientName || projectName,
+        projectNumber: (result.metadata as any)?.projectNumber || prev.projectNumber || projectCode,
+        preparedBy: (result.metadata as any)?.preparedBy || prev.preparedBy || userName,
+        documentType: (result.metadata as any)?.documentType || prev.documentType || "Technical Due Diligence Report",
+      }));
       setIsInitializing(false);
     } catch (err: any) {
       toast.error("Failed to initialize report builder", { description: err.message });
