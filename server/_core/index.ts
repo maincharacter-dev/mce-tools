@@ -50,6 +50,65 @@ async function startServer() {
     res.json({ mode: isLocalAuth() ? "local" : "oauth" });
   });
 
+  // ─── Report file download routes ─────────────────────────────────────────
+  // Serve generated DOCX files from /app/data/reports by DB row ID
+  app.get("/api/reports/download/:id", async (req, res) => {
+    try {
+      const { createMainDbPool } = await import("../db-connection");
+      const pool = createMainDbPool();
+      const [rows] = await pool.execute(
+        "SELECT filename, file_key FROM generated_reports WHERE id = ?",
+        [req.params.id]
+      ) as any;
+      await pool.end();
+      const report = rows[0];
+      if (!report || !report.file_key) {
+        res.status(404).json({ error: "Report not found" });
+        return;
+      }
+      const { existsSync } = await import("fs");
+      if (!existsSync(report.file_key)) {
+        res.status(404).json({ error: "Report file not found on disk" });
+        return;
+      }
+      res.setHeader("Content-Disposition", `attachment; filename="${report.filename}"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.sendFile(report.file_key);
+    } catch (err: any) {
+      console.error("[Download] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Download by draft ID (used by GenerateStep after polling completes)
+  app.get("/api/reports/download-by-draft/:draftId", async (req, res) => {
+    try {
+      const { createMainDbPool } = await import("../db-connection");
+      const pool = createMainDbPool();
+      const [rows] = await pool.execute(
+        "SELECT id, filename, file_key FROM generated_reports WHERE draft_id = ? ORDER BY created_at DESC LIMIT 1",
+        [req.params.draftId]
+      ) as any;
+      await pool.end();
+      const report = rows[0];
+      if (!report || !report.file_key) {
+        res.status(404).json({ error: "Report not found" });
+        return;
+      }
+      const { existsSync } = await import("fs");
+      if (!existsSync(report.file_key)) {
+        res.status(404).json({ error: "Report file not found on disk" });
+        return;
+      }
+      res.setHeader("Content-Disposition", `attachment; filename="${report.filename}"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.sendFile(report.file_key);
+    } catch (err: any) {
+      console.error("[Download] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

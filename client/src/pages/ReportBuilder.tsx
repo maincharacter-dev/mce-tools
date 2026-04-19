@@ -914,28 +914,28 @@ function GenerateStep({
   const retryGen = trpc.report.retryGeneration.useMutation();
 
   // Poll for completion when generating
-  const { data: draftStatus, refetch: refetchDraft } = trpc.report.getDraft.useQuery(
+  const { data: genStatus } = trpc.report.getGenerationStatus.useQuery(
     { draftId },
     { enabled: isGenerating, refetchInterval: isGenerating ? 3000 : false }
   );
 
   // Check poll results
   useEffect(() => {
-    if (!isGenerating || !draftStatus) return;
-    if (draftStatus.step === 'completed' && draftStatus.file_url) {
+    if (!isGenerating || !genStatus) return;
+    if (genStatus.generation_status === 'completed' && genStatus.generated_filename) {
       setIsGenerating(false);
       setResult({
-        fileUrl: draftStatus.file_url,
-        filename: draftStatus.file_url.split('/').pop() || 'report.docx',
-        fileSizeBytes: draftStatus.file_size_bytes || 0,
+        fileUrl: `/api/reports/download-by-draft/${draftId}`,
+        filename: genStatus.generated_filename,
+        fileSizeBytes: genStatus.generated_file_size_bytes || 0,
       });
       toast.success("Report generated successfully!");
-    } else if (draftStatus.step === 'failed') {
+    } else if (genStatus.generation_status === 'failed') {
       setIsGenerating(false);
-      setGenError('Report generation failed on the server. You can retry.');
+      setGenError(genStatus.generation_error || 'Report generation failed on the server. You can retry.');
       toast.error("Report generation failed");
     }
-  }, [draftStatus, isGenerating]);
+  }, [genStatus, isGenerating, draftId]);
 
   const sorted = useMemo(() => [...sections].sort((a, b) => a.order - b.order), [sections]);
   const totalWords = sorted.reduce((sum, s) => sum + (content[s.id] || "").split(/\s+/).filter(Boolean).length, 0);

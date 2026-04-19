@@ -104,7 +104,12 @@ export const reportRouter = router({
            ORDER BY created_at DESC`,
           [input.projectId]
         ) as any;
-        return rows;
+        // Attach a server-side download URL and normalise field names for the client
+        return (rows as any[]).map((r: any) => ({
+          ...r,
+          report_title: r.filename ? r.filename.replace(/_/g, ' ').replace(/\.docx$/i, '') : 'DD Report',
+          file_url: `/api/reports/download/${r.id}`,
+        }));
       } finally {
         await pool.end();
       }
@@ -311,16 +316,19 @@ export const reportRouter = router({
           [jobId, sections.length, sections[0]?.title || "", input.draftId]
         );
 
-        // Run generation in background (fire and forget)
+        // Run generation in background (fire and forget) — use a dedicated pool
+        // so closing it doesn't affect the request-scoped pool above
+        const bgPool = createMainDbPool();
+        const bgDb = drizzle(bgPool);
         (async () => {
           const existingContent = draft.content || {};
           for (let i = 0; i < sections.length; i++) {
             const section = sections[i];
             try {
-              const content = await generateSectionContent(db as any, projectId, section);
+              const content = await generateSectionContent(bgDb as any, projectId, section);
               existingContent[section.id] = content;
 
-              await pool.execute(
+              await bgPool.execute(
                 `UPDATE report_drafts
                  SET content = ?,
                      content_generation_completed_sections = ?,
@@ -341,7 +349,7 @@ export const reportRouter = router({
             }
           }
 
-          await pool.execute(
+          await bgPool.execute(
             `UPDATE report_drafts
              SET content_generation_status = 'completed',
                  content_generation_progress = 100,
@@ -350,13 +358,14 @@ export const reportRouter = router({
              WHERE id = ?`,
             [input.draftId]
           );
-          await pool.end();
-        })().catch(err => {
+          await bgPool.end();
+        })().catch(async err => {
           console.error("[Report Router] Background generation failed:", err);
-          pool.execute(
+          await bgPool.execute(
             "UPDATE report_drafts SET content_generation_status = 'failed', updated_at = NOW() WHERE id = ?",
             [input.draftId]
           ).catch(() => {});
+          await bgPool.end();
         });
 
         return { jobId, totalSections: sections.length };
@@ -478,17 +487,18 @@ export const reportRouter = router({
         const content: Record<string, string> = draft.content || {};
         const metadata: ReportMetadata = draft.metadata || {};
 
-        // Run generation in background
+        // Run generation in background — use a dedicated pool
+        const bgPool2 = createMainDbPool();
         (async () => {
           try {
-            await pool.execute(
+            await bgPool2.execute(
               "UPDATE report_drafts SET generation_progress = 20, generation_current_section = 'Assembling document...' WHERE id = ?",
               [input.draftId]
             );
 
             const docxBuffer = await generateReportFromContent(sections, content, metadata, projectId);
 
-            await pool.execute(
+            await bgPool2.execute(
               "UPDATE report_drafts SET generation_progress = 80, generation_current_section = 'Saving file...' WHERE id = ?",
               [input.draftId]
             );
@@ -506,14 +516,16 @@ export const reportRouter = router({
 
             const stats = await fs.stat(filePath);
 
-            await pool.execute(
+            // Insert into generated_reports table
+            const [insertResult] = await bgPool2.execute(
               `INSERT INTO generated_reports
                (project_id, draft_id, report_type, filename, file_key, file_size_bytes)
                VALUES (?, ?, ?, ?, ?, ?)`,
               [projectId, input.draftId, draft.report_type || "dd_report", filename, filePath, stats.size]
             ) as any;
+            const reportId = insertResult.insertId;
 
-            await pool.execute(
+            await bgPool2.execute(
               `UPDATE report_drafts
                SET generation_status = 'completed',
                    generation_progress = 100,
@@ -525,15 +537,15 @@ export const reportRouter = router({
               [filePath, filename, stats.size, input.draftId]
             );
 
-            console.log(`[Report Router] Generated report: ${filename} (${stats.size} bytes)`);
-            await pool.end();
+            console.log(`[Report Router] Generated report: ${filename} (${stats.size} bytes), reportId=${reportId}`);
+            await bgPool2.end();
           } catch (err: any) {
             console.error("[Report Router] Report generation failed:", err);
-            await pool.execute(
+            await bgPool2.execute(
               "UPDATE report_drafts SET generation_status = 'failed', generation_error = ?, updated_at = NOW() WHERE id = ?",
               [err.message || "Unknown error", input.draftId]
             ).catch(() => {});
-            await pool.end();
+            await bgPool2.end();
           }
         })();
 

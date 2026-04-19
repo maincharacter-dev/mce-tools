@@ -5,7 +5,9 @@ import PizZip from "pizzip";
 import { createReport } from "docx-templates";
 import { invokeLLM } from "./_core/llm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
-import { createProjectDbConnection, createProjectDbPool } from "./db-connection";
+import { createProjectDbConnection, createProjectDbPool, getDbConfig } from "./db-connection";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import type { Connection } from "mysql2/promise";
 import { AgentOrchestrator } from '@oe-ecosystem/ai-agent';
 
@@ -672,11 +674,16 @@ export async function proposeTableOfContents(
  * The agent has access to query_facts, query_documents, query_red_flags,
  * search_knowledge_base, and other tools to gather real project data.
  */
-function createAgentForProject(mainDb: MySql2Database<any>): AgentOrchestrator {
+function createAgentForProject(_mainDb?: MySql2Database<any>): AgentOrchestrator {
+  // The AgentOrchestrator needs the oe_toolkit DB (where agentConversations,
+  // agentMessages, etc. live in camelCase). mce_workspace has snake_case copies
+  // that the agent package doesn't recognise. Always connect to oe_toolkit.
+  const oePool = mysql.createPool(getDbConfig('oe_toolkit') as any);
+  const oeDb = drizzle(oePool);
   const getProjectDb = async (projectId: number) => {
     return createProjectDbPool(projectId) as any;
   };
-  return new AgentOrchestrator(mainDb as any, getProjectDb);
+  return new AgentOrchestrator(oeDb as any, getProjectDb);
 }
 
 /**
